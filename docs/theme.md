@@ -16,11 +16,11 @@ intercambiable que solo cambia la presentación. Uso personal, no distribuible.
 | Publicador | **Harley Quinn** | antiheroína |
 
 ## Qué cambia
-- **Interfaz**: la sala se llama *La Baticueva* (señal del Murciélago y horizonte de edificios), cada agente
-  tiene su color, glifo, apodo y frase; la página *Agentes* muestra fichas de personaje; paleta negra y amarilla.
+- **Interfaz**: la sala es una Batcueva 3D y los nueve agentes son **minifiguras LEGO Batman** con una
+  estética única (ver `docs/style_bible.md`); cada agente tiene su color, glifo, apodo y frase; la página *Agentes* muestra fichas de personaje; paleta negra y amarilla.
 - **Frases**: salen del estado **real** del agente (en ejecución, esperando, error, terminó). No hay actividad
   inventada: si no pasa nada, el personaje está «en espera».
-- **Anillo de estado**: el cuerpo del nodo lleva el color del personaje y un anillo lleva el color del **estado**
+- **Anillo de estado**: la figura y su placa llevan el color del personaje y un anillo lleva el color del **estado**
   (en espera / ejecución / esperando / error), para que el estado siga leyéndose igual.
 - **Prompts de rol** (`.claude/agents/*.md`): un párrafo de personalidad que solo afecta al **tono de los campos
   explicativos** (resúmenes, motivos, notas).

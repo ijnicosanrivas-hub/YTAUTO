@@ -1,4 +1,4 @@
-import { Html, Line, OrbitControls, Stars } from "@react-three/drei";
+import { Environment, Html, Line, OrbitControls, Stars } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
@@ -6,7 +6,15 @@ import { PageHead, useApi } from "../components/ui";
 import { AGENT_COLOR, elapsed, statusLabel } from "../format";
 import { useLive } from "../store";
 import { bodyColor, displayName, personaFor, quoteFor } from "../theme";
+import { Batcave, FLOOR_Y, PLATE_H, Plate, StudioLights } from "../minifig/Batcave";
+import { Minifig } from "../minifig/Minifig";
+import { animationState } from "../minifig/pose";
+import { FIGURE_HEIGHT, FIGURE_SCALE } from "../minifig/styleBible";
+import { VARIANTS } from "../minifig/variants";
 import type { AgentState, Link, Theme } from "../types";
+
+const FEET_Y = FLOOR_Y + PLATE_H;
+const CHEST_Y = FEET_Y + 0.7 * FIGURE_SCALE; // las conexiones y etiquetas se anclan a esta altura
 
 const RING_ORDER = ["director", "scriptwriter", "resources", "voice", "editor", "sound", "reviewer", "publisher"];
 const RADIUS = 5;
@@ -30,7 +38,7 @@ export function linkActive(link: Link, agents: Record<string, AgentState>, last:
 
 type Overlay = React.RefObject<HTMLDivElement | null>;
 
-function Node({ agent, position, central, overlay, theme }: { agent: AgentState; position: [number, number, number]; central: boolean; overlay: Overlay; theme: Theme }) {
+function Node({ agent, position, central, overlay, theme, figure, receiving, seed }: { agent: AgentState; position: [number, number, number]; central: boolean; overlay: Overlay; theme: Theme; figure: boolean; receiving: boolean; seed: number }) {
   const mesh = useRef<THREE.Mesh>(null);
   const statusColor = AGENT_COLOR[agent.status] ?? "#5b6b8c";
   const color = bodyColor(theme, agent);
@@ -50,8 +58,30 @@ function Node({ agent, position, central, overlay, theme }: { agent: AgentState;
     mesh.current.scale.setScalar(s);
   });
   const size = central ? 0.9 : 0.55;
+  const variant = figure ? VARIANTS[agent.name] : undefined;
+  // La animación se calcula en cada fotograma a partir del estado REAL (sin re-renderizar React)
+  const live = useRef({ agent, receiving });
+  live.current = { agent, receiving };
+  const getAnim = useRef(() => {
+    const { agent: a, receiving: r } = live.current;
+    return animationState({ status: a.status, finishedAt: a.finished_at, now: Date.now(), receiving: r });
+  }).current;
   return (
     <group position={position}>
+      {variant ? (
+        <>
+          <group position={[0, FEET_Y - position[1], 0]} scale={FIGURE_SCALE}>
+            <Minifig variant={variant} getAnim={getAnim} seed={seed} />
+          </group>
+          <Plate position={[0, FLOOR_Y - position[1], 0]} color={color} big={central} />
+          {/* Anillo de ESTADO en el borde de la placa; el color del personaje va en la figura y la placa */}
+          <mesh position={[0, FEET_Y - position[1] + 0.04, 0]} rotation={[Math.PI / 2, 0, 0]}>
+            <torusGeometry args={[central ? 1.2 : 0.92, 0.035, 8, 56]} />
+            <meshBasicMaterial color={statusColor} />
+          </mesh>
+        </>
+      ) : (
+      <>
       <mesh ref={mesh}>
         <icosahedronGeometry args={[size, 1]} />
         <meshStandardMaterial color={color} emissive={color} emissiveIntensity={agent.status === "running" ? 0.9 : 0.25} wireframe={!central} />
@@ -65,8 +95,10 @@ function Node({ agent, position, central, overlay, theme }: { agent: AgentState;
         <torusGeometry args={[size * 1.25, 0.04, 8, 48]} />
         <meshBasicMaterial color={statusColor} />
       </mesh>
+      </>
+      )}
       {/* Las etiquetas van a una capa propia (portal): evita que React y drei compitan por los mismos nodos DOM al salir */}
-      <Html position={[0, size + 0.35, 0]} center distanceFactor={11} zIndexRange={[10, 0]} portal={overlay as React.RefObject<HTMLElement>}>
+      <Html position={[0, variant ? FEET_Y - position[1] + FIGURE_HEIGHT * FIGURE_SCALE + (central ? 1.15 : 1.0) : size + 0.35, 0]} center distanceFactor={11} zIndexRange={[10, 0]} portal={overlay as React.RefObject<HTMLElement>}>
         <div className="node-card">
           {persona && <span>{persona.glyph} </span>}<b style={persona ? { color } : undefined}>{displayName(theme, agent)}</b>{persona && <span className="muted"> · {agent.title}</span>} <span style={{ color: statusColor }}>● {statusLabel(agent.status)}</span>
           {quote && <div className="quote">«{quote}»</div>}
@@ -103,33 +135,6 @@ function Pulse({ from, to }: { from: THREE.Vector3; to: THREE.Vector3 }) {
   );
 }
 
-/** Ambientación Gotham: horizonte de edificios y señal del Murciélago. Decorativo, sin significado de estado. */
-function Gotham({ accent }: { accent: string }) {
-  const towers = useMemo(
-    () => Array.from({ length: 28 }, (_, i) => {
-      const a = (i / 28) * Math.PI * 2;
-      const h = 3 + ((i * 7919) % 11) * 0.9; // alturas deterministas
-      return { x: Math.cos(a) * 22, z: Math.sin(a) * 22, h, w: 1.4 + (i % 3) * 0.5 };
-    }),
-    [],
-  );
-  return (
-    <>
-      {towers.map((t, i) => (
-        <mesh key={i} position={[t.x, -1.6 + t.h / 2, t.z]}>
-          <boxGeometry args={[t.w, t.h, t.w]} />
-          <meshStandardMaterial color="#0b0d14" emissive="#10131f" emissiveIntensity={0.6} />
-        </mesh>
-      ))}
-      {/* Haz de la señal sobre el jefe */}
-      <mesh position={[0, 5, 0]}>
-        <coneGeometry args={[2.2, 14, 32, 1, true]} />
-        <meshBasicMaterial color={accent} transparent opacity={0.07} side={THREE.DoubleSide} depthWrite={false} />
-      </mesh>
-    </>
-  );
-}
-
 function Scene({ agents, links, overlay, theme }: { agents: Record<string, AgentState>; links: Link[]; overlay: Overlay; theme: Theme }) {
   const last = useLive((s) => s.lastActivity);
   const [now, setNow] = useState(Date.now());
@@ -137,13 +142,35 @@ function Scene({ agents, links, overlay, theme }: { agents: Record<string, Agent
     const t = setInterval(() => setNow(Date.now()), 500);
     return () => clearInterval(t);
   }, []);
-  const pos = useMemo(nodePositions, []);
+  const figure = theme.id !== "classic";
+  // Con figuras, todas las posiciones (nodos y conexiones) se anclan a la altura del pecho de la minifigura
+  const pos = useMemo(() => {
+    const base = nodePositions();
+    return figure ? Object.fromEntries(Object.entries(base).map(([n, p]) => [n, [p[0], CHEST_Y, p[2]] as [number, number, number]])) : base;
+  }, [figure]);
+  // "Recibiendo": una entrega real de otro agente hacia éste está en curso
+  const receiving = (name: string) => links.some((l) => l.kind === "flow" && l.target === name && now - (last[l.source] ?? 0) < ACTIVE_MS);
   return (
     <>
-      <ambientLight intensity={0.5} />
-      <pointLight position={[0, 6, 0]} intensity={40} color="#7dd3fc" />
-      <Stars radius={60} depth={30} count={1500} factor={3} fade speed={0.3} />
-      <gridHelper args={[30, 30, "#1e2a4a", "#121a30"]} position={[0, -1.6, 0]} />
+      {figure ? (
+        <>
+          <ambientLight intensity={1.1} />
+          <hemisphereLight args={["#bcd4ff", "#1a1d26", 0.8]} />
+          <directionalLight position={[6, 14, 9]} intensity={3.0} castShadow shadow-mapSize={[1024, 1024]} shadow-camera-left={-12} shadow-camera-right={12} shadow-camera-top={12} shadow-camera-bottom={-12} shadow-bias={-0.0004} />
+          <pointLight position={[0, 4, 0]} intensity={18} color={theme.palette.accent} distance={14} />
+          <Environment resolution={128}>
+            <StudioLights />
+          </Environment>
+          <Batcave accent={theme.palette.accent} />
+        </>
+      ) : (
+        <>
+          <ambientLight intensity={0.5} />
+          <pointLight position={[0, 6, 0]} intensity={40} color="#7dd3fc" />
+          <Stars radius={60} depth={30} count={1500} factor={3} fade speed={0.3} />
+          <gridHelper args={[30, 30, "#1e2a4a", "#121a30"]} position={[0, -1.6, 0]} />
+        </>
+      )}
       {links.map((l) => {
         const a = pos[l.source];
         const b = pos[l.target];
@@ -157,9 +184,11 @@ function Scene({ agents, links, overlay, theme }: { agents: Record<string, Agent
           </group>
         );
       })}
-      {Object.entries(pos).map(([name, p]) => agents[name] && <Node key={name} agent={agents[name]} position={p} central={name === "chief"} overlay={overlay} theme={theme} />)}
-      {theme.id !== "classic" && <Gotham accent={theme.palette.accent} />}
-      <OrbitControls enablePan={false} minDistance={6} maxDistance={22} maxPolarAngle={Math.PI / 2.1} />
+      {Object.entries(pos).map(([name, p], i) => agents[name] && (
+        <Node key={name} agent={agents[name]} position={p} central={name === "chief"} overlay={overlay} theme={theme}
+          figure={figure} receiving={receiving(name)} seed={i * 1.7} />
+      ))}
+      <OrbitControls enablePan={false} minDistance={4} maxDistance={24} maxPolarAngle={Math.PI / 2.1} />
     </>
   );
 }
@@ -182,7 +211,7 @@ export default function ProductionRoom() {
         <span className="badge s-running">{running.length} en ejecución</span>
       </PageHead>
       <div className="panel room">
-        <Canvas camera={{ position: [0, 7, 11], fov: 50 }} dpr={[1, 2]}>
+        <Canvas shadows camera={{ position: [0, 8.5, 14], fov: 48 }} dpr={[1, 2]}>
           <color attach="background" args={[theme.id === "classic" ? "#05070f" : theme.palette.background]} />
           <Scene agents={agents} links={data?.links ?? []} overlay={overlay} theme={theme} />
         </Canvas>
