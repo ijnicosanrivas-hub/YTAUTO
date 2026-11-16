@@ -57,7 +57,7 @@ class VoiceAgent(Agent):
                     if ctx.workspace.has("voice", "voice_manifest") else None)
         prev_by_idx = {s.index: s for s in previous.scenes} if previous else {}
 
-        voices = ctx.providers.query(ProviderCategory.TTS, "list_voices", spec.language)
+        voices = ctx.providers.query(ProviderCategory.TTS, "list_voices", spec.language, project_id=ctx.project_id)
         voice = choose_voice(voices, spec.language, spec.voice_type)
         speed = SPEED_BY_INTENSITY[spec.intensity]
         texts = {s.index: normalize_for_tts(s.narration, spec.language) for s in script.scenes}
@@ -149,8 +149,7 @@ class VoiceAgent(Agent):
                 ProviderCategory.SUBTITLE, "align",
                 SubtitleRequest(text=by_idx[vs.index].narration, audio_path=vs.path,
                                 audio_duration_s=vs.voice_duration_s, language=ctx.spec.language,
-                                offset_s=vs.start_s + vs.voice_offset_s),
-            )
+                                offset_s=vs.start_s + vs.voice_offset_s), project_id=ctx.project_id)
         return cues
 
     def _llm_pronunciation(self, ctx: AgentContext, texts: dict[int, str]) -> dict[int, str]:

@@ -22,8 +22,7 @@ def _providers(args):
                               C.MUSIC: m.MockMusicProvider(), C.SFX: m.MockSFXProvider(),
                               C.SUBTITLE: ProportionalSubtitleProvider(), C.RENDERING: m.MockRenderingProvider(),
                               C.PUBLISHING: m.MockPublishingProvider()})
-    from .providers.bootstrap import build_gateway  # fase 4: registro de proveedores
-    return build_gateway()
+    return None  # Provider Registry persistido (fase 4)
 
 
 def _app(args):
@@ -75,6 +74,31 @@ def main(argv: list[str] | None = None) -> int:
     rd.add_argument("--from-phase", default="resource_generation")
     sub.add_parser("resume-claude", help="Reanudar el carril de Claude tras límite o login")
     sub.add_parser("queue", help="Estado de la cola")
+    pv = sub.add_parser("providers", help="Configuración de proveedores")
+    pvs = pv.add_subparsers(dest="pcmd", required=True)
+    pvs.add_parser("list")
+    pvs.add_parser("catalog", help="Adaptadores instalados")
+    pa = pvs.add_parser("add")
+    pa.add_argument("adapter")
+    pa.add_argument("--id")
+    pa.add_argument("--params", default="{}", help="JSON de parámetros")
+    pa.add_argument("--monthly-budget", type=float)
+    pk = pvs.add_parser("set-key", help="Guardar una credencial (se pide de forma oculta)")
+    pk.add_argument("provider_id")
+    pk.add_argument("--key", default="api_key")
+    for name in ("enable", "disable", "remove", "test"):
+        pvs.add_parser(name).add_argument("provider_id")
+    pp = pvs.add_parser("primary")
+    pp.add_argument("category")
+    pp.add_argument("provider_id")
+    pf = pvs.add_parser("fallbacks")
+    pf.add_argument("category")
+    pf.add_argument("provider_ids", help="Ids separados por comas")
+    bg = sub.add_parser("budget", help="Presupuestos y consumo externo")
+    bg.add_argument("--monthly", type=float, help="Fijar presupuesto mensual global (€)")
+    sp = sub.add_parser("authorize-spend", help="Autorizar gasto de un proveedor de pago en un proyecto")
+    sp.add_argument("project_id")
+    sp.add_argument("provider_id")
     b = sub.add_parser("backup", help="Copia de seguridad")
     b.add_argument("--include-media", action="store_true")
 
@@ -126,12 +150,56 @@ def main(argv: list[str] | None = None) -> int:
         _print({"ok": True})
     elif args.cmd == "queue":
         _print({"lanes": {k: v.model_dump() for k, v in app.queue.lanes().items()}, "stats": app.queue.stats()})
+    elif args.cmd == "providers":
+        _providers_cmd(app, args)
+    elif args.cmd == "budget":
+        ps = _require_registry(app)
+        if args.monthly is not None:
+            ps.budget.set_setting("monthly_budget_eur", args.monthly)
+        _print(ps.budget.summary())
+    elif args.cmd == "authorize-spend":
+        a = orch.approve(args.project_id, f"spend:{args.provider_id}")
+        worker.schedule(args.project_id)
+        _print(a.model_dump())
     elif args.cmd == "backup":
         from .db.backup import backup
         out = backup(app.settings.db_path, app.settings.backups_dir, REPO_ROOT / "config", app.settings.projects_dir,
                      include_media=args.include_media)
         _print({"backup": str(out)})
     return 0
+
+
+def _require_registry(app):
+    if app.provider_system is None:
+        raise SystemExit("Esta orden requiere el registro de proveedores (no uses --mock-providers)")
+    return app.provider_system
+
+
+def _providers_cmd(app, args) -> None:
+    import getpass
+    reg = _require_registry(app).registry
+    c = args.pcmd
+    if c == "list":
+        _print([v.model_dump(mode="json", include={"id", "adapter", "category", "role", "enabled", "is_paid",
+                                                   "credentials", "missing_credentials", "status"})
+                for v in reg.views()])
+    elif c == "catalog":
+        _print([i.model_dump(mode="json") for i in reg.adapter_catalog()])
+    elif c == "add":
+        _print(reg.add(args.adapter, id=args.id, params=json.loads(args.params),
+                       monthly_budget_eur=args.monthly_budget).model_dump(mode="json"))
+    elif c == "set-key":
+        value = getpass.getpass(f"{args.key} para {args.provider_id} (no se mostrará): ")
+        _print({"saved": reg.set_credential(args.provider_id, args.key, value)})
+    elif c in ("enable", "disable", "remove"):
+        getattr(reg, c)(args.provider_id)
+        _print({"ok": True})
+    elif c == "test":
+        _print(reg.test(args.provider_id).model_dump(mode="json"))
+    elif c == "primary":
+        _print([p.id for p in reg.set_primary(args.category, args.provider_id)])
+    elif c == "fallbacks":
+        _print([p.id for p in reg.set_fallbacks(args.category, args.provider_ids.split(","))])
 
 
 if __name__ == "__main__":

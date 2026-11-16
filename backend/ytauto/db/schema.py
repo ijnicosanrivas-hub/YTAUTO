@@ -9,7 +9,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.engine import Engine
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 metadata = MetaData()
 
@@ -109,6 +109,66 @@ events_log = Table(
     Column("at", String, nullable=False),
 )
 
+# ---------------------------------------------------------------- proveedores (v2)
+provider_configs = Table(
+    "provider_configs", metadata,
+    Column("id", String, primary_key=True),  # identificador de la instancia, p. ej. "tts_piper"
+    Column("adapter", String, nullable=False),  # nombre del adaptador en el catálogo
+    Column("category", String, nullable=False, index=True),
+    Column("display_name", String, nullable=False),
+    Column("enabled", Boolean, nullable=False, default=True),
+    Column("priority", Integer, nullable=False, default=100),  # menor = preferente; el menor activo es el principal
+    Column("params", JSON, nullable=False, default=dict),
+    Column("monthly_budget_eur", Float),  # None = sin límite propio (aplica el global)
+    Column("max_generations_per_project", Integer),
+    Column("created_at", String, nullable=False),
+    Column("updated_at", String, nullable=False),
+)
+
+credentials = Table(
+    "credentials", metadata,
+    Column("provider_id", String, ForeignKey("provider_configs.id", ondelete="CASCADE"), primary_key=True),
+    Column("key", String, primary_key=True),
+    Column("ciphertext", Text, nullable=False),
+    Column("hint", String, nullable=False),  # últimos 4 caracteres, para mostrar enmascarado
+    Column("updated_at", String, nullable=False),
+)
+
+provider_status = Table(
+    "provider_status", metadata,
+    Column("provider_id", String, ForeignKey("provider_configs.id", ondelete="CASCADE"), primary_key=True),
+    Column("last_check_at", String),
+    Column("healthy", Boolean),
+    Column("message", Text),
+    Column("last_error", Text),
+    Column("last_error_at", String),
+    Column("error_count", Integer, nullable=False, default=0),
+    Column("success_count", Integer, nullable=False, default=0),
+    Column("last_used_at", String),
+    Column("rate_limited_until", Float),
+)
+
+cost_ledger = Table(
+    "cost_ledger", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("project_id", String, index=True),
+    Column("provider_id", String, nullable=False, index=True),
+    Column("category", String, nullable=False),
+    Column("operation", String, nullable=False),
+    Column("scene_index", Integer),
+    Column("estimated_eur", Float, nullable=False, default=0.0),
+    Column("actual_eur", Float),
+    Column("status", String, nullable=False),  # reserved | committed | failed
+    Column("month", String, nullable=False, index=True),  # AAAA-MM
+    Column("at", String, nullable=False),
+)
+
+app_settings = Table(
+    "app_settings", metadata,
+    Column("key", String, primary_key=True),
+    Column("value", JSON),
+)
+
 meta = Table(
     "meta", metadata,
     Column("key", String, primary_key=True),
@@ -141,3 +201,6 @@ def init_db(engine: Engine) -> None:
             conn.execute(meta.insert().values(key="schema_version", value=str(SCHEMA_VERSION)))
         elif int(row[0]) > SCHEMA_VERSION:
             raise RuntimeError(f"La base de datos es de una versión más nueva ({row[0]}) que el código ({SCHEMA_VERSION})")
+        elif int(row[0]) < SCHEMA_VERSION:
+            # v1 → v2: solo añade tablas nuevas (create_all ya las creó); se actualiza la versión.
+            conn.execute(meta.update().where(meta.c.key == "schema_version").values(value=str(SCHEMA_VERSION)))

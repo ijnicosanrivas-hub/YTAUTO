@@ -121,3 +121,18 @@ def test_cli_offline_production(tmp_path, monkeypatch, capsys):
     assert json.loads(capsys.readouterr().out)["project"]["status"] == "completed"
     main(base + ["backup"])
     assert os.path.exists(json.loads(capsys.readouterr().out)["backup"])
+
+
+def test_app_uses_persistent_registry_and_cli_manages_providers(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("YTAUTO_DATA_DIR", str(tmp_path / "data"))
+    monkeypatch.setenv("YTAUTO_PROJECTS_DIR", str(tmp_path / "projects"))
+    monkeypatch.delenv("YTAUTO_MASTER_KEY", raising=False)
+    from ytauto.cli import main
+    main(["providers", "list"])
+    listed = json.loads(capsys.readouterr().out)
+    assert any(p["id"] == "proportional" and p["role"] == "primary" for p in listed)
+    assert (tmp_path / "data" / "secrets" / "master.key").exists()
+    main(["budget", "--monthly", "25"])
+    assert json.loads(capsys.readouterr().out)["monthly_budget_eur"] == 25
+    main(["providers", "test", "proportional"])
+    assert json.loads(capsys.readouterr().out)["passed"] is True

@@ -94,7 +94,7 @@ class PublisherAgent(Agent):
                              metadata={"title": script.internal_title}, out_path=out),
                 project_id=ctx.project_id,
             )
-            probe = ctx.providers.query(ProviderCategory.RENDERING, "probe", out, False)
+            probe = ctx.providers.query(ProviderCategory.RENDERING, "probe", out, False, project_id=ctx.project_id)
             if not prof.min_duration_s <= probe.duration_s <= prof.max_duration_s:
                 problems.append(f"{pid}: duración {probe.duration_s:.1f}s fuera de perfil")
             if (probe.width, probe.height) != (enc.width, enc.height):
@@ -123,7 +123,7 @@ class PublisherAgent(Agent):
         # Miniatura: fotograma del gancho + título (composición local).
         master = ctx.workspace.dir("exports") / "master_clean.mp4"
         frame = ctx.workspace.dir("exports") / "thumb_frame.png"
-        ctx.providers.query(ProviderCategory.RENDERING, "extract_frame", master, 1.0, frame)
+        ctx.providers.query(ProviderCategory.RENDERING, "extract_frame", master, 1.0, frame, project_id=ctx.project_id)
         thumbs = {}
         for item in meta.items:
             prof = profiles[item.platform]

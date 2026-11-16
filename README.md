@@ -49,7 +49,7 @@ python -m ytauto backup
 | 1 | Análisis y arquitectura | ✅ `docs/` |
 | 2 | Motor multiagente | ✅ agentes, orquestador, capa Claude |
 | 3 | Cola, memoria y persistencia | ✅ SQLite, cola por carriles, worker, backups |
-| 4 | Sistema modular de proveedores | ⏳ (interfaces ya definidas) |
+| 4 | Sistema modular de proveedores | ✅ registro, credenciales cifradas, fallback, presupuesto — ver `docs/providers.md` |
 | 5 | Motor audiovisual local | ⏳ |
 | 6 | Vídeos cortos y montaje | ⏳ |
 | 7 | Interfaz y sala de producción | ⏳ |

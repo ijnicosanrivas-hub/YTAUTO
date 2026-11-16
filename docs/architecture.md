@@ -107,7 +107,11 @@ Nueve interfaces en `ytauto.providers.interfaces`: `ImageGenerationProvider`,
 
 Los agentes no acceden a proveedores directamente sino a través de `ProviderGateway`,
 que resuelve el proveedor principal de la categoría, aplica presupuesto, autorización de
-gasto y la cadena de alternativas (fallback).
+gasto y la cadena de alternativas (fallback). Detalle completo en `docs/providers.md`.
+
+`ytauto.providers.registry`: catálogo (descubrimiento automático + entry points),
+`ProviderRegistry` (alta, activación, principal/alternativos, estado, "probar conexión"),
+`CredentialVault` (Fernet), `BudgetManager` (límites y libro de costes) y `RegistryGateway`.
 
 ## Persistencia
 

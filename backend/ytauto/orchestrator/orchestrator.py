@@ -120,7 +120,8 @@ class Orchestrator:
 
     # ================================================================== aprobaciones
     def approve(self, pid: str, gate: str, approved: bool = True, note: str = "") -> Approval:
-        if gate not in ("script_approval", "final_approval", "publish_decision") and not gate.startswith("publish:"):
+        if gate not in ("script_approval", "final_approval", "publish_decision") \
+                and not gate.startswith(("publish:", "spend:")):
             raise ValueError(f"Puerta de aprobación desconocida: {gate}")
         expires = None
         if gate.startswith("publish:"):
@@ -139,6 +140,16 @@ class Orchestrator:
             else:
                 # Rechazo final: queda a la espera de instrucciones (redo_scenes / retry_phase).
                 self._set_phase(ph, PhaseStatus.IN_REVIEW, summary=f"Rechazado: {note}" if note else "Rechazado")
+        elif gate.startswith("spend:"):
+            # Autorización de gasto en un proveedor de pago: se desbloquean las fases que la esperaban.
+            if approved:
+                for ph in self.store.list_phases(pid):
+                    if ph.status is PhaseStatus.BLOCKED and ph.blocked_code in ("spend_not_authorized",
+                                                                                "budget_exceeded"):
+                        self._set_phase(ph, PhaseStatus.PENDING)
+                rec = self.store.get_project(pid)
+                if rec.status is ProjectStatus.BLOCKED:
+                    self._set_project_status(pid, ProjectStatus.ACTIVE)
         elif gate.startswith("publish:") or gate == "publish_decision":
             ph = self.store.get_phase(pid, "publish")
             if ph.status is PhaseStatus.BLOCKED:
@@ -152,6 +163,11 @@ class Orchestrator:
             if a.gate.startswith("publish:") and a.approved and (a.expires_at is None or a.expires_at > now):
                 out[a.gate.split(":", 1)[1]] = a.id
         return out
+
+    def is_spend_authorized(self, pid: str | None, provider_id: str) -> bool:
+        if pid is None:
+            return False
+        return self._gate_approved(pid, f"spend:{provider_id}")
 
     def _gate_approved(self, pid: str, gate: str) -> bool:
         apps = [a for a in self.store.get_approvals(pid) if a.gate == gate]

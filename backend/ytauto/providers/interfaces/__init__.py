@@ -420,5 +420,7 @@ class ProviderGateway(ABC):
     ) -> Any: ...
 
     @abstractmethod
-    def query(self, category: ProviderCategory, operation: str, *args: Any, **kwargs: Any) -> Any:
-        """Operaciones sin coste (list_voices, probe, capabilities...)."""
+    def query(self, category: ProviderCategory, operation: str, *args: Any, project_id: str | None = None,
+              **kwargs: Any) -> Any:
+        """Operaciones sin coste (list_voices, probe, align...). `project_id` permite respetar
+        el proveedor preferido del proyecto, igual que en `invoke`."""

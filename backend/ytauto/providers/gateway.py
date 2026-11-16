@@ -24,5 +24,5 @@ class DirectGateway(ProviderGateway):
     def invoke(self, category, operation, request, *, project_id=None, scene_index=None) -> Any:
         return getattr(self._get(category), operation)(request)
 
-    def query(self, category, operation, *args, **kwargs) -> Any:
+    def query(self, category, operation, *args, project_id=None, **kwargs) -> Any:
         return getattr(self._get(category), operation)(*args, **kwargs)

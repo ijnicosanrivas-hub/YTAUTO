@@ -36,9 +36,10 @@ class SpendNotAuthorized(PhaseBlocked):
 class ProviderError(YtautoError):
     """Fallo de un proveedor audiovisual."""
 
-    def __init__(self, provider: str, message: str, transient: bool = True):
+    def __init__(self, provider: str, message: str, transient: bool = True, retry_after_s: float | None = None):
         self.provider = provider
         self.transient = transient
+        self.retry_after_s = retry_after_s  # límite de uso del proveedor (rate limit)
         super().__init__(f"[{provider}] {message}")
 
 

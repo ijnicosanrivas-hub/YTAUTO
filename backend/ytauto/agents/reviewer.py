@@ -125,7 +125,7 @@ class ReviewerAgent(Agent):
         voice = ctx.workspace.load("voice", "voice_manifest", VoiceManifest)
         preview = ctx.workspace.dir("review") / "master_preview.mp4"
         self.progress(ctx, phase, 0.1, "Análisis técnico")
-        probe = ctx.providers.query(ProviderCategory.RENDERING, "probe", Path(preview), True)
+        probe = ctx.providers.query(ProviderCategory.RENDERING, "probe", Path(preview), True, project_id=ctx.project_id)
         checks = technical_checks(probe, voice, ctx.spec.fps) + sync_checks(voice, probe.duration_s)
 
         self.progress(ctx, phase, 0.5, "Revisión editorial")
