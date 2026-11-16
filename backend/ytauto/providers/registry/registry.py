@@ -276,10 +276,12 @@ class ProviderRegistry:
         if cached and now - cached[0] < ttl_s:
             return cached[1]
         try:
-            ok = self.instance(pid).health_check().ok
-        except Exception:  # noqa: BLE001
-            ok = False
+            h = self.instance(pid).health_check()
+            ok, msg = h.ok, h.message
+        except Exception as e:  # noqa: BLE001
+            ok, msg = False, str(e)
         self._health[pid] = (now, ok)
+        self._upsert_status(pid, healthy=ok, message=msg, last_check_at=utcnow().isoformat())
         return ok
 
     def is_rate_limited(self, pid: str) -> bool:

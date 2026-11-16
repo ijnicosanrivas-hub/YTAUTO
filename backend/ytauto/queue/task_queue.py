@@ -5,7 +5,8 @@
 - Por defecto el carril `claude` tiene concurrencia 1; nunca se supera `max_claude_concurrency`.
 - Idempotencia: `idempotency_key` única → encolar dos veces la misma ejecución no duplica.
 - Un proyecto nunca tiene dos tareas en ejecución a la vez (sus fases son secuenciales).
-- Leases con caducidad: si un worker muere, la tarea vuelve a la cola al caducar el lease.
+- Leases cortos (2 min) renovados por latido mientras la tarea trabaja: si el proceso muere,
+  la tarea vuelve a la cola en minutos, no en horas.
 - Pausa por carril (p. ej. límite de uso de Claude) con reanudación manual o programada.
 """
 from __future__ import annotations
@@ -53,7 +54,7 @@ class LaneState(BaseModel):
 
 class TaskQueue:
     def __init__(self, engine: Engine, concurrency: dict[str, int] | None = None, max_claude_concurrency: int = 2,
-                 lease_s: float = 1800, clock: Callable[[], float] = time.time):
+                 lease_s: float = 120, clock: Callable[[], float] = time.time):
         self.engine = engine
         self.clock = clock
         self.lease_s = lease_s

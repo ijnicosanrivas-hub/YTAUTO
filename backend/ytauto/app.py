@@ -69,6 +69,7 @@ def build_app(settings: Settings, providers: ProviderGateway | None = None, llm:
             project_budget=project_budget, preferred=preferred,
             is_spend_authorized=lambda pid, prov: bool(holder) and holder["o"].is_spend_authorized(pid, prov))
         providers = system.gateway
+        models.apply_overrides(system.budget.get_setting("model_overrides"))  # cambios hechos desde el panel
     orch = Orchestrator(store=store, llm=llm, providers=providers,
                         settings=orchestrator_settings or OrchestratorSettings(projects_dir=settings.projects_dir),
                         events=events, models=models,

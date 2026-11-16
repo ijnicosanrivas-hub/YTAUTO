@@ -222,3 +222,37 @@ def test_run_forever_threaded_loop(tmp_path, gateway):
     th.join(timeout=5)
     assert store.get_phase(pid, "final_approval").status is PhaseStatus.IN_REVIEW
     assert not th.is_alive()
+
+
+def test_heartbeat_keeps_lease_alive_during_long_task(tmp_path, gateway):
+    """Regresión: una tarea larga no debe perder su lease mientras trabaja."""
+    import time as _t
+    engine = make_engine(tmp_path / "hb.db")
+    store = SqlStateStore(engine)
+    queue = TaskQueue(engine, lease_s=0.4)
+    orch = Orchestrator(store=store, llm=LocalDraftLLM(), providers=gateway,
+                        settings=OrchestratorSettings(projects_dir=tmp_path / "projects"))
+    worker = ProductionWorker(orch, queue)
+    pid = orch.create_project(spec())
+    worker.schedule(pid)
+    task = queue.claim("none", worker.owner)
+    seen_expired = []
+    original = worker.execute
+
+    def slow(t):
+        _t.sleep(1.5)  # > 3 leases
+        seen_expired.extend(queue.requeue_expired())
+        return original(t)
+
+    worker.execute = slow
+    worker._safe_execute(task)
+    assert seen_expired == []  # el latido mantuvo el lease
+    assert queue.tasks(pid)[0].status == "done"
+
+
+def test_worker_owner_is_unique_per_instance(tmp_path, gateway):
+    engine = make_engine(tmp_path / "o.db")
+    q = TaskQueue(engine)
+    o = Orchestrator(store=SqlStateStore(engine), llm=LocalDraftLLM(), providers=gateway,
+                     settings=OrchestratorSettings(projects_dir=tmp_path / "p"))
+    assert ProductionWorker(o, q).owner != ProductionWorker(o, q).owner

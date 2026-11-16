@@ -35,6 +35,16 @@ class ModelConfig(BaseModel):
         p = Path(path or MODELS_CONFIG_PATH)
         return cls(**yaml.safe_load(p.read_text(encoding="utf-8"))) if p.exists() else cls()
 
+    def apply_overrides(self, overrides: dict | None) -> "ModelConfig":
+        """Aplica en caliente los cambios hechos desde el panel 'Modelos Claude'."""
+        if not overrides:
+            return self
+        for key in ("default", "fallback"):
+            if overrides.get(key):
+                setattr(self, key, overrides[key])
+        self.agents.update(overrides.get("agents") or {})
+        return self
+
     def for_agent(self, agent: str) -> str:
         return self.agents.get(agent, self.default)
 

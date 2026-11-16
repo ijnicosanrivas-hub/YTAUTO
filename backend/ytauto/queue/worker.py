@@ -2,8 +2,11 @@
 from __future__ import annotations
 
 import logging
+import os
+import socket
 import threading
 import time
+import uuid
 from concurrent.futures import Future, ThreadPoolExecutor
 
 from ..core.models import PhaseStatus, ProjectStatus
@@ -24,11 +27,12 @@ def parse_resume_at(resets_at: str | None) -> float | None:
 
 
 class ProductionWorker:
-    def __init__(self, orchestrator: Orchestrator, queue: TaskQueue, owner: str = "worker-1",
+    def __init__(self, orchestrator: Orchestrator, queue: TaskQueue, owner: str | None = None,
                  backoff_s: tuple[float, ...] = DEFAULT_BACKOFF_S, max_retries: int = 3):
         self.orch = orchestrator
         self.queue = queue
-        self.owner = owner
+        # Identificador único por proceso: los leases distinguen qué proceso tiene cada tarea.
+        self.owner = owner or f"{socket.gethostname()}-{os.getpid()}-{uuid.uuid4().hex[:6]}"
         self.backoff_s = backoff_s
         self.max_retries = max_retries
         self._stop = threading.Event()
@@ -151,11 +155,23 @@ class ProductionWorker:
         return total
 
     def _safe_execute(self, task: Task) -> None:
+        # Latido: renueva el lease mientras la tarea trabaja (FFmpeg puede tardar minutos).
+        done = threading.Event()
+        interval = max(0.05, self.queue.lease_s / 4)
+
+        def beat() -> None:
+            while not done.wait(interval):
+                self.queue.heartbeat(task.id, self.owner)
+
+        hb = threading.Thread(target=beat, name=f"lease-{task.id}", daemon=True)
+        hb.start()
         try:
             self.execute(task)
         except Exception as e:  # noqa: BLE001 - el worker no debe morir por una tarea
             log.exception("Fallo del worker en la tarea %s", task.id)
             self.queue.complete(task.id, "worker_error", str(e), failed=True)
+        finally:
+            done.set()
 
     # ------------------------------------------------------------------ bucle en segundo plano
     def run_forever(self, poll_s: float = 1.0) -> None:
@@ -170,12 +186,15 @@ class ProductionWorker:
                 running = [f for f in running if not f.done()]
                 claimed = False
                 for lane in LANES:
+                    if self._stop.is_set():
+                        break  # apagando: no se reservan tareas nuevas
                     task = self.queue.claim(lane, self.owner)
                     if task:
                         running.append(pool.submit(self._safe_execute, task))
                         claimed = True
                 if not claimed:
                     self._stop.wait(poll_s)
+            # Al salir del bloque `with`, el pool espera a que terminen las tareas en curso.
 
     def stop(self) -> None:
         self._stop.set()

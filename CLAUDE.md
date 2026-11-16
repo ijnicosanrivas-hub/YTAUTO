@@ -17,6 +17,7 @@ Arquitectura: `docs/architecture.md`. Decisiones: `docs/adr/`.
 ## Comandos
 - Pruebas: `python -m pytest -q` (desde la raíz). Producción real E2E: `python -m pytest -m slow`. Claude real: `python -m pytest -m claude`.
 - Demo: `python scripts/demo_production.py [--claude]`.
+- Interfaz: `python -m ytauto.api.server [--offline]`; frontend en `frontend/` (`npm run build|dev|test`).
 - CLI: `python -m ytauto --help` (`--offline --mock-providers` para pruebas sin Claude).
 - Estilo: Python 3.11+, pydantic v2, tipado; textos de usuario en español.
 
@@ -25,6 +26,8 @@ Arquitectura: `docs/architecture.md`. Decisiones: `docs/adr/`.
 - `backend/ytauto/llm` motor LLM (CLI de Claude Code, simulados).
 - `backend/ytauto/agents` los 9 agentes. Cada agente con Claude define esquema + criterios de aceptación.
 - `backend/ytauto/db` SQLite (esquema, `SqlStateStore`, backups); `backend/ytauto/queue` cola y worker.
+- `backend/ytauto/api` FastAPI + WebSocket (`server.py`) y estado en vivo de agentes (`board.py`).
+- `frontend/` React + TypeScript + React Three Fiber (sala 3D en `src/pages/ProductionRoom.tsx`).
 - `backend/ytauto/orchestrator` flujo de 18 fases (DAG), estados, aprobaciones, correcciones.
 - `backend/ytauto/providers/interfaces` contratos; adaptadores en subcarpetas por categoría.
 - `.claude/agents/*.md` instrucciones de rol de cada agente (usadas por `claude -p --agent`).

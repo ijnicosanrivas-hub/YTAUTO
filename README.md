@@ -31,6 +31,12 @@ cp .env.example .env   # y genera YTAUTO_MASTER_KEY
 python -m pytest -q
 ```
 
+## Interfaz
+```bash
+cd frontend && npm install && npm run build && cd ..
+python -m ytauto.api.server        # http://127.0.0.1:8000  (añade --offline para probar sin Claude)
+```
+
 ## Uso por línea de comandos
 ```bash
 python -m ytauto new --name "Pulpos" --topic "curiosidades de los pulpos" --duration 60
@@ -52,7 +58,7 @@ python -m ytauto backup
 | 4 | Sistema modular de proveedores | ✅ registro, credenciales cifradas, fallback, presupuesto — ver `docs/providers.md` |
 | 5 | Motor audiovisual local | ✅ FFmpeg, Piper/espeak, procedural, biblioteca — ver `docs/local_engine.md` |
 | 6 | Vídeos cortos y montaje | ✅ retención medida, voz↔escena, subtítulos acústicos y 3 estilos |
-| 7 | Interfaz y sala de producción | ⏳ |
+| 7 | Interfaz y sala de producción | ✅ FastAPI + WebSocket + React/R3F — ver `docs/ui.md` |
 | 8 | Exportación multiplataforma | ⏳ (perfiles provisionales) |
 | 9 | Integraciones externas | ⏳ |
 | 10 | Pruebas completas y documentación | ⏳ |
