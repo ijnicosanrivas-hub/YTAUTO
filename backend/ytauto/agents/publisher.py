@@ -1,15 +1,20 @@
 """Agente 9 — Publicador: versiones por plataforma, metadatos, miniaturas y publicación autorizada."""
 from __future__ import annotations
 
+import os
+import shutil
 from pathlib import Path
 
 from pydantic import BaseModel, Field
 
+from ..core.captions import PublishFields, compose, fit_hashtags, validate_fields
 from ..core.errors import PhaseBlocked, ProviderNotConfigured
+from ..core.export_validation import validate_export
 from ..core.models import Script
 from ..core.platforms import PlatformProfile, load_profiles
 from ..core.thumbnail import compose_thumbnail
-from ..core.timeline import SoundManifest, VoiceManifest, EditManifest
+from ..core.timeline import EditManifest, SoundManifest, VoiceManifest
+from ..core.workspace import sha256_file, stable_hash
 from ..providers.interfaces import FinalizeSpec, ProviderCategory, PublishRequest
 from .base import Agent, AgentContext, AgentResult
 
@@ -26,6 +31,7 @@ class PublishMetadata(BaseModel):
 
 
 def check_metadata(meta: PublishMetadata, profiles: dict[str, PlatformProfile], wanted: list[str]) -> list[str]:
+    """Valida los textos tal y como se publicarán (compuestos y medidos como lo hace cada plataforma)."""
     issues = []
     got = {m.platform for m in meta.items}
     if got != set(wanted):
@@ -34,24 +40,46 @@ def check_metadata(meta: PublishMetadata, profiles: dict[str, PlatformProfile], 
         p = profiles.get(m.platform)
         if not p:
             continue
-        lim = p.metadata
-        if p.metadata.title_required and not m.title.strip():
-            issues.append(f"{m.platform}: el título es obligatorio")
-        if len(m.title) > lim.title_max_chars:
-            issues.append(f"{m.platform}: título de {len(m.title)} caracteres (máx {lim.title_max_chars})")
-        if len(m.description) > lim.description_max_chars:
-            issues.append(f"{m.platform}: descripción demasiado larga")
-        if len(m.hashtags) > lim.hashtags_max:
-            issues.append(f"{m.platform}: {len(m.hashtags)} hashtags (máx {lim.hashtags_max})")
-        if any(" " in h for h in m.hashtags):
-            issues.append(f"{m.platform}: los hashtags no pueden contener espacios")
+        fields = compose(p, m.title, m.description, m.hashtags)
+        issues += [f"{m.platform}: {i}" for i in validate_fields(p, fields)]
     return issues
 
 
 TASK = """Eres el responsable de publicación de vídeos cortos. Para cada plataforma de
 `platforms`, redacta título, descripción y hashtags en el idioma `language`, adaptados al estilo de
-cada red y respetando estrictamente sus límites (`limits`). Sin clickbait engañoso: el título debe
-corresponder al contenido. Hashtags con '#', sin espacios, relevantes al tema."""
+cada red y respetando estrictamente sus límites (`limits`, `rules`). Sin clickbait engañoso: el título debe
+corresponder al contenido. Hashtags con '#', sin espacios, relevantes al tema. Las reglas de medición
+varían: YouTube mide la descripción en bytes UTF-8; Instagram y TikTok meten los hashtags dentro del pie."""
+
+MANUAL_README = """PUBLICACIÓN MANUAL — {display_name}
+=====================================
+
+Archivos de esta carpeta:
+  video.mp4          vídeo exportado para {display_name}
+  {thumb_line}
+  publicacion.json   textos listos para pegar
+
+Texto a publicar
+----------------
+{text_block}
+
+Limitaciones de la publicación automática
+-----------------------------------------
+{notes}
+
+Perfil verificado con documentación oficial el {verified}.
+Valores NO verificados (revísalos en la vista previa de la app): {unverified}
+"""
+
+
+def _link_or_copy(src: Path, dst: Path) -> None:
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    if dst.exists() or dst.is_symlink():
+        dst.unlink()
+    try:
+        os.link(src, dst)  # sin duplicar el espacio en disco
+    except OSError:
+        shutil.copy2(src, dst)
 
 
 class PublisherAgent(Agent):
@@ -81,37 +109,57 @@ class PublisherAgent(Agent):
         sound = ctx.workspace.load("sound", "sound_manifest", SoundManifest)
         voice = ctx.workspace.load("voice", "voice_manifest", VoiceManifest)
         script = ctx.workspace.load("scripts", "script", Script)
-        exports, problems = {}, []
+        previous = ctx.workspace.load("exports", "exports") if ctx.workspace.has("exports", "exports") else {}
+        # Huella de las entradas compartidas por todas las versiones: el máster y la mezcla.
+        base = [sha256_file(Path(edit.video_path)), sha256_file(Path(sound.mix_path)),
+                [c.model_dump(mode="json") for c in voice.cues]]
+        exports: dict[str, dict] = {}
+        problems: list[str] = []
+        reused = 0
         for n, (pid, prof) in enumerate(profiles.items()):
             self.progress(ctx, "exports", n / len(profiles), prof.display_name)
             out = ctx.workspace.dir("exports") / f"{pid}.mp4"
             enc = prof.encode.model_copy(update={"fps": ctx.spec.fps})
-            # Se parte de los mismos segmentos y mezcla: no se regeneran recursos.
-            ctx.providers.invoke(
-                ProviderCategory.RENDERING, "finalize",
-                FinalizeSpec(video_path=Path(edit.video_path), audio_path=Path(sound.mix_path),
-                             subtitles=voice.cues, profile=enc,
-                             subtitle_style=prof.subtitles.model_copy(update={"mode": ctx.spec.subtitle_mode})
-                             if ctx.spec.subtitle_mode else prof.subtitles,
-                             metadata={"title": script.internal_title}, out_path=out),
-                project_id=ctx.project_id,
-            )
+            style = (prof.subtitles.model_copy(update={"mode": ctx.spec.subtitle_mode})
+                     if ctx.spec.subtitle_mode else prof.subtitles)
+            key = stable_hash([base, enc.model_dump(mode="json"), style.model_dump(mode="json"),
+                               script.internal_title])
+            if out.exists() and previous.get(pid, {}).get("input_hash") == key:
+                reused += 1  # mismas entradas: no se vuelve a codificar
+            else:
+                # Se parte del mismo máster y la misma mezcla: no se regenera ningún recurso.
+                ctx.providers.invoke(
+                    ProviderCategory.RENDERING, "finalize",
+                    FinalizeSpec(video_path=Path(edit.video_path), audio_path=Path(sound.mix_path),
+                                 subtitles=voice.cues, profile=enc, subtitle_style=style,
+                                 metadata={"title": script.internal_title}, out_path=out),
+                    project_id=ctx.project_id,
+                )
             probe = ctx.providers.query(ProviderCategory.RENDERING, "probe", out, False, project_id=ctx.project_id)
-            if not prof.min_duration_s <= probe.duration_s <= prof.max_duration_s:
-                problems.append(f"{pid}: duración {probe.duration_s:.1f}s fuera de perfil")
-            if (probe.width, probe.height) != (enc.width, enc.height):
-                problems.append(f"{pid}: resolución {probe.width}x{probe.height}")
-            exports[pid] = {"path": str(out), "duration_s": probe.duration_s, "size_bytes": probe.size_bytes,
-                            "profile_verified_at": prof.verified_at}
+            validation = validate_export(probe, prof)
+            problems += [f"{pid}: {i.message}" for i in validation.errors]
+            exports[pid] = {
+                "path": str(out), "duration_s": probe.duration_s, "size_bytes": probe.size_bytes,
+                "width": probe.width, "height": probe.height, "fps": probe.fps,
+                "video_codec": probe.video_codec, "audio_codec": probe.audio_codec,
+                "profile_verified_at": prof.verified_at, "input_hash": key,
+                "validation": validation.model_dump(mode="json"),
+            }
         path = ctx.workspace.save("exports", "exports", exports)
         if problems:
-            raise PhaseBlocked("; ".join(problems), code="export_validation")
-        return AgentResult(summary=f"Exportaciones: {', '.join(exports)}", artifacts={"exports": str(path)})
+            raise PhaseBlocked("Exportación no válida: " + "; ".join(problems), code="export_validation")
+        warns = sum(len(v["validation"]["issues"]) for v in exports.values())
+        return AgentResult(
+            summary=f"Exportaciones validadas: {', '.join(exports)} ({reused} reutilizadas)"
+                    + (f", {warns} avisos" if warns else ""),
+            artifacts={"exports": str(path)}, metrics={"reused": reused, "encoded": len(exports) - reused},
+        )
 
     # ------------------------------------------------------------------ fase 16
     def _prep(self, ctx: AgentContext) -> AgentResult:
         profiles = self._profiles(ctx)
         script = ctx.workspace.load("scripts", "script", Script)
+        exports = ctx.workspace.load("exports", "exports")
         meta = self.ask_llm(
             ctx, phase="publish_prep", task=TASK, output_model=PublishMetadata,
             context={
@@ -119,25 +167,56 @@ class PublisherAgent(Agent):
                 "summary": [s.narration for s in script.scenes][:20],
                 "platforms": list(profiles),
                 "limits": {k: v.metadata.model_dump() for k, v in profiles.items()},
+                "rules": {k: v.metadata.mode for k, v in profiles.items()},
             },
             accept=lambda m: check_metadata(m, profiles, list(profiles)),
         )
-        # Miniatura: fotograma del gancho + título (composición local).
+        # Miniatura: fotograma del gancho + título (composición local), solo si la plataforma la admite.
         master = ctx.workspace.dir("exports") / "master_clean.mp4"
         frame = ctx.workspace.dir("exports") / "thumb_frame.png"
-        ctx.providers.query(ProviderCategory.RENDERING, "extract_frame", master, 1.0, frame, project_id=ctx.project_id)
-        thumbs = {}
+        ctx.providers.query(ProviderCategory.RENDERING, "extract_frame", master, 1.0, frame,
+                            project_id=ctx.project_id)
+        package: dict[str, dict] = {}
         for item in meta.items:
             prof = profiles[item.platform]
+            fields = fit_hashtags(prof, item.title, item.description, item.hashtags)
+            thumb = None
             if prof.thumbnail.get("supported", False):
-                thumbs[item.platform] = str(compose_thumbnail(
+                thumb = str(compose_thumbnail(
                     frame, item.title or script.internal_title,
                     ctx.workspace.dir("exports") / f"{item.platform}_thumb.jpg",
                     safe_top=prof.safe_area.get("top", 220)))
-        package = {m.platform: m.model_dump() | {"thumbnail": thumbs.get(m.platform)} for m in meta.items}
+            manual = self._manual_package(ctx, prof, fields, Path(exports[item.platform]["path"]), thumb)
+            package[item.platform] = {
+                "title": fields.title or item.title, "description": fields.description or fields.caption or "",
+                "hashtags": fields.hashtags, "thumbnail": thumb, "fields": fields.model_dump(mode="json"),
+                "issues": validate_fields(prof, fields), "manual_dir": str(manual),
+                "publish_notes": prof.publish.notes, "unaudited_private_only": prof.publish.unaudited_private_only,
+                "public_url_required": prof.publish.public_url_required,
+                "profile_verified_at": prof.verified_at,
+            }
         path = ctx.workspace.save("exports", "publish_package", package)
-        return AgentResult(status="in_review", summary=f"Metadatos y miniaturas para {', '.join(package)}",
+        return AgentResult(status="in_review",
+                           summary=f"Metadatos, miniaturas y paquetes manuales para {', '.join(package)}",
                            artifacts={"publish_package": str(path)})
+
+    def _manual_package(self, ctx: AgentContext, prof: PlatformProfile, fields: PublishFields, video: Path,
+                        thumb: str | None) -> Path:
+        """Carpeta lista para publicar a mano (también cuando la API oficial no lo permite)."""
+        d = ctx.workspace.dir("exports") / "manual" / prof.id
+        _link_or_copy(video, d / "video.mp4")
+        if thumb:
+            _link_or_copy(Path(thumb), d / "miniatura.jpg")
+        text = [f"Título: {fields.title}"] if fields.title and fields.title != fields.caption else []
+        text.append(fields.description or fields.caption or "")
+        notes = "\n".join(f"- {n}" for n in prof.publish.notes) or "- Ninguna conocida."
+        (d / "LEEME.txt").write_text(MANUAL_README.format(
+            display_name=prof.display_name, thumb_line="miniatura.jpg     miniatura propuesta" if thumb else
+            "(esta plataforma no usa miniatura propia en su API)", text_block="\n".join(text), notes=notes,
+            verified=prof.verified_at or "nunca", unverified=", ".join(prof.unverified) or "ninguno"),
+            encoding="utf-8")
+        (d / "publicacion.json").write_text(fields.model_dump_json(indent=2), encoding="utf-8")
+        return d
 
     # ------------------------------------------------------------------ fase 17
     def _publish(self, ctx: AgentContext) -> AgentResult:
@@ -148,18 +227,23 @@ class PublisherAgent(Agent):
         for platform, meta in package.items():
             auth = auths.get(platform)
             if not auth:
-                results[platform] = {"status": "skipped", "message": "Sin autorización expresa del usuario"}
+                results[platform] = {"status": "skipped", "message": "Sin autorización expresa del usuario",
+                                     "package_path": meta.get("manual_dir")}
                 continue
+            f = meta.get("fields") or {}
             req = PublishRequest(platform=platform, video_path=Path(exports[platform]["path"]),
-                                 title=meta["title"], description=meta["description"], hashtags=meta["hashtags"],
+                                 title=f.get("title") or meta["title"],
+                                 description=f.get("description") or f.get("caption") or meta["description"],
+                                 hashtags=meta["hashtags"],
                                  thumbnail_path=Path(meta["thumbnail"]) if meta.get("thumbnail") else None,
                                  privacy=ctx.settings.get("publish_privacy", "private"), authorization_id=auth)
             try:
                 res = ctx.providers.invoke(ProviderCategory.PUBLISHING, "publish", req, project_id=ctx.project_id)
                 results[platform] = res.model_dump(mode="json")
             except ProviderNotConfigured as e:
-                results[platform] = {"status": "manual_package", "message": f"Sin integración configurada: {e}. "
-                                     "Material listo en exports/ para publicación manual."}
+                results[platform] = {"status": "manual_package", "package_path": meta.get("manual_dir"),
+                                     "message": f"Sin integración configurada: {e}. "
+                                                "Material listo en exports/manual/ para publicación manual."}
         path = ctx.workspace.save("exports", "publish_results", results)
         done = [p for p, r in results.items() if r.get("status") in ("published", "uploaded_private")]
         return AgentResult(summary=f"Publicación: {len(done)} publicadas; resto preparado o sin autorización",

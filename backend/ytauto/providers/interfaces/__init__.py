@@ -223,6 +223,15 @@ class MediaProbe(BaseModel):
     audio_codec: str | None = None
     has_audio: bool = False
     size_bytes: int = 0
+    bit_rate_bps: int | None = None
+    video_bit_rate_bps: int | None = None
+    pix_fmt: str | None = None
+    field_order: str | None = None
+    audio_sample_rate: int | None = None
+    audio_channels: int | None = None
+    container: str | None = None
+    moov_first: bool | None = None  # solo MP4/MOV
+    has_edit_list: bool | None = None  # solo MP4/MOV
     integrated_lufs: float | None = None
     true_peak_db: float | None = None
     black_segments: list[tuple[float, float]] = Field(default_factory=list)
@@ -299,6 +308,8 @@ class EncodeProfile(BaseModel):
     audio_sample_rate: int = 48000
     pix_fmt: str = "yuv420p"
     container: str = "mp4"
+    # Algunas plataformas (Instagram) exigen un MP4 sin listas de edición.
+    edit_lists: bool = True
 
 
 class FinalizeSpec(BaseModel):

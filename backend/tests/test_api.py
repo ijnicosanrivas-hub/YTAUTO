@@ -183,3 +183,23 @@ def test_websocket_disconnect_is_detected_and_client_removed(env):
     app.events.emit("phase.status", project_id="x", phase="intake", data={"status": "running"})
     with c.websocket_connect("/ws") as ws2:
         assert ws2.receive_json()["type"] == "hello"
+
+
+def test_platform_profiles_endpoint_exposes_verification_and_sources(env):
+    app, c = env
+    data = {p["id"]: p for p in c.get("/api/platforms").json()}
+    assert set(data) == {"youtube_shorts", "instagram_reels", "tiktok"}
+    assert all(p["is_verified"] and p["sources"] and "safe_area" in p["unverified"] for p in data.values())
+    assert data["tiktok"]["publish"]["unaudited_private_only"] is True
+    assert data["instagram_reels"]["file"]["forbid_edit_lists"] is True
+
+
+def test_export_validation_is_exposed_per_platform(env):
+    app, c = env
+    pid = c.post("/api/projects", json={**SPEC, "require_script_approval": False}).json()["project"]["id"]
+    app.worker.run_until_idle()
+    assert c.post(f"/api/projects/{pid}/approve", json={"gate": "final_approval"}).status_code == 200
+    app.worker.run_until_idle()
+    ex = c.get(f"/api/projects/{pid}/artifacts").json()["exports"]
+    assert set(ex) == {"youtube_shorts", "instagram_reels", "tiktok"}
+    assert all(v["validation"]["ok"] and v["validation"]["checked"] for v in ex.values())

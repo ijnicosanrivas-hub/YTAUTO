@@ -59,7 +59,7 @@ python -m ytauto backup
 | 5 | Motor audiovisual local | ✅ FFmpeg, Piper/espeak, procedural, biblioteca — ver `docs/local_engine.md` |
 | 6 | Vídeos cortos y montaje | ✅ retención medida, voz↔escena, subtítulos acústicos y 3 estilos |
 | 7 | Interfaz y sala de producción | ✅ FastAPI + WebSocket + React/R3F — ver `docs/ui.md` |
-| 8 | Exportación multiplataforma | ⏳ (perfiles provisionales) |
+| 8 | Exportación multiplataforma | ✅ perfiles verificados, validación, textos por plataforma — ver `docs/platforms.md` |
 | 9 | Integraciones externas | ⏳ |
 | 10 | Pruebas completas y documentación | ⏳ |
 

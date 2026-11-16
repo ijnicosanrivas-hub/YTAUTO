@@ -127,3 +127,35 @@ export interface AdapterInfo {
   default_params: Record<string, unknown>;
   doc: string;
 }
+
+export interface ExportValidation {
+  platform: string;
+  ok: boolean;
+  issues: { code: string; message: string; severity: "error" | "warning" }[];
+  checked: string[];
+}
+
+export interface PlatformProfile {
+  id: string;
+  display_name: string;
+  is_verified: boolean;
+  verified_at: string | null;
+  sources: string[];
+  unverified: string[];
+  min_duration_s: number;
+  max_duration_s: number;
+  encode: { width: number; height: number; fps: number; video_bitrate: string; audio_bitrate: string };
+  file: {
+    containers: string[];
+    video_codecs: string[];
+    fps_min: number | null;
+    fps_max: number | null;
+    max_size_mb: number | null;
+    max_video_bitrate_mbps: number | null;
+    platform_max_duration_s: number | null;
+    require_moov_first: boolean;
+    forbid_edit_lists: boolean;
+  };
+  metadata: { mode: string; title_max_chars: number; caption_max: number | null; description_max_bytes: number | null; hashtags_max: number };
+  publish: { public_url_required: boolean; unaudited_private_only: boolean; daily_post_limit: number | null; notes: string[] };
+}

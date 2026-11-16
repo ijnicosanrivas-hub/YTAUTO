@@ -318,6 +318,11 @@ def create_api(app: App, start_worker: bool = False, token: str | None = None,
     def events(limit: int = Query(200, le=2000)) -> list[dict[str, Any]]:
         return app.store.events(limit=limit)
 
+    @api.get("/api/platforms", dependencies=A)
+    def platforms() -> list[dict[str, Any]]:
+        from ..core.platforms import load_profiles
+        return [p.model_dump(mode="json") | {"is_verified": p.is_verified} for p in load_profiles().values()]
+
     # ------------------------------------------------------------ biblioteca
     @api.get("/api/library", dependencies=A)
     def library() -> dict[str, Any]:

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { api, fileUrl } from "../api";
 import { Badge, ErrorBox, PageHead, Progress, useAction, useApi } from "../components/ui";
 import { PLATFORM_LABEL, describeEvent, eur, statusLabel } from "../format";
-import type { ProjectView, ProviderView, YtEvent } from "../types";
+import type { ExportValidation, ProjectView, ProviderView, YtEvent } from "../types";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Artifacts = Record<string, any>;
@@ -74,7 +74,9 @@ function ApprovalPanel({ view, arts, onDone }: { view: ProjectView; arts: Artifa
     onDone();
   };
   if (!view.waiting_approval.length && !blockedSpend) return null;
-  const pkg = arts?.publish_package as Record<string, { title: string; description: string; hashtags: string[] }> | null;
+  const pkg = arts?.publish_package as
+    | Record<string, { title: string; description: string; hashtags: string[]; publish_notes?: string[]; unaudited_private_only?: boolean; manual_dir?: string }>
+    | null;
 
   return (
     <div className="panel" style={{ borderColor: "var(--warn)", marginBottom: 14 }}>
@@ -115,6 +117,8 @@ function ApprovalPanel({ view, arts, onDone }: { view: ProjectView; arts: Artifa
                     <b>{m.title}</b>
                     <div className="muted">{m.description}</div>
                     <div className="mono">{m.hashtags.join(" ")}</div>
+                    {m.unaudited_private_only && <div style={{ color: "var(--warn)" }}>⚠ La plataforma publicará solo en privado hasta superar su auditoría.</div>}
+                    {m.publish_notes?.map((n, i) => <div key={i} className="muted" style={{ fontSize: 12 }}>• {n}</div>)}
                   </td>
                   <td>
                     <button className="btn ok" disabled={busy} onClick={() => approve(`publish:${platform}`)}>Autorizar publicación</button>
@@ -308,7 +312,7 @@ function ReviewView({ arts }: { arts: Artifacts | null }) {
 }
 
 function ExportsView({ id, arts }: { id: string; arts: Artifacts | null }) {
-  const ex = arts?.exports as Record<string, { path: string; duration_s: number; size_bytes: number; profile_verified_at: string | null }> | null;
+  const ex = arts?.exports as Record<string, { path: string; duration_s: number; size_bytes: number; profile_verified_at: string | null; validation?: ExportValidation }> | null;
   const results = arts?.publish_results as Record<string, { status: string; url?: string; message?: string }> | null;
   if (!ex) return <div className="panel empty">Las exportaciones se generan tras la aprobación final.</div>;
   return (
@@ -321,6 +325,12 @@ function ExportsView({ id, arts }: { id: string; arts: Artifacts | null }) {
             <h2>{PLATFORM_LABEL[platform] ?? platform}</h2>
             <video controls src={fileUrl(id, rel)} poster={thumb ? fileUrl(id, thumb.split(`/${id}/`)[1]) : undefined} />
             <p className="mono">{e.duration_s.toFixed(1)} s · {(e.size_bytes / 1e6).toFixed(1)} MB</p>
+            {e.validation && (
+              <p>
+                {e.validation.ok ? <Badge status="completed" label={`${e.validation.checked.length} comprobaciones OK`} /> : <Badge status="error" label="No válido" />}
+                {e.validation.issues.map((i) => <span key={i.code} className="muted"> · {i.message}</span>)}
+              </p>
+            )}
             {!e.profile_verified_at && <p className="muted">Perfil de plataforma pendiente de verificar con la documentación oficial.</p>}
             <div className="row">
               <a className="btn" href={fileUrl(id, rel)} download>Descargar MP4</a>

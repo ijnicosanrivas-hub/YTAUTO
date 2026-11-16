@@ -304,12 +304,20 @@ class FFmpegRenderingProvider(VideoRenderingProvider):
             for k, v in spec.metadata.items():
                 meta += ["-metadata", f"{k}={v}"]
             bufsize = f"{int(re.sub(r'[^0-9]', '', p.max_bitrate) or 10) * 2}M"
+            movflags = "+faststart"
+            mux: list[str] = []
+            if not p.edit_lists:
+                # Sin listas de edición: los desfases de los fotogramas B pasan a ser CTS negativos.
+                movflags += "+negative_cts_offsets"
+                mux = ["-use_editlist", "0"]
+            codec_args = ["-x264-params", "open-gop=0"] if p.video_codec == "libx264" else []  # GOP cerrado
             self._run(["-i", str(spec.video_path), "-i", str(spec.audio_path), "-map", "0:v:0", "-map", "1:a:0",
                        "-vf", ",".join(vf), "-c:v", p.video_codec,
                        "-preset", self.params["preset"] if spec.draft else self.params["final_preset"],
                        "-profile:v", "high", "-b:v", p.video_bitrate, "-maxrate", p.max_bitrate, "-bufsize", bufsize,
-                       "-r", str(p.fps), "-c:a", p.audio_codec, "-b:a", p.audio_bitrate, "-ar", str(p.audio_sample_rate),
-                       "-ac", "2", "-t", f"{audio_dur:.3f}", "-movflags", "+faststart", *meta, str(spec.out_path)])
+                       *codec_args, "-r", str(p.fps), "-c:a", p.audio_codec, "-b:a", p.audio_bitrate,
+                       "-ar", str(p.audio_sample_rate), "-ac", "2", "-t", f"{audio_dur:.3f}",
+                       "-movflags", movflags, *mux, *meta, str(spec.out_path)])
         return self._asset(AssetKind.VIDEO_EXPORT, spec.out_path, duration_s=round(self._duration(spec.out_path), 3),
                            width=p.width, height=p.height)
 
@@ -326,12 +334,28 @@ class FFmpegRenderingProvider(VideoRenderingProvider):
         if v and v.get("avg_frame_rate", "0/0") != "0/0":
             n, d = v["avg_frame_rate"].split("/")
             fps = round(float(n) / float(d), 3) if float(d) else None
+        def num(x) -> int | None:
+            try:
+                return int(x)
+            except (TypeError, ValueError):
+                return None
+
+        fmt_names = str(info["format"].get("format_name", ""))
         probe = MediaProbe(
             path=str(path), duration_s=float(info["format"].get("duration", 0.0)),
             width=v.get("width") if v else None, height=v.get("height") if v else None, fps=fps,
             video_codec=v.get("codec_name") if v else None, audio_codec=a.get("codec_name") if a else None,
             has_audio=a is not None, size_bytes=int(info["format"].get("size", 0)),
+            bit_rate_bps=num(info["format"].get("bit_rate")), video_bit_rate_bps=num(v.get("bit_rate")) if v else None,
+            pix_fmt=v.get("pix_fmt") if v else None, field_order=v.get("field_order") if v else None,
+            audio_sample_rate=num(a.get("sample_rate")) if a else None,
+            audio_channels=num(a.get("channels")) if a else None,
+            container="mp4" if "mp4" in fmt_names else ("mov" if "mov" in fmt_names else fmt_names.split(",")[0] or None),
         )
+        if "mp4" in fmt_names or "mov" in fmt_names:
+            from ...core.mp4 import inspect_mp4
+            st = inspect_mp4(Path(path))
+            probe.moov_first, probe.has_edit_list = st.moov_first, st.has_edit_list
         if analyze:
             self._analyze(Path(path), probe, has_video=v is not None, has_audio=a is not None)
         return probe

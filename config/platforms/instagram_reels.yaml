@@ -1,6 +1,5 @@
-# Perfil de exportación: Instagram Reels
-# VALORES PROVISIONALES: verificar con la documentación oficial antes de publicar (fase 8)
-# y actualizar 'verified_at'. Las reglas de las plataformas cambian con frecuencia.
+# Perfil de exportación: Instagram Reels (Instagram Graph API, publicación de contenido)
+# Verificado con documentación oficial de Meta el 2026-11-16 (ver `sources`).
 id: instagram_reels
 display_name: Instagram Reels
 min_duration_s: 45
@@ -17,6 +16,7 @@ encode:
   audio_sample_rate: 48000
   pix_fmt: yuv420p
   container: mp4
+  edit_lists: false
 subtitles:
   font: Inter
   font_size: 70
@@ -28,14 +28,46 @@ subtitles:
   margin_h: 90
   uppercase: false
   karaoke: true
-# Zona segura (px) que tapan los controles de la app
-safe_area: {top: 220, bottom: 420, left: 60, right: 90}
+safe_area: {top: 260, bottom: 420, left: 90, right: 90}
+file:
+  containers: [mp4, mov]
+  video_codecs: [h264, hevc]
+  audio_codecs: [aac]
+  pix_fmts: [yuv420p]
+  fps_min: 23
+  fps_max: 60
+  max_side: 1920                  # anchura máxima 1920 px
+  max_size_mb: 300
+  max_video_bitrate_mbps: 25
+  max_audio_sample_rate: 48000
+  audio_channels: [1, 2]
+  require_moov_first: true        # átomo moov al principio del fichero
+  forbid_edit_lists: true         # sin listas de edición
+  platform_min_duration_s: 3
+  platform_max_duration_s: 900    # 15 minutos
 metadata:
-  title_required: false
-  title_max_chars: 150
+  mode: caption
+  title_max_chars: 100            # título interno: Instagram no tiene campo de título
   description_max_chars: 2200
+  caption_max: 2200               # pie (descripción + hashtags): 2200 caracteres
+  caption_unit: chars
   hashtags_max: 30
+  mentions_max: 20
+  title_required: false
+publish:
+  public_url_required: true       # Meta descarga el vídeo desde una URL pública (o subida reanudable)
+  daily_post_limit: 100           # publicaciones por API en 24 h
+  notes:
+    - "Requiere una cuenta profesional (Business/Creator) de Instagram."
+    - "El vídeo debe estar en una URL pública, o usar la subida reanudable de la API."
+    - "Sin URL pública ni integración configurada, se prepara el paquete para publicación manual."
 thumbnail: {supported: true, width: 1080, height: 1920}
-verified_at: null
-docs:
-  - https://developers.facebook.com/docs/instagram-platform/content-publishing
+verified_at: "2026-11-16"
+sources:
+  - https://developers.facebook.com/docs/instagram-platform/content-publishing/
+  - https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-user/media
+unverified:
+  - safe_area                 # Meta no publica márgenes para contenido orgánico
+  - subtitles.margin_v
+  - encode.video_bitrate
+  - thumbnail

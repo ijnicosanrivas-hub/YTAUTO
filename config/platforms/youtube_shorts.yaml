@@ -1,8 +1,9 @@
 # Perfil de exportación: YouTube Shorts
-# VALORES PROVISIONALES: verificar con la documentación oficial antes de publicar (fase 8)
-# y actualizar 'verified_at'. Las reglas de las plataformas cambian con frecuencia.
+# Verificado con documentación oficial el 2026-11-16 (ver `sources`). Lo que no procede de
+# documentación oficial está en `unverified`: revísalo antes de confiar en ello.
 id: youtube_shorts
 display_name: YouTube Shorts
+# Rango de exportación = producto (45-75 s) ∩ plataforma (Shorts de hasta 3 min).
 min_duration_s: 45
 max_duration_s: 75
 encode:
@@ -25,17 +26,36 @@ subtitles:
   outline_color: "#000000"
   outline: 5
   margin_v: 380
-  margin_h: 60
+  margin_h: 90
   uppercase: false
   karaoke: true
-# Zona segura (px) que tapan los controles de la app
-safe_area: {top: 220, bottom: 380, left: 60, right: 60}
+safe_area: {top: 260, bottom: 380, left: 90, right: 90}
+file:
+  containers: [mp4]
+  video_codecs: [h264]
+  audio_codecs: [aac]
+  platform_max_duration_s: 180   # Shorts de hasta 3 minutos (vídeos subidos desde 2025-12-08)
 metadata:
-  title_required: true
-  title_max_chars: 100
+  mode: title_description
+  title_max_chars: 100            # API videos: máx. 100 caracteres, sin < ni >
   description_max_chars: 5000
+  description_max_bytes: 5000     # la descripción se mide en BYTES UTF-8
+  tags_total_chars: 500           # suma de etiquetas; con espacios cuentan 2 caracteres más (comillas)
   hashtags_max: 15
+  title_required: true
+publish:
+  notes:
+    - "Los Shorts son vídeos cuadrados o verticales de hasta 3 minutos; 9:16 es el formato óptimo."
+    - "La publicación por API (YouTube Data API v3, OAuth) se verificará en la fase 9: las apps sin auditar pueden estar limitadas a vídeos privados."
 thumbnail: {supported: true, width: 1080, height: 1920}
-verified_at: null
-docs:
-  - https://support.google.com/youtube/answer/10059070
+verified_at: "2026-11-16"
+sources:
+  - https://support.google.com/youtube/answer/15424877
+  - https://support.google.com/youtube/answer/12779649
+  - https://developers.google.com/youtube/v3/docs/videos
+unverified:
+  - safe_area                 # YouTube no publica márgenes para contenido orgánico
+  - subtitles.margin_v
+  - encode.video_bitrate      # recomendación propia, no un requisito oficial
+  - metadata.hashtags_max
+  - thumbnail

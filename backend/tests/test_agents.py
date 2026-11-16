@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -230,7 +231,11 @@ def test_publisher_exports_and_metadata_limits(make_ctx):
     exports = ctx.workspace.load("exports", "exports")
     assert set(exports) == {"youtube_shorts", "instagram_reels", "tiktok"}
     pkg = ctx.workspace.load("exports", "publish_package")
-    assert all(pkg[p]["thumbnail"] for p in pkg)
+    from ytauto.core.platforms import load_profiles
+    profiles = load_profiles()
+    for platform, item in pkg.items():  # la miniatura solo existe donde el perfil la admite
+        assert bool(item["thumbnail"]) == profiles[platform].thumbnail.get("supported", False), platform
+        assert item["issues"] == [] and Path(item["manual_dir"], "video.mp4").exists()
 
 
 def test_publisher_never_publishes_without_authorization(make_ctx, mock_providers):

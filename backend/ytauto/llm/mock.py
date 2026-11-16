@@ -222,7 +222,7 @@ class LocalDraftLLM(LLMProvider):
             lim = c["limits"][p]
             items.append({
                 "platform": p, "title": topic[: lim["title_max_chars"]],
-                "description": f"{c['hook']} #{p}"[: lim["description_max_chars"]],
+                "description": c["hook"][: lim["description_max_chars"] // 2],
                 "hashtags": tags[: lim["hashtags_max"]],
             })
         return {"items": items}

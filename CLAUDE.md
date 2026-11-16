@@ -31,7 +31,7 @@ Arquitectura: `docs/architecture.md`. Decisiones: `docs/adr/`.
 - `backend/ytauto/orchestrator` flujo de 18 fases (DAG), estados, aprobaciones, correcciones.
 - `backend/ytauto/providers/interfaces` contratos; adaptadores en subcarpetas por categoría.
 - `.claude/agents/*.md` instrucciones de rol de cada agente (usadas por `claude -p --agent`).
-- `config/` modelos por agente, narrativa, perfiles de plataforma.
+- `config/` modelos por agente, narrativa, perfiles de plataforma (con `verified_at`, `sources` y `unverified`: no presentar como oficial lo que no lo es).
 
 ## Modelos
 Implementación diaria con Sonnet; Opus solo para decisiones de arquitectura o errores complejos.

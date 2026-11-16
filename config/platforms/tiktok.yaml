@@ -1,6 +1,5 @@
-# Perfil de exportación: TikTok
-# VALORES PROVISIONALES: verificar con la documentación oficial antes de publicar (fase 8)
-# y actualizar 'verified_at'. Las reglas de las plataformas cambian con frecuencia.
+# Perfil de exportación: TikTok (Content Posting API)
+# Verificado con documentación oficial de TikTok el 2026-11-16 (ver `sources`).
 id: tiktok
 display_name: TikTok
 min_duration_s: 45
@@ -28,14 +27,44 @@ subtitles:
   margin_h: 140
   uppercase: false
   karaoke: true
-# Zona segura (px) que tapan los controles de la app
-safe_area: {top: 220, bottom: 480, left: 60, right: 140}
+safe_area: {top: 260, bottom: 480, left: 140, right: 140}
+file:
+  containers: [mp4, webm, mov]
+  video_codecs: [h264, hevc, vp8, vp9]
+  audio_codecs: [aac]
+  fps_min: 23
+  fps_max: 60
+  min_side: 360                   # cada lado entre 360 y 4096 px
+  max_side: 4096
+  max_size_mb: 4096
+  platform_max_duration_s: 180    # la mayoría de creadores: 3 min (el límite real lo da query creator info)
 metadata:
-  title_required: false
-  title_max_chars: 150
+  mode: title_caption
+  title_max_chars: 2200           # en Direct Post el campo title ES el pie de texto
   description_max_chars: 2200
+  caption_max: 2200
+  caption_unit: utf16             # 2200 unidades UTF-16
   hashtags_max: 10
-thumbnail: {supported: true, width: 1080, height: 1920}
-verified_at: null
-docs:
-  - https://developers.tiktok.com/doc/content-posting-api-get-started
+  title_required: false
+publish:
+  unaudited_private_only: true    # clientes sin auditar: todo se publica como privado (SELF_ONLY)
+  user_must_choose_privacy: true  # el usuario elige la privacidad manualmente, sin valor por defecto
+  daily_post_limit: null
+  notes:
+    - "Mientras la app no supere la auditoría de TikTok, todo lo publicado queda en modo privado."
+    - "Los clientes sin auditar tienen un tope de 5 usuarios por 24 h y solo pueden publicar en cuentas privadas."
+    - "Requiere el permiso video.publish aprobado y la autorización del usuario."
+    - "El usuario debe ver una vista previa, consentir y elegir la privacidad entre las opciones que devuelve la API."
+    - "El límite de duración real depende del creador (consulta de información del creador)."
+thumbnail: {supported: false}
+verified_at: "2026-11-16"
+sources:
+  - https://developers.tiktok.com/docs/en/content-posting-api-media-transfer-guide
+  - https://developers.tiktok.com/docs/en/content-posting-api-reference-direct-post
+  - https://developers.tiktok.com/docs/en/content-posting-api-get-started
+unverified:
+  - safe_area                 # TikTok no publica márgenes para contenido orgánico
+  - subtitles.margin_v
+  - encode.video_bitrate
+  - metadata.hashtags_max
+  - thumbnail                 # la API de Direct Post de vídeo no define miniatura propia en lo consultado

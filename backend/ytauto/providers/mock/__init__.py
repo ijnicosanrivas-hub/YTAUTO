@@ -171,6 +171,9 @@ class MockRenderingProvider(VideoRenderingProvider):
         return MediaProbe(path=str(path), duration_s=info["duration_s"], width=info.get("width", 1080),
                           height=info.get("height", 1920), fps=info.get("fps", 30), video_codec="h264",
                           audio_codec="aac", has_audio=True, size_bytes=Path(path).stat().st_size,
+                          pix_fmt="yuv420p", field_order="progressive", audio_sample_rate=48000, audio_channels=2,
+                          container="mp4", moov_first=True, has_edit_list=False, bit_rate_bps=8_200_000,
+                          video_bit_rate_bps=8_000_000,
                           integrated_lufs=-14.0 if analyze else None, true_peak_db=-1.2 if analyze else None)
 
     def extract_frame(self, video: Path, at_s: float, out_path: Path) -> Path:
