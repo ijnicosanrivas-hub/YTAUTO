@@ -60,10 +60,10 @@ Una producción de prueba sin Claude: `make demo` · con Claude real: `python sc
 - Se guarda cada resultado y se reutiliza: reanudar o rehacer una escena **no repite** llamadas ya hechas.
 - Si Claude Code avisa de un límite de uso o de sesión no iniciada, **solo se pausa el carril de Claude** (lo local
   sigue) y se reanuda solo (si se conoce la hora) o con `python -m ytauto resume-claude`.
-- **Medido en una producción real** (45 s, Sonnet para el trabajo creativo y Haiku para los textos de publicación):
-  **6 llamadas, ≈165 s de Claude, ≈27 000 tokens de salida** (el director necesitó un reintento). Son cifras
-  **indicativas** de una sola ejecución; Claude Pro no factura por uso y tus límites dependen de tu plan.
-  Cada llamada queda registrada en el panel «Modelos Claude».
+- **Medido en dos producciones reales** (45 s, Sonnet para el trabajo creativo y Haiku para los textos de publicación):
+  **6 y 7 llamadas, ≈165–170 s de Claude y ≈27 000 tokens de salida en cada una** (el director y a veces el guionista
+  necesitan un reintento). Son cifras **indicativas** de solo dos ejecuciones; Claude Pro no factura por uso y tus
+  límites dependen de tu plan. Cada llamada queda registrada en el panel «Modelos Claude».
 
 ## Coste de los proveedores externos
 Por defecto **0 €**: FFmpeg, espeak-ng (o Piper), imágenes procedurales o de tu biblioteca, música y efectos
