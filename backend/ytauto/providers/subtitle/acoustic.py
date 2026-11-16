@@ -19,7 +19,7 @@ def speech_segments(audio_path: str, duration_s: float, noise_db: float = -35.0,
                     min_pause_s: float = 0.12) -> list[tuple[float, float]]:
     proc = subprocess.run(["ffmpeg", "-hide_banner", "-nostdin", "-i", str(audio_path), "-af",
                            f"silencedetect=n={noise_db}dB:d={min_pause_s}", "-f", "null", "-"],
-                          capture_output=True, text=True)
+                          capture_output=True, encoding="utf-8", errors="replace")
     starts = [float(x) for x in re.findall(r"silence_start: (-?[\d.]+)", proc.stderr)]
     ends = [float(x) for x in re.findall(r"silence_end: ([\d.]+)", proc.stderr)]
     silences = list(zip(starts, ends + [duration_s] * (len(starts) - len(ends))))

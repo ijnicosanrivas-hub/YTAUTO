@@ -15,7 +15,7 @@ from ..library import AUDIO_EXT, best_match, default_library_root, scan
 
 def audio_duration(path: Path) -> float:
     out = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of",
-                          "default=nw=1:nk=1", str(path)], capture_output=True, text=True).stdout.strip()
+                          "default=nw=1:nk=1", str(path)], capture_output=True, encoding="utf-8", errors="replace").stdout.strip()
     try:
         return float(out)
     except ValueError:

@@ -56,6 +56,8 @@ def main(argv: list[str] | None = None) -> int:
     n.add_argument("--platforms", default="youtube_shorts,instagram_reels,tiktok")
     n.add_argument("--auto", action="store_true", help="Sin aprobación manual del guion")
 
+    dc = sub.add_parser("doctor", help="Diagnostica la instalación y explica cómo arreglar lo que falte")
+    dc.add_argument("--no-claude", action="store_true", help="No exigir Claude Code (modo sin Claude)")
     sub.add_parser("list", help="Listar proyectos")
     st = sub.add_parser("status", help="Estado de un proyecto")
     st.add_argument("project_id")
@@ -103,6 +105,11 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("--include-media", action="store_true")
 
     args = p.parse_args(argv)
+    from .core.settings import force_utf8_console
+    force_utf8_console()
+    if args.cmd == "doctor":  # no necesita base de datos ni aplicación
+        from .doctor import doctor
+        return doctor(offline=args.no_claude or args.offline)
     app = _app(args)
     orch, worker = app.orchestrator, app.worker
 

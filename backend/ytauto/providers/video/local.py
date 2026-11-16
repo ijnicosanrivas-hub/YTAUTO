@@ -15,7 +15,7 @@ from ..library import VIDEO_EXT, best_match, default_library_root, scan
 def ffprobe_video(path: Path) -> tuple[float, int, int]:
     out = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
                           "stream=width,height:format=duration", "-of", "json", str(path)],
-                         capture_output=True, text=True)
+                         capture_output=True, encoding="utf-8", errors="replace")
     info = json.loads(out.stdout or "{}")
     st = (info.get("streams") or [{}])[0]
     return float(info.get("format", {}).get("duration", 0)), int(st.get("width", 0)), int(st.get("height", 0))

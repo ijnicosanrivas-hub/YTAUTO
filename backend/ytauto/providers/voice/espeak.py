@@ -13,7 +13,16 @@ from ...core.errors import ProviderError
 from ...core.models import AssetKind, License, MediaAsset
 from ..interfaces import HealthStatus, TextToSpeechProvider, TTSRequest, Voice
 
+WINDOWS_PATHS = ["C:/Program Files/eSpeak NG/espeak-ng.exe", "C:/Program Files (x86)/eSpeak NG/espeak-ng.exe"]
 BASE_WPM = 150  # ≈2,5 palabras/s: la velocidad que asume el guionista
+
+
+def find_binary(name: str) -> str | None:
+    """espeak-ng en el PATH o, en Windows, en la carpeta donde lo instala su instalador (que no siempre lo añade)."""
+    found = shutil.which(name)
+    if found:
+        return found
+    return next((p for p in WINDOWS_PATHS if Path(p).exists()), None)
 
 
 class EspeakTTSProvider(TextToSpeechProvider):
@@ -24,18 +33,20 @@ class EspeakTTSProvider(TextToSpeechProvider):
     default_params = {"binary": "espeak-ng", "base_wpm": BASE_WPM, "pitch": 45, "variant": ""}
 
     def health_check(self) -> HealthStatus:
-        if not shutil.which(self.params["binary"]):
-            return HealthStatus(ok=False, message="espeak-ng no instalado (apt install espeak-ng)")
+        if not find_binary(self.params["binary"]):
+            return HealthStatus(ok=False, message="espeak-ng no instalado (Linux: apt install espeak-ng · "
+                                                  "Windows: winget install eSpeak-NG.eSpeak-NG)")
         return HealthStatus(ok=True, message="espeak-ng disponible")
 
     def capabilities(self):
         return {"local": True, "quality": "básica", "speed_control": True, "languages": ["es", "en", "pt", "fr", "…"]}
 
     def list_voices(self, language: str | None = None) -> list[Voice]:
-        if not shutil.which(self.params["binary"]):
+        binary = find_binary(self.params["binary"])
+        if not binary:
             return []
-        cmd = [self.params["binary"], f"--voices={language}" if language else "--voices"]
-        out = subprocess.run(cmd, capture_output=True, text=True).stdout.splitlines()[1:]
+        cmd = [binary, f"--voices={language}" if language else "--voices"]
+        out = subprocess.run(cmd, capture_output=True, encoding="utf-8", errors="replace").stdout.splitlines()[1:]
         voices = []
         for line in out:
             cols = line.split()
@@ -55,8 +66,18 @@ class EspeakTTSProvider(TextToSpeechProvider):
             voice = f"{voice}+{self.params['variant']}"
         wpm = int(self.params["base_wpm"] * request.speed)
         raw = request.out_path.with_suffix(".raw.wav")
-        proc = subprocess.run([self.params["binary"], "-v", voice, "-s", str(wpm), "-p", str(self.params["pitch"]),
-                               "-w", str(raw), request.text], capture_output=True, text=True, timeout=120)
+        binary = find_binary(self.params["binary"])
+        if not binary:
+            raise ProviderError(self.name, "espeak-ng no está instalado", transient=False)
+        # El texto va en un fichero UTF-8, no como argumento: en Windows los argumentos con tildes o «¿» se corrompen.
+        textfile = request.out_path.with_suffix(".txt")
+        textfile.write_text(request.text, encoding="utf-8")
+        try:
+            proc = subprocess.run([binary, "-v", voice, "-s", str(wpm), "-p", str(self.params["pitch"]),
+                                   "-w", str(raw), "-f", str(textfile)], capture_output=True, encoding="utf-8",
+                                  errors="replace", timeout=120)
+        finally:
+            textfile.unlink(missing_ok=True)
         if proc.returncode != 0 or not raw.exists():
             raise ProviderError(self.name, f"espeak-ng falló: {proc.stderr[-300:]}", transient=False)
         # Normaliza a 48 kHz mono y recorta silencios de los extremos.

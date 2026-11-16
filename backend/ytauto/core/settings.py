@@ -14,12 +14,22 @@ def load_dotenv(path: Path | None = None) -> None:
     p = path or REPO_ROOT / ".env"
     if not p.exists():
         return
-    for line in p.read_text(encoding="utf-8").splitlines():
+    for line in p.read_text(encoding="utf-8-sig").splitlines():  # utf-8-sig: el Bloc de notas de Windows añade BOM
         line = line.strip()
         if not line or line.startswith("#") or "=" not in line:
             continue
         key, _, value = line.partition("=")
         os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+
+
+def force_utf8_console() -> None:
+    """La consola de Windows usa cp1252 y fallaría al imprimir tildes, «¿» o flechas."""
+    import sys
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
+        except (AttributeError, ValueError):
+            pass
 
 
 class Settings(BaseModel):

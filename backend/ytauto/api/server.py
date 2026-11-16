@@ -531,7 +531,10 @@ def main() -> None:  # pragma: no cover - punto de entrada
     ap.add_argument("--port", type=int, default=8000)
     ap.add_argument("--offline", action="store_true", help="Sin Claude (borradores locales)")
     ap.add_argument("--no-worker", action="store_true")
+    ap.add_argument("--open", action="store_true", help="Abre el navegador al arrancar")
     args = ap.parse_args()
+    from ..core.settings import force_utf8_console
+    force_utf8_console()
     settings = Settings.from_env()
     if args.offline:
         settings.llm_provider = "local_draft"
@@ -539,7 +542,16 @@ def main() -> None:  # pragma: no cover - punto de entrada
     app = build_app(settings)
     if args.host not in ("127.0.0.1", "localhost") and not os.environ.get("YTAUTO_API_TOKEN"):
         raise SystemExit("Para escuchar fuera de localhost define YTAUTO_API_TOKEN")
-    uvicorn.run(create_api(app, start_worker=not args.no_worker), host=args.host, port=args.port,
+    from ..doctor import find_free_port
+    port = find_free_port(args.port, host="127.0.0.1")  # si el 8000 está ocupado, usa el siguiente libre
+    shown = "127.0.0.1" if args.host in ("0.0.0.0", "::") else args.host
+    url = f"http://{shown}:{port}"
+    print(f"\n  YTAUTO funcionando en {url}\n  (no cierres esta ventana mientras lo uses; para parar, pulsa Ctrl+C)\n")
+    if args.open:
+        import threading
+        import webbrowser
+        threading.Timer(2.0, lambda: webbrowser.open(url)).start()
+    uvicorn.run(create_api(app, start_worker=not args.no_worker), host=args.host, port=port,
                 timeout_graceful_shutdown=10)
 
 

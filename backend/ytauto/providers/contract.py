@@ -138,7 +138,7 @@ def _storage(c: _Checker, p, d: Path) -> None:
     c.ok("put devuelve URI", bool(uri), uri)
     c.ok("exists", p.exists("contract/x.txt"))
     got = p.get("contract/x.txt", d / "y.txt")
-    c.ok("get", Path(got).read_text() == "contrato")
+    c.ok("get", Path(got).read_text(encoding="utf-8") == "contrato")
     p.delete("contract/x.txt")
     c.ok("delete", not p.exists("contract/x.txt"))
 

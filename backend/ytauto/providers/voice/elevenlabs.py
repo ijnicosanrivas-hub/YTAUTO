@@ -98,7 +98,7 @@ class ElevenLabsTTSProvider(TextToSpeechProvider):
         raw.write_bytes(r.content)
         # El resto del sistema trabaja con WAV a 48 kHz mono.
         proc = subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(raw), "-ar", "48000",
-                               "-ac", "1", str(req.out_path)], capture_output=True, text=True)
+                               "-ac", "1", str(req.out_path)], capture_output=True, encoding="utf-8", errors="replace")
         raw.unlink(missing_ok=True)
         if proc.returncode != 0:
             raise ProviderError(self.name, f"No se pudo convertir el audio recibido: {proc.stderr[-200:]}",

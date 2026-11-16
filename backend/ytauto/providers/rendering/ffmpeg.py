@@ -20,6 +20,7 @@ import wave
 from pathlib import Path
 
 from ...core.errors import ProviderError
+from ...core.settings import REPO_ROOT
 from ...core.models import AssetKind, License, MediaAsset
 from ...core.workspace import sha256_file
 from ..interfaces import (
@@ -27,7 +28,8 @@ from ..interfaces import (
 )
 from .ass import write_ass
 
-FONT_DIRS = ["/usr/share/fonts", "/Library/Fonts", "C:/Windows/Fonts"]
+BUNDLED_FONT = REPO_ROOT / "assets" / "fonts" / "DejaVuSans-Bold.ttf"
+BUNDLED_FAMILY = "DejaVu Sans"
 DRAWTEXT_FONTS = ["/usr/share/fonts/opentype/inter/Inter-Black.otf", "/usr/share/fonts/opentype/inter/Inter-Bold.otf",
                   "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", "/Library/Fonts/Arial Bold.ttf",
                   "C:/Windows/Fonts/arialbd.ttf"]
@@ -48,12 +50,13 @@ class FFmpegRenderingProvider(VideoRenderingProvider):
                       "threads": 0, "timeout_s": 900}
 
     # ------------------------------------------------------------------ utilidades
-    def _run(self, args: list[str], timeout: float | None = None) -> subprocess.CompletedProcess:
+    def _run(self, args: list[str], timeout: float | None = None, cwd: Path | None = None) -> subprocess.CompletedProcess:
         cmd = [self.params["ffmpeg"], "-hide_banner", "-nostdin", "-y", "-loglevel", "error", *args]
         if self.params.get("threads"):
             cmd[1:1] = ["-threads", str(self.params["threads"])]
         try:
-            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout or self.params["timeout_s"])
+            proc = subprocess.run(cmd, capture_output=True, encoding="utf-8", errors="replace",
+                                  timeout=timeout or self.params["timeout_s"], cwd=str(cwd) if cwd else None)
         except FileNotFoundError as e:
             raise ProviderError(self.name, "FFmpeg no está instalado", transient=False) from e
         except subprocess.TimeoutExpired as e:
@@ -64,7 +67,7 @@ class FFmpegRenderingProvider(VideoRenderingProvider):
 
     def _duration(self, path: Path) -> float:
         proc = subprocess.run([self.params["ffprobe"], "-v", "error", "-show_entries", "format=duration",
-                               "-of", "default=nw=1:nk=1", str(path)], capture_output=True, text=True)
+                               "-of", "default=nw=1:nk=1", str(path)], capture_output=True, encoding="utf-8", errors="replace")
         try:
             return float(proc.stdout.strip())
         except ValueError as e:
@@ -72,7 +75,17 @@ class FFmpegRenderingProvider(VideoRenderingProvider):
 
     @staticmethod
     def _font() -> str | None:
-        return next((f for f in DRAWTEXT_FONTS if Path(f).exists()), None)
+        """Fuente en negrita: la del sistema si existe (Inter) y, si no, la incluida en el repositorio
+        (en Windows no hay Inter). Así los textos se ven igual en cualquier sistema."""
+        found = next((f for f in DRAWTEXT_FONTS if Path(f).exists()), None)
+        if found:
+            return found
+        return str(BUNDLED_FONT) if BUNDLED_FONT.exists() else None
+
+    @staticmethod
+    def _font_family(font_path: str | None, requested: str) -> str:
+        """Familia que debe pedir libass: la solicitada, salvo que se use la fuente incluida."""
+        return BUNDLED_FAMILY if font_path and Path(font_path) == BUNDLED_FONT else requested
 
     def capabilities(self):
         return {"max_resolution": "4K", "transitions": sorted(XFADE_OK), "subtitles": "ASS karaoke",
@@ -84,11 +97,11 @@ class FFmpegRenderingProvider(VideoRenderingProvider):
     def health_check(self) -> HealthStatus:
         if not shutil.which(self.params["ffmpeg"]) or not shutil.which(self.params["ffprobe"]):
             return HealthStatus(ok=False, message="ffmpeg/ffprobe no encontrados en PATH")
-        out = subprocess.run([self.params["ffmpeg"], "-hide_banner", "-filters"], capture_output=True, text=True).stdout
+        out = subprocess.run([self.params["ffmpeg"], "-hide_banner", "-filters"], capture_output=True, encoding="utf-8", errors="replace").stdout
         missing = [f for f in ("zoompan", "xfade", "ass", "loudnorm", "sidechaincompress") if f" {f} " not in out]
         if missing:
             return HealthStatus(ok=False, message=f"FFmpeg sin filtros necesarios: {missing}")
-        ver = subprocess.run([self.params["ffmpeg"], "-version"], capture_output=True, text=True).stdout.split("\n")[0]
+        ver = subprocess.run([self.params["ffmpeg"], "-version"], capture_output=True, encoding="utf-8", errors="replace").stdout.split("\n")[0]
         return HealthStatus(ok=True, message=ver)
 
     def _asset(self, kind: AssetKind, path: Path, **kw) -> MediaAsset:
@@ -119,6 +132,8 @@ class FFmpegRenderingProvider(VideoRenderingProvider):
         return f"zoompan=z='{z}':x='{x}':y='{y}':d=1:s={w}x{h}:fps={fps}"
 
     def render_scene(self, spec: SceneRenderSpec) -> MediaAsset:
+        spec = spec.model_copy(update={"out_path": Path(spec.out_path).resolve(),
+                                       "visual_path": Path(spec.visual_path).resolve()})
         spec.out_path.parent.mkdir(parents=True, exist_ok=True)
         w, h, fps = spec.width, spec.height, spec.fps
         shots = max(1, spec.shot_changes)
@@ -135,11 +150,14 @@ class FFmpegRenderingProvider(VideoRenderingProvider):
         try:
             if spec.on_screen_text and self._font():
                 lines, size = fit_text(spec.on_screen_text, w)
+                # Los filtros reciben solo NOMBRES de fichero (FFmpeg se ejecuta en tmpdir): sin letras de unidad
+                # ni barras que escapar, que es lo que rompe los filtros de FFmpeg en Windows.
+                shutil.copy(self._font(), tmpdir / "font.ttf")
                 for n, line in enumerate(lines):  # una capa por línea → cada línea centrada
                     tf = tmpdir / f"text{n}.txt"
                     tf.write_text(line, encoding="utf-8")
                     y = int(h * 0.14 + n * size * 1.18)
-                    text_filter += (f",drawtext=fontfile='{self._font()}':textfile='{tf}':fontsize={size}:"
+                    text_filter += (f",drawtext=fontfile=font.ttf:textfile=text{n}.txt:fontsize={size}:"
                                     f"fontcolor=white:borderw={max(3, size // 14)}:bordercolor=black@0.85:"
                                     f"x=(w-text_w)/2:y={y}:alpha='min(1,t/0.25)'")
             parts = []
@@ -158,14 +176,16 @@ class FFmpegRenderingProvider(VideoRenderingProvider):
                     inp = ["-stream_loop", "-1", "-ss", f"{i * dur:.3f}", "-i", str(spec.visual_path), "-t", f"{dur:.3f}"]
                 vf += text_filter if i == 0 else ""
                 self._run([*inp, "-vf", vf, "-frames:v", str(nf), "-an", "-c:v", "libx264", "-preset",
-                           self.params["preset"], "-crf", "18", "-pix_fmt", "yuv420p", "-r", str(fps), str(out)])
+                           self.params["preset"], "-crf", "18", "-pix_fmt", "yuv420p", "-r", str(fps), str(out)],
+                          cwd=tmpdir)
                 parts.append(out)
             if len(parts) == 1:
                 shutil.move(str(parts[0]), spec.out_path)
             else:
                 lst = tmpdir / "list.txt"
-                lst.write_text("".join(f"file '{p}'\n" for p in parts))
-                self._run(["-f", "concat", "-safe", "0", "-i", str(lst), "-c", "copy", str(spec.out_path)])
+                lst.write_text("".join(f"file '{p.name}'\n" for p in parts), encoding="utf-8")  # relativo a la lista
+                self._run(["-f", "concat", "-safe", "0", "-i", "list.txt", "-c", "copy", str(spec.out_path)],
+                          cwd=tmpdir)
         finally:
             shutil.rmtree(tmpdir, ignore_errors=True)
         return self._asset(AssetKind.VIDEO_SEGMENT, spec.out_path, duration_s=round(total_frames / fps, 3),
@@ -178,8 +198,8 @@ class FFmpegRenderingProvider(VideoRenderingProvider):
         spec.out_path.parent.mkdir(parents=True, exist_ok=True)
         durs = [self._duration(p) for p in spec.segments]
         if all(t == "cut" for t in spec.transitions):
-            with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False, dir=spec.out_path.parent) as f:
-                f.write("".join(f"file '{Path(p).resolve()}'\n" for p in spec.segments))
+            with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False, dir=spec.out_path.parent, encoding="utf-8") as f:
+                f.write("".join(concat_line(p) for p in spec.segments))
             try:
                 self._run(["-f", "concat", "-safe", "0", "-i", f.name, "-c", "copy", str(spec.out_path)])
             finally:
@@ -272,7 +292,7 @@ class FFmpegRenderingProvider(VideoRenderingProvider):
             tp = spec.true_peak_db - AAC_PEAK_HEADROOM_DB
             measure = subprocess.run([self.params["ffmpeg"], "-hide_banner", "-nostdin", "-i", str(pre), "-af",
                                       f"loudnorm=I={spec.target_lufs}:TP={tp}:LRA=11:print_format=json",
-                                      "-f", "null", "-"], capture_output=True, text=True)
+                                      "-f", "null", "-"], capture_output=True, encoding="utf-8", errors="replace")
             m = re.search(r"\{[^{}]*\"input_i\"[^{}]*\}", measure.stderr, re.DOTALL)
             if m:
                 st = json.loads(m.group(0))
@@ -297,11 +317,18 @@ class FFmpegRenderingProvider(VideoRenderingProvider):
               f"crop={p.width}:{p.height}", "setsar=1", f"fps={p.fps}"]
         if video_dur < audio_dur:
             vf.append(f"tpad=stop_mode=clone:stop_duration={audio_dur - video_dur + 0.1:.3f}")
+        spec = spec.model_copy(update={"out_path": Path(spec.out_path).resolve(),
+                                       "video_path": Path(spec.video_path).resolve(),
+                                       "audio_path": Path(spec.audio_path).resolve()})
         with tempfile.TemporaryDirectory(dir=spec.out_path.parent) as tmp:
             if spec.subtitles and spec.subtitle_style:
-                ass = write_ass(spec.subtitles, spec.subtitle_style, Path(tmp) / "subs.ass", p.width, p.height)
-                fontsdir = next((d for d in FONT_DIRS if Path(d).exists()), None)
-                vf.append(f"ass='{ass}'" + (f":fontsdir='{fontsdir}'" if fontsdir else ""))
+                font = self._font()
+                style = spec.subtitle_style.model_copy(update={"font": self._font_family(font, spec.subtitle_style.font)})
+                write_ass(spec.subtitles, style, Path(tmp) / "subs.ass", p.width, p.height)
+                if font:
+                    shutil.copy(font, Path(tmp) / Path(font).name)
+                # Nombres sin ruta (FFmpeg corre en la carpeta temporal): nada que escapar en Windows.
+                vf.append("ass=subs.ass" + (":fontsdir=." if font else ""))
             vf.append(f"format={p.pix_fmt}")
             meta = []
             for k, v in spec.metadata.items():
@@ -320,14 +347,14 @@ class FFmpegRenderingProvider(VideoRenderingProvider):
                        "-profile:v", "high", "-b:v", p.video_bitrate, "-maxrate", p.max_bitrate, "-bufsize", bufsize,
                        *codec_args, "-r", str(p.fps), "-c:a", p.audio_codec, "-b:a", p.audio_bitrate,
                        "-ar", str(p.audio_sample_rate), "-ac", "2", "-t", f"{audio_dur:.3f}",
-                       "-movflags", movflags, *mux, *meta, str(spec.out_path)])
+                       "-movflags", movflags, *mux, *meta, str(spec.out_path)], cwd=Path(tmp))
         return self._asset(AssetKind.VIDEO_EXPORT, spec.out_path, duration_s=round(self._duration(spec.out_path), 3),
                            width=p.width, height=p.height)
 
     # ------------------------------------------------------------------ análisis
     def probe(self, path: Path, analyze: bool = False) -> MediaProbe:
         proc = subprocess.run([self.params["ffprobe"], "-v", "error", "-print_format", "json", "-show_format",
-                               "-show_streams", str(path)], capture_output=True, text=True)
+                               "-show_streams", str(path)], capture_output=True, encoding="utf-8", errors="replace")
         if proc.returncode != 0:
             raise ProviderError(self.name, f"ffprobe falló: {proc.stderr[-500:]}", transient=False)
         info = json.loads(proc.stdout)
@@ -374,7 +401,7 @@ class FFmpegRenderingProvider(VideoRenderingProvider):
         if not parts:
             return
         proc = subprocess.run([self.params["ffmpeg"], "-hide_banner", "-nostdin", "-i", str(path), "-filter_complex",
-                               ";".join(parts), *maps, "-f", "null", "-"], capture_output=True, text=True,
+                               ";".join(parts), *maps, "-f", "null", "-"], capture_output=True, encoding="utf-8", errors="replace",
                               timeout=self.params["timeout_s"])
         err = proc.stderr
         summary = err[err.rfind("Summary:"):] if "Summary:" in err else ""
@@ -395,6 +422,12 @@ class FFmpegRenderingProvider(VideoRenderingProvider):
         out_path.parent.mkdir(parents=True, exist_ok=True)
         self._run(["-ss", f"{at_s:.3f}", "-i", str(video), "-frames:v", "1", str(out_path)])
         return out_path
+
+
+def concat_line(path: Path | str) -> str:
+    """Línea del demuxer concat: ruta absoluta con barras normales (válida también en Windows) y comillas escapadas."""
+    posix = Path(path).resolve().as_posix().replace("'", "'\\''")
+    return f"file '{posix}'\n"
 
 
 def fit_text(text: str, width: int, max_lines: int = 3) -> tuple[list[str], int]:

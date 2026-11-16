@@ -12,6 +12,7 @@ FONT_CANDIDATES = [
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
     "/Library/Fonts/Arial Bold.ttf",
     "C:/Windows/Fonts/arialbd.ttf",
+    str(Path(__file__).resolve().parents[3] / "assets" / "fonts" / "DejaVuSans-Bold.ttf"),  # incluida en el repo
 ]
 
 

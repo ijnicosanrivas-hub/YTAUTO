@@ -47,8 +47,11 @@ Runner = Callable[[list[str], str, float, Path], subprocess.CompletedProcess]
 
 
 def _default_runner(cmd: list[str], stdin: str, timeout: float, cwd: Path) -> subprocess.CompletedProcess:
+    exe = shutil.which(cmd[0])  # ruta completa: en Windows encuentra claude.exe o claude.cmd
+    if exe:
+        cmd = [exe, *cmd[1:]]
     return subprocess.run(
-        cmd, input=stdin, capture_output=True, text=True, timeout=timeout, cwd=str(cwd)
+        cmd, input=stdin, capture_output=True, encoding="utf-8", errors="replace", timeout=timeout, cwd=str(cwd)
     )
 
 

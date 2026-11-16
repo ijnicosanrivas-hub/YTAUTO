@@ -140,7 +140,7 @@ class MockRenderingProvider(VideoRenderingProvider):
 
     def _write(self, path: Path, op: str, duration: float, **extra) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps({"op": op, "duration_s": duration, **extra}, default=str))
+        path.write_text(json.dumps({"op": op, "duration_s": duration, **extra}, default=str), encoding="utf-8")
         self.ops.append((op, str(path)))
 
     def render_scene(self, spec: SceneRenderSpec) -> MediaAsset:
@@ -149,7 +149,7 @@ class MockRenderingProvider(VideoRenderingProvider):
                           width=spec.width, height=spec.height, provider=self.name, scene_index=spec.scene_index)
 
     def assemble(self, spec: AssembleSpec) -> MediaAsset:
-        durs = [json.loads(Path(p).read_text())["duration_s"] for p in spec.segments]
+        durs = [json.loads(Path(p).read_text(encoding="utf-8"))["duration_s"] for p in spec.segments]
         overlap = sum(spec.transition_s for t in spec.transitions if t != "cut")
         total = round(sum(durs) - overlap, 3)
         self._write(spec.out_path, "assemble", total)
@@ -161,13 +161,13 @@ class MockRenderingProvider(VideoRenderingProvider):
                           provider=self.name)
 
     def finalize(self, spec: FinalizeSpec) -> MediaAsset:
-        d = json.loads(Path(spec.video_path).read_text())["duration_s"]
+        d = json.loads(Path(spec.video_path).read_text(encoding="utf-8"))["duration_s"]
         self._write(spec.out_path, "finalize", d, width=spec.profile.width, height=spec.profile.height,
                     fps=spec.profile.fps, subs=len(spec.subtitles))
         return MediaAsset(kind=AssetKind.VIDEO_EXPORT, path=str(spec.out_path), duration_s=d, provider=self.name)
 
     def probe(self, path: Path, analyze: bool = False) -> MediaProbe:
-        info = json.loads(Path(path).read_text())
+        info = json.loads(Path(path).read_text(encoding="utf-8"))
         return MediaProbe(path=str(path), duration_s=info["duration_s"], width=info.get("width", 1080),
                           height=info.get("height", 1920), fps=info.get("fps", 30), video_codec="h264",
                           audio_codec="aac", has_audio=True, size_bytes=Path(path).stat().st_size,

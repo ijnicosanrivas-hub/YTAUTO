@@ -22,10 +22,15 @@ paquete de publicación → publicación solo con tu autorización → informe`
 | 8 | Revisor | sí + medidas | Nota 0–100 (**no predice viralidad**) y correcciones dirigidas |
 | 9 | Publicador | sí (haiku) | Exportaciones validadas, textos por plataforma, publicación autorizada |
 
+## ¿Usas Windows y no sabes de informática?
+Sigue la **[guía paso a paso para Windows](docs/WINDOWS.md)**: descargas el ZIP, haces doble clic en
+`INSTALAR_WINDOWS.bat`, inicias sesión en Claude una vez y abres `INICIAR_WINDOWS.bat`. `DIAGNOSTICO_WINDOWS.bat`
+(o `python -m ytauto doctor`) dice qué falta y cómo arreglarlo.
+
 ## Requisitos
 - **Python 3.11+**, **FFmpeg 6+** (con `libass`), **espeak-ng** (voz local de respaldo), **Node 20+** (interfaz).
 - **Claude Code** instalado y con sesión iniciada (`claude /login`, cuenta Pro).
-- Linux o macOS. Windows: usa WSL.
+- Linux, macOS o **Windows 10/11** (ver la guía de Windows; sin WSL).
 
 ```bash
 # Debian/Ubuntu
@@ -87,6 +92,7 @@ están **desactivados** y exigen credenciales, presupuesto y autorización: ver 
 ## Documentación
 | | |
 |---|---|
+| `docs/WINDOWS.md` | **Instalación en Windows paso a paso** |
 | `docs/architecture.md` | Arquitectura, capas y flujo de 18 fases |
 | `docs/providers.md` | Proveedores intercambiables: escribir un adaptador, sustituir uno, fallback y presupuesto |
 | `docs/local_engine.md` | Motor local, biblioteca con licencias, calidad de vídeo corto |

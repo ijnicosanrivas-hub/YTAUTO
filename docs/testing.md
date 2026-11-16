@@ -29,6 +29,8 @@ se omiten los dos.
 | Sincronización voz/imagen/subtítulos | `test_media.py`, `test_short_form.py` |
 | Exportación vertical y adaptación a plataformas | `test_platforms.py` |
 | Autorización de publicación | `test_orchestrator.py`, `test_integrations.py`, `test_api.py` |
+| Compatibilidad con Windows (rutas con espacios/`:`/tildes, fuentes, codificación, `.env` con BOM) | `test_windows_compat.py` |
+| Instalador y scripts de Windows (revisión estática) | `test_installer.py` |
 | API REST y WebSocket | `test_api.py` |
 | Interfaz (lógica) | `frontend/src/logic.test.ts` |
 | Producción real completa (MP4 45–75 s, 1080×1920, H.264/AAC, sincronizado) | `test_media.py::test_full_local_production…` y `test_platforms.py::test_real_production…` (`-m slow`) |
@@ -44,5 +46,7 @@ Dos pruebas que pasaban sin detectar nada se reescribieron por este motivo.
 - **Servicios externos reales**: YouTube, Instagram, TikTok, ElevenLabs y OpenAI se prueban solo contra
   servidores HTTP simulados (`test_integrations.py`). Ninguno contra una cuenta real.
 - **Voz Piper real**: no hay modelo descargado en este entorno; se prueba con una voz simulada que respeta su API.
+- **Windows real**: lo anterior solo reproduce en Linux lo que suele fallar en Windows. Los `.bat` y el script de
+  PowerShell no se han ejecutado nunca en un Windows.
 - **Navegadores distintos de Chromium** y dispositivos móviles reales (solo una ventana de 390 px).
 - **Rendimiento con muchos proyectos simultáneos** y bases de datos grandes.
