@@ -123,6 +123,10 @@ class Orchestrator:
         if gate not in ("script_approval", "final_approval", "publish_decision") \
                 and not gate.startswith(("publish:", "spend:")):
             raise ValueError(f"Puerta de aprobación desconocida: {gate}")
+        if gate.startswith("publish:"):
+            parts = gate.split(":")
+            if len(parts) not in (2, 3) or not parts[1] or (len(parts) == 3 and parts[2] not in ("private", "public")):
+                raise ValueError("Formato de puerta no válido; usa publish:<plataforma> o publish:<plataforma>:public")
         if gate in PHASES:
             current = self.store.get_phase(pid, gate)
             if current.status is not PhaseStatus.IN_REVIEW:
@@ -165,11 +169,23 @@ class Orchestrator:
         return a
 
     def _valid_publish_auths(self, pid: str) -> dict[str, str]:
+        """Autorizaciones de publicación vigentes: {plataforma: id}. Gate `publish:<plataforma>[:public]`."""
+        return {plat: a["id"] for plat, a in self._publish_grants(pid).items()}
+
+    def _publish_grants(self, pid: str) -> dict[str, dict[str, str]]:
+        """Vigentes y no revocadas, con la visibilidad autorizada. La última decisión de cada plataforma manda;
+        sin sufijo la visibilidad es PRIVADA: publicar en abierto exige autorizarlo de forma explícita."""
         now = utcnow().isoformat()
-        out = {}
+        out: dict[str, dict[str, str]] = {}
         for a in self.store.get_approvals(pid):
-            if a.gate.startswith("publish:") and a.approved and (a.expires_at is None or a.expires_at > now):
-                out[a.gate.split(":", 1)[1]] = a.id
+            if not a.gate.startswith("publish:"):
+                continue
+            parts = a.gate.split(":")
+            plat, privacy = parts[1], (parts[2] if len(parts) > 2 else "private")
+            if a.approved and (a.expires_at is None or a.expires_at > now):
+                out[plat] = {"id": a.id, "privacy": privacy}
+            else:
+                out.pop(plat, None)  # un rechazo posterior o una caducidad retiran la autorización
         return out
 
     def is_spend_authorized(self, pid: str | None, provider_id: str) -> bool:
@@ -252,6 +268,7 @@ class Orchestrator:
             "voice_llm_pronunciation": self.settings.voice_llm_pronunciation,
             "publish_privacy": self.settings.publish_privacy,
             "publish_authorizations": self._valid_publish_auths(project.id),
+            "publish_privacy_by_platform": {k: v["privacy"] for k, v in self._publish_grants(project.id).items()},
             "llm_usage": self.store.llm_usage(project.id),
             "costs": self.cost_reader(project.id),
             **self.settings.extra,

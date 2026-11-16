@@ -109,6 +109,7 @@ export interface ProviderView {
   role: "primary" | "fallback" | "disabled";
   is_paid: boolean;
   is_local: boolean;
+  requires_network: boolean;
   required_credentials: string[];
   credentials: Record<string, string>;
   missing_credentials: string[];
@@ -157,5 +158,5 @@ export interface PlatformProfile {
     forbid_edit_lists: boolean;
   };
   metadata: { mode: string; title_max_chars: number; caption_max: number | null; description_max_bytes: number | null; hashtags_max: number };
-  publish: { public_url_required: boolean; unaudited_private_only: boolean; daily_post_limit: number | null; notes: string[] };
+  publish: { privacy_options: string[]; public_url_required: boolean; unaudited_private_only: boolean; daily_post_limit: number | null; notes: string[] };
 }

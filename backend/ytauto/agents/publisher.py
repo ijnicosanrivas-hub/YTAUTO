@@ -8,7 +8,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 
 from ..core.captions import PublishFields, compose, fit_hashtags, validate_fields
-from ..core.errors import PhaseBlocked, ProviderNotConfigured
+from ..core.errors import PhaseBlocked, ProviderError, ProviderNotConfigured
 from ..core.export_validation import validate_export
 from ..core.models import Script
 from ..core.platforms import PlatformProfile, load_profiles
@@ -192,6 +192,7 @@ class PublisherAgent(Agent):
                 "hashtags": fields.hashtags, "thumbnail": thumb, "fields": fields.model_dump(mode="json"),
                 "issues": validate_fields(prof, fields), "manual_dir": str(manual),
                 "publish_notes": prof.publish.notes, "unaudited_private_only": prof.publish.unaudited_private_only,
+                "privacy_options": prof.publish.privacy_options,
                 "public_url_required": prof.publish.public_url_required,
                 "profile_verified_at": prof.verified_at,
             }
@@ -220,31 +221,75 @@ class PublisherAgent(Agent):
 
     # ------------------------------------------------------------------ fase 17
     def _publish(self, ctx: AgentContext) -> AgentResult:
+        """Publica SOLO donde hay autorización vigente, con la visibilidad autorizada.
+
+        - Lo ya publicado no se repite (los reintentos no duplican publicaciones).
+        - Si la API no permite algo, se explica la limitación y queda el paquete manual.
+        - Si una publicación autorizada falla, la fase se bloquea con el motivo; lo ya publicado se conserva.
+        """
+        profiles = self._profiles(ctx)
         package = ctx.workspace.load("exports", "publish_package")
         exports = ctx.workspace.load("exports", "exports")
+        previous = ctx.workspace.load("exports", "publish_results") if ctx.workspace.has("exports", "publish_results") else {}
         auths: dict[str, str] = ctx.settings.get("publish_authorizations", {})
-        results = {}
+        privacy_by = ctx.settings.get("publish_privacy_by_platform", {})
+        results: dict[str, dict] = {}
+        failed: list[str] = []
         for platform, meta in package.items():
+            manual = meta.get("manual_dir")
+            prof = profiles.get(platform)
+            prev = previous.get(platform, {})
+            if prev.get("status") in ("published", "uploaded_private"):
+                results[platform] = prev  # ya publicado: no se repite
+                continue
             auth = auths.get(platform)
             if not auth:
                 results[platform] = {"status": "skipped", "message": "Sin autorización expresa del usuario",
-                                     "package_path": meta.get("manual_dir")}
+                                     "package_path": manual}
+                continue
+            privacy = privacy_by.get(platform, ctx.settings.get("publish_privacy", "private"))
+            if prof and privacy not in prof.publish.privacy_options:
+                results[platform] = {"status": "manual_package", "package_path": manual, "message": (
+                    f"{prof.display_name} no admite la visibilidad «{privacy}» por API "
+                    f"(opciones: {', '.join(prof.publish.privacy_options)}). Material listo para publicación manual.")}
                 continue
             f = meta.get("fields") or {}
-            req = PublishRequest(platform=platform, video_path=Path(exports[platform]["path"]),
-                                 title=f.get("title") or meta["title"],
+            video = Path(exports[platform]["path"])
+            req = PublishRequest(platform=platform, video_path=video, title=f.get("title") or meta["title"],
                                  description=f.get("description") or f.get("caption") or meta["description"],
-                                 hashtags=meta["hashtags"],
-                                 thumbnail_path=Path(meta["thumbnail"]) if meta.get("thumbnail") else None,
-                                 privacy=ctx.settings.get("publish_privacy", "private"), authorization_id=auth)
+                                 hashtags=meta["hashtags"], privacy=privacy, authorization_id=auth,
+                                 thumbnail_path=Path(meta["thumbnail"]) if meta.get("thumbnail") else None)
+            if prof and prof.publish.public_url_required and privacy == "public":
+                req.video_url = self._public_url(ctx, video, platform)  # solo con autorización pública explícita
             try:
+                limits = ctx.providers.invoke(ProviderCategory.PUBLISHING, "check_requirements", req,
+                                              project_id=ctx.project_id)
+                if limits:
+                    results[platform] = {"status": "manual_package", "package_path": manual,
+                                         "message": "La publicación automática no es posible: " + "; ".join(limits)
+                                                    + ". Material listo para publicación manual."}
+                    continue
                 res = ctx.providers.invoke(ProviderCategory.PUBLISHING, "publish", req, project_id=ctx.project_id)
-                results[platform] = res.model_dump(mode="json")
+                results[platform] = res.model_dump(mode="json") | {"package_path": manual}
             except ProviderNotConfigured as e:
-                results[platform] = {"status": "manual_package", "package_path": meta.get("manual_dir"),
+                results[platform] = {"status": "manual_package", "package_path": manual,
                                      "message": f"Sin integración configurada: {e}. "
                                                 "Material listo en exports/manual/ para publicación manual."}
+            except ProviderError as e:
+                results[platform] = {"status": "failed", "message": str(e), "package_path": manual}
+                failed.append(f"{platform}: {e}")
         path = ctx.workspace.save("exports", "publish_results", results)
+        if failed:  # se guarda todo lo hecho y se bloquea con el motivo: «Reintentar» omite lo ya publicado
+            raise PhaseBlocked("Fallo al publicar: " + " | ".join(failed), code="publish_failed")
         done = [p for p, r in results.items() if r.get("status") in ("published", "uploaded_private")]
         return AgentResult(summary=f"Publicación: {len(done)} publicadas; resto preparado o sin autorización",
                            artifacts={"publish_results": str(path)}, metrics={"results": results})
+
+    def _public_url(self, ctx: AgentContext, video: Path, platform: str) -> str | None:
+        """URL pública del vídeo si hay un almacenamiento que la ofrezca (si no, None → paquete manual)."""
+        try:
+            key = f"{ctx.project_id}/{platform}.mp4"
+            ctx.providers.query(ProviderCategory.STORAGE, "put", video, key, project_id=ctx.project_id)
+            return ctx.providers.query(ProviderCategory.STORAGE, "public_url", key, project_id=ctx.project_id)
+        except (ProviderNotConfigured, ProviderError):
+            return None

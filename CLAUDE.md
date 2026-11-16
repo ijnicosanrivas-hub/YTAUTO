@@ -10,7 +10,10 @@ Arquitectura: `docs/architecture.md`. Decisiones: `docs/adr/`.
 2. La inteligencia de Claude se usa solo a través de `LLMProvider`. En producción es
    `ClaudeCodeCLIProvider` (binario oficial `claude -p`, sesión Pro). Nunca la API de Anthropic
    asumida como incluida en Pro, nunca extraer tokens, nunca instancias paralelas para eludir límites.
-3. Ningún gasto (proveedor `is_paid`) ni publicación sin autorización expresa registrada.
+3. Ningún gasto (proveedor `is_paid`) ni publicación sin autorización expresa registrada. Privado y público son
+   autorizaciones distintas (`publish:<plataforma>` / `publish:<plataforma>:public`); nunca se publica en abierto por defecto.
+   Los adaptadores `requires_network` no se registran solos, no se prueban contra el servicio real y los de pago
+   necesitan precio configurado.
 4. Nunca guardar claves en el repositorio. Credenciales cifradas fuera de git (`data/`).
 5. No declarar nada terminado sin pruebas que lo demuestren.
 

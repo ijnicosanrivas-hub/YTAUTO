@@ -60,7 +60,7 @@ python -m ytauto backup
 | 6 | Vídeos cortos y montaje | ✅ retención medida, voz↔escena, subtítulos acústicos y 3 estilos |
 | 7 | Interfaz y sala de producción | ✅ FastAPI + WebSocket + React/R3F — ver `docs/ui.md` |
 | 8 | Exportación multiplataforma | ✅ perfiles verificados, validación, textos por plataforma — ver `docs/platforms.md` |
-| 9 | Integraciones externas | ⏳ |
+| 9 | Integraciones externas | ✅ YouTube/Instagram/TikTok, ElevenLabs y OpenAI Images (probados con servidores simulados) — ver `docs/integrations.md` |
 | 10 | Pruebas completas y documentación | ⏳ |
 
 ## Costes

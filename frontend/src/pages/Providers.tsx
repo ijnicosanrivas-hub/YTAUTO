@@ -32,6 +32,7 @@ function ProviderRow({ p, siblings, onChange }: { p: ProviderView; siblings: Pro
           <Badge status={p.role} label={p.role === "primary" ? "Principal" : p.role === "fallback" ? "Alternativo" : "Desactivado"} />
           {p.is_paid ? <Badge status="blocked" label="De pago" /> : <Badge status="completed" label="Gratuito" />}
           {p.is_local && <Badge status="idle" label="Local" />}
+          {p.requires_network && <Badge status="in_review" label="Servicio externo" />}
         </div>
       </td>
       <td style={{ minWidth: 230 }}>

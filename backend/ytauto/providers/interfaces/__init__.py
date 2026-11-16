@@ -51,6 +51,9 @@ class BaseProvider(ABC):
     is_local: ClassVar[bool] = True
     # Orden por defecto al darse de alta automáticamente (menor = preferente).
     default_priority: ClassVar[int] = 100
+    # True si el adaptador habla con un servicio externo: las pruebas genéricas de contrato lo omiten
+    # (necesitaría red y credenciales reales) y se prueba aparte con un servidor simulado.
+    requires_network: ClassVar[bool] = False
     # Claves de credenciales requeridas (p. ej. ["api_key"]). Vacío = no requiere.
     required_credentials: ClassVar[list[str]] = []
     # Esquema simple de parámetros configurables: {nombre: valor_por_defecto}
@@ -65,6 +68,14 @@ class BaseProvider(ABC):
 
     def estimate_cost(self, operation: str, request: BaseModel) -> CostEstimate:
         return CostEstimate()
+
+    def verify_connection(self) -> HealthStatus:
+        """Comprobación ONLINE (solo lectura, sin coste) usada por «Probar conexión».
+
+        `health_check` es local (credenciales y parámetros) y se ejecuta antes de cada uso; esta puede
+        llamar al servicio. Por defecto es igual que `health_check`.
+        """
+        return self.health_check()
 
     def health_check(self) -> HealthStatus:
         missing = [k for k in self.required_credentials if not self.credentials.get(k)]
@@ -379,6 +390,7 @@ class PublishRequest(BaseModel):
     description: str
     hashtags: list[str] = Field(default_factory=list)
     thumbnail_path: Path | None = None
+    video_url: str | None = None  # URL pública del vídeo (Instagram descarga desde ella)
     privacy: Literal["private", "unlisted", "public"] = "private"
     authorization_id: str  # id de la autorización expresa del usuario
 

@@ -61,6 +61,7 @@ class MetadataLimits(BaseModel):
 class PublishNotes(BaseModel):
     """Limitaciones conocidas de la vía oficial de publicación (para informar al usuario)."""
 
+    privacy_options: list[str] = Field(default_factory=lambda: ["private"])  # visibilidades autorizables
     public_url_required: bool = False
     unaudited_private_only: bool = False
     user_must_choose_privacy: bool = False

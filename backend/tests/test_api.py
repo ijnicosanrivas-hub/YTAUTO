@@ -203,3 +203,19 @@ def test_export_validation_is_exposed_per_platform(env):
     ex = c.get(f"/api/projects/{pid}/artifacts").json()["exports"]
     assert set(ex) == {"youtube_shorts", "instagram_reels", "tiktok"}
     assert all(v["validation"]["ok"] and v["validation"]["checked"] for v in ex.values())
+
+
+def test_publish_gates_via_api_accept_explicit_visibility_and_reject_invalid_ones(env):
+    app, c = env
+    pid = c.post("/api/projects", json={**SPEC, "require_script_approval": False}).json()["project"]["id"]
+    app.worker.run_until_idle()
+    assert c.post(f"/api/projects/{pid}/approve", json={"gate": "final_approval"}).status_code == 200
+    app.worker.run_until_idle()
+    pkg = c.get(f"/api/projects/{pid}/artifacts").json()["publish_package"]
+    assert pkg["instagram_reels"]["privacy_options"] == ["public"] and pkg["tiktok"]["privacy_options"] == ["private"]
+    assert c.post(f"/api/projects/{pid}/approve", json={"gate": "publish:tiktok:secret"}).status_code == 409
+    assert c.post(f"/api/projects/{pid}/approve", json={"gate": "publish:youtube_shorts:public"}).status_code == 200
+    app.worker.run_until_idle()
+    assert c.get(f"/api/projects/{pid}").json()["project"]["status"] == "completed"
+    providers = {p["name"]: p for p in c.get("/api/providers/catalog").json()}
+    assert providers["youtube_data_api"]["requires_network"] and not providers["library_images"]["requires_network"]

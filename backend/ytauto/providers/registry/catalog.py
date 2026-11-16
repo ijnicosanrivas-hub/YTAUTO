@@ -37,6 +37,7 @@ class AdapterInfo(BaseModel):
     display_name: str
     is_paid: bool
     is_local: bool
+    requires_network: bool = False
     required_credentials: list[str]
     default_params: dict[str, Any]
     module: str
@@ -103,7 +104,7 @@ def discover(include_mocks: bool = False) -> dict[str, type[BaseProvider]]:
 def info(cls: type[BaseProvider]) -> AdapterInfo:
     return AdapterInfo(
         name=cls.name, category=cls.category, display_name=cls.display_name or cls.name, is_paid=cls.is_paid,
-        is_local=cls.is_local, required_credentials=list(cls.required_credentials),
+        is_local=cls.is_local, requires_network=cls.requires_network, required_credentials=list(cls.required_credentials),
         default_params=dict(cls.default_params), module=cls.__module__,
         doc=(inspect.getdoc(cls) or "").split("\n\n")[0],
     )

@@ -47,6 +47,7 @@ metadata:
   hashtags_max: 10
   title_required: false
 publish:
+  privacy_options: [private]   # visibilidades que se pueden autorizar
   unaudited_private_only: true    # clientes sin auditar: todo se publica como privado (SELF_ONLY)
   user_must_choose_privacy: true  # el usuario elige la privacidad manualmente, sin valor por defecto
   daily_post_limit: null

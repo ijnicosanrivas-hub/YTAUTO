@@ -55,6 +55,7 @@ metadata:
   mentions_max: 20
   title_required: false
 publish:
+  privacy_options: [public]   # visibilidades que se pueden autorizar
   public_url_required: true       # Meta descarga el vídeo desde una URL pública (o subida reanudable)
   daily_post_limit: 100           # publicaciones por API en 24 h
   notes:
@@ -69,5 +70,6 @@ sources:
 unverified:
   - safe_area                 # Meta no publica márgenes para contenido orgánico
   - subtitles.margin_v
+  - publish.privacy_options   # no se encontró visibilidad privada en la API de publicación consultada
   - encode.video_bitrate
   - thumbnail

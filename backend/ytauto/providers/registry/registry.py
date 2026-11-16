@@ -56,6 +56,7 @@ class ProviderView(ProviderConfig):
     role: str  # primary | fallback | disabled
     is_paid: bool
     is_local: bool
+    requires_network: bool = False
     required_credentials: list[str]
     credentials: dict[str, str]  # clave -> pista enmascarada
     missing_credentials: list[str]
@@ -297,7 +298,14 @@ class ProviderRegistry:
         except ProviderNotConfigured as e:
             self._upsert_status(pid, last_check_at=utcnow().isoformat(), healthy=False, message=str(e))
             return ContractReport(provider=pid, category=cfg.category.value, passed=False, skipped=str(e))
-        if run_contract_tests:
+        if inst.requires_network:
+            # Un servicio externo nunca ejecuta la batería de contrato contra el servicio real (costaría
+            # dinero o publicaría): solo una comprobación de lectura y sin coste.
+            from ..contract import ContractCheck
+            h = inst.verify_connection()
+            report = ContractReport(provider=pid, category=cfg.category.value, passed=h.ok,
+                                    checks=[ContractCheck(name="conexión", passed=h.ok, detail=h.message)])
+        elif run_contract_tests:
             report = run_contract(inst, workdir=workdir, allow_paid=allow_paid)
         else:
             h = inst.health_check()
@@ -333,7 +341,7 @@ class ProviderRegistry:
                                                        else "fallback")
             out.append(ProviderView(
                 **cfg.model_dump(), role=role, is_paid=bool(cls and cls.is_paid), is_local=bool(cls and cls.is_local),
-                required_credentials=list(cls.required_credentials) if cls else [],
+                requires_network=bool(cls and cls.requires_network), required_credentials=list(cls.required_credentials) if cls else [],
                 credentials=self.vault.hints(cfg.id), missing_credentials=self.missing_credentials(cfg),
                 adapter_available=cls is not None, status=self.status(cfg.id), capabilities=caps,
             ))

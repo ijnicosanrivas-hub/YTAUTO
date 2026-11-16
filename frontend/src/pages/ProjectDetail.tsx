@@ -75,7 +75,7 @@ function ApprovalPanel({ view, arts, onDone }: { view: ProjectView; arts: Artifa
   };
   if (!view.waiting_approval.length && !blockedSpend) return null;
   const pkg = arts?.publish_package as
-    | Record<string, { title: string; description: string; hashtags: string[]; publish_notes?: string[]; unaudited_private_only?: boolean; manual_dir?: string }>
+    | Record<string, { title: string; description: string; hashtags: string[]; publish_notes?: string[]; unaudited_private_only?: boolean; manual_dir?: string; privacy_options?: string[] }>
     | null;
 
   return (
@@ -107,7 +107,7 @@ function ApprovalPanel({ view, arts, onDone }: { view: ProjectView; arts: Artifa
       )}
       {view.waiting_approval.includes("publish") && pkg && (
         <>
-          <p>Material listo. Nada se publica sin tu autorización expresa (caduca a las 24 h). Por defecto se sube como privado.</p>
+          <p>Material listo. Nada se publica sin tu autorización expresa (caduca a las 24 h). Elegir «privado» o «público» es una decisión distinta: nunca se publica en abierto por defecto. Sin integración configurada se usa el paquete manual.</p>
           <table>
             <tbody>
               {Object.entries(pkg).map(([platform, m]) => (
@@ -121,7 +121,20 @@ function ApprovalPanel({ view, arts, onDone }: { view: ProjectView; arts: Artifa
                     {m.publish_notes?.map((n, i) => <div key={i} className="muted" style={{ fontSize: 12 }}>• {n}</div>)}
                   </td>
                   <td>
-                    <button className="btn ok" disabled={busy} onClick={() => approve(`publish:${platform}`)}>Autorizar publicación</button>
+                    <div className="row" style={{ flexDirection: "column", alignItems: "stretch" }}>
+                      {(m.privacy_options ?? ["private"]).includes("private") && (
+                        <button className="btn ok" disabled={busy} onClick={() => approve(`publish:${platform}`)}>Autorizar (privado)</button>
+                      )}
+                      {(m.privacy_options ?? []).includes("public") && (
+                        <button
+                          className="btn danger"
+                          disabled={busy}
+                          onClick={() => confirm(`Esto publicará el vídeo EN ABIERTO en ${PLATFORM_LABEL[platform] ?? platform}. ¿Continuar?`) && approve(`publish:${platform}:public`)}
+                        >
+                          Autorizar PÚBLICO
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

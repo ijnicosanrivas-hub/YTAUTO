@@ -44,15 +44,17 @@ metadata:
   hashtags_max: 15
   title_required: true
 publish:
+  privacy_options: [private, public]   # visibilidades que se pueden autorizar
   notes:
     - "Los Shorts son vídeos cuadrados o verticales de hasta 3 minutos; 9:16 es el formato óptimo."
-    - "La publicación por API (YouTube Data API v3, OAuth) se verificará en la fase 9: las apps sin auditar pueden estar limitadas a vídeos privados."
+    - "Publicación por API (YouTube Data API v3, OAuth): los proyectos de API sin verificar (creados tras 2020-07-28) solo pueden subir vídeos PRIVADOS."
 thumbnail: {supported: true, width: 1080, height: 1920}
 verified_at: "2026-11-16"
 sources:
   - https://support.google.com/youtube/answer/15424877
   - https://support.google.com/youtube/answer/12779649
   - https://developers.google.com/youtube/v3/docs/videos
+  - https://developers.google.com/youtube/v3/docs/videos/insert
 unverified:
   - safe_area                 # YouTube no publica márgenes para contenido orgánico
   - subtitles.margin_v
