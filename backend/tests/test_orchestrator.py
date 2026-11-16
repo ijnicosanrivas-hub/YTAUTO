@@ -5,7 +5,6 @@ from ytauto.core.models import PhaseStatus, ProjectSpec, ProjectStatus
 from ytauto.llm.base import AuthenticationError, UsageLimitError
 from ytauto.llm.mock import LocalDraftLLM, ScriptedLLM
 from ytauto.orchestrator.pipeline import PIPELINE, downstream
-from ytauto.orchestrator.state import InMemoryStateStore
 
 
 def statuses(orch, pid):
@@ -87,12 +86,12 @@ def test_auth_error_blocks_project(make_orchestrator, spec):
                                              fallback=LocalDraftLLM()))
     pid = orch.create_project(spec)
     r = orch.run(pid)
-    assert r.outcome == "usage_limit"
+    assert r.outcome == "auth_error"
     assert "login" in (orch.store.get_project(pid).blocked_reason or "")
 
 
-def test_resume_after_crash_does_not_repeat_completed_phases(make_orchestrator, spec):
-    store = InMemoryStateStore()
+def test_resume_after_crash_does_not_repeat_completed_phases(make_orchestrator, spec, store_factory):
+    store = store_factory()
     orch = make_orchestrator(store=store)
     pid = orch.create_project(spec)
     orch.run(pid)  # hasta aprobación del guion

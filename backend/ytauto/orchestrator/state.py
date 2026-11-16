@@ -22,6 +22,7 @@ class PhaseRecord(BaseModel):
     attempts: int = 0
     error: str | None = None
     blocked_code: str | None = None
+    retryable: bool = False  # error transitorio: la cola puede reintentar con espera
     summary: str | None = None
     result: dict[str, Any] = Field(default_factory=dict)
     scene_filter: list[int] | None = None

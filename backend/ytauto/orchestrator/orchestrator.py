@@ -29,7 +29,7 @@ log = logging.getLogger("ytauto.orchestrator")
 SCENE_SCOPED = {"scene_prep", "resource_generation"}
 
 StepOutcome = Literal["ran", "waiting_approval", "blocked", "paused", "cancelled", "completed", "error", "idle",
-                      "usage_limit"]
+                      "usage_limit", "auth_error"]
 
 
 @dataclass
@@ -37,6 +37,7 @@ class StepResult:
     outcome: StepOutcome
     phase: str | None = None
     message: str = ""
+    resets_at: str | None = None
 
 
 @dataclass
@@ -83,12 +84,20 @@ class Orchestrator:
     def pause(self, pid: str) -> None:
         self._set_project_status(pid, ProjectStatus.PAUSED)
 
-    def resume(self, pid: str) -> None:
-        """Reanuda: las fases interrumpidas ('running'/'assigned') vuelven a 'pending'."""
+    def recover_interrupted(self, pid: str) -> int:
+        """Fases que quedaron 'running'/'assigned' por una caída vuelven a 'pending'."""
+        n = 0
         for ph in self.store.list_phases(pid):
             if ph.status in (PhaseStatus.RUNNING, PhaseStatus.ASSIGNED):
                 self._set_phase(ph, PhaseStatus.PENDING, error="Reanudada tras interrupción")
-            elif ph.status is PhaseStatus.BLOCKED and ph.blocked_code in ("usage_limit", "auth", "budget_exceeded",
+                n += 1
+        return n
+
+    def resume(self, pid: str) -> None:
+        """Reanuda un proyecto pausado/bloqueado sin repetir fases completadas."""
+        self.recover_interrupted(pid)
+        for ph in self.store.list_phases(pid):
+            if ph.status is PhaseStatus.BLOCKED and ph.blocked_code in ("usage_limit", "auth", "budget_exceeded",
                                                                            "spend_not_authorized", "provider"):
                 self._set_phase(ph, PhaseStatus.PENDING)
         self._set_project_status(pid, ProjectStatus.ACTIVE)
@@ -246,16 +255,18 @@ class Orchestrator:
         except UsageLimitError as e:
             self._set_phase(record, PhaseStatus.BLOCKED, error=f"Límite de uso de Claude: {e}", blocked_code="usage_limit")
             self._set_project_status(pid, ProjectStatus.BLOCKED, f"Límite de uso de Claude (reinicio: {e.resets_at or '?'})")
-            return StepResult("usage_limit", phase.id, str(e))
+            return StepResult("usage_limit", phase.id, str(e), resets_at=e.resets_at)
         except AuthenticationError as e:
             self._set_phase(record, PhaseStatus.BLOCKED, error=f"Autenticación: {e}", blocked_code="auth")
             self._set_project_status(pid, ProjectStatus.BLOCKED, "Claude Code no autenticado: ejecuta `claude /login`")
-            return StepResult("usage_limit", phase.id, str(e))
+            return StepResult("auth_error", phase.id, str(e))
         except PhaseBlocked as e:
             self._set_phase(record, PhaseStatus.BLOCKED, error=e.reason, blocked_code=e.code)
             self._set_project_status(pid, ProjectStatus.BLOCKED, e.reason)
             return StepResult("blocked", phase.id, e.reason)
-        except (AcceptanceError, ProviderError, LLMError) as e:
+        except (ProviderError, LLMError) as e:
+            return self._fail(pid, record, str(e), retryable=getattr(e, "transient", False))
+        except AcceptanceError as e:
             return self._fail(pid, record, str(e))
         except Exception as e:  # noqa: BLE001
             log.exception("Fallo inesperado en %s/%s", pid, phase.id)
@@ -295,7 +306,8 @@ class Orchestrator:
         self._set_phase(record, PhaseStatus.COMPLETED, summary=result.summary)
         return StepResult("ran", phase.id, result.summary)
 
-    def _fail(self, pid: str, record: PhaseRecord, message: str) -> StepResult:
+    def _fail(self, pid: str, record: PhaseRecord, message: str, retryable: bool = False) -> StepResult:
+        record.retryable = retryable
         self._set_phase(record, PhaseStatus.ERROR, error=message[:4000])
         self._set_project_status(pid, ProjectStatus.ERROR, message[:300])
         return StepResult("error", record.phase, message)
@@ -334,6 +346,8 @@ class Orchestrator:
 
     def _set_phase(self, record: PhaseRecord, status: PhaseStatus, error: str | None = None,
                    summary: str | None = None, blocked_code: str | None = None) -> None:
+        if status is not PhaseStatus.ERROR:
+            record.retryable = False
         record.status = status
         record.error = error
         record.blocked_code = blocked_code

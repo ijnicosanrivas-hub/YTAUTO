@@ -50,11 +50,23 @@ def make_ctx(tmp_path: Path, gateway, spec):
     return _make
 
 
+@pytest.fixture(params=["memory", "sqlite"])
+def store_factory(request, tmp_path: Path):
+    """Las pruebas del orquestador se ejecutan con ambos almacenes."""
+    def _make():
+        if request.param == "memory":
+            return InMemoryStateStore()
+        from ytauto.db.schema import make_engine
+        from ytauto.db.store import SqlStateStore
+        return SqlStateStore(make_engine(tmp_path / "ytauto.db"))
+    return _make
+
+
 @pytest.fixture
-def make_orchestrator(tmp_path: Path, gateway):
+def make_orchestrator(tmp_path: Path, gateway, store_factory):
     def _make(llm=None, store=None, providers=None, **settings) -> Orchestrator:
         return Orchestrator(
-            store=store or InMemoryStateStore(), llm=llm or LocalDraftLLM(), providers=providers or gateway,
+            store=store or store_factory(), llm=llm or LocalDraftLLM(), providers=providers or gateway,
             settings=OrchestratorSettings(projects_dir=tmp_path / "projects", **settings),
         )
     return _make

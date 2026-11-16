@@ -111,8 +111,31 @@ gasto y la cadena de alternativas (fallback).
 
 ## Persistencia
 
-SQLite (WAL) + ficheros por proyecto en `projects/<id>/{planning,scripts,resources,voice,
-scenes,sound,review,exports,reports}` y `memory.json` con resúmenes entre fases.
+SQLite (WAL) en `data/ytauto.db` (`ytauto.db`): proyectos, fases, aprobaciones, consumo de
+Claude, tareas, control de carriles y registro de actividad. Además, ficheros por proyecto en
+`projects/<id>/{planning,scripts,resources,voice,scenes,sound,review,exports,reports}` y
+`memory.json` con decisiones y resúmenes entre fases (contexto compacto para Claude).
+
+## Cola y worker (`ytauto.queue`)
+
+- Carriles: `claude` (concurrencia 1 por defecto, máx. `max_concurrency` de
+  `config/models/models.yaml`), `media` (FFmpeg/TTS local) y `none` (pasos instantáneos).
+- Unidad de trabajo: "ejecutar la siguiente fase del proyecto". Índice único parcial:
+  como mucho una tarea activa por (proyecto, fase); y una sola en ejecución por proyecto.
+- Leases con caducidad y latido: si el proceso muere, la tarea vuelve a la cola y la fase
+  interrumpida pasa de `running` a `pending`. Las fases completadas nunca se repiten.
+- Límite de uso de Claude → se pausa solo el carril `claude` (lo local sigue). Si Claude
+  Code indica la hora de reinicio, se reanuda automáticamente; si no, reanudación manual
+  (`python -m ytauto resume-claude`). Sin reintentos a ciegas.
+- Errores transitorios de proveedores → reintento con espera creciente (30 s, 2 min, 10 min);
+  errores permanentes → fase en `error` y proyecto detenido.
+
+## Operación
+
+- `python -m ytauto new|list|status|run [--forever]|approve|pause|resume|cancel|redo|resume-claude|queue|backup`
+- Copias de seguridad: SQLite con la API de backup (consistente en caliente) + `config/` +
+  JSON de proyectos, con rotación (10 por defecto). Medios opcionales (`--include-media`).
+- Logs con rotación en `data/logs/` y ocultación automática de claves y tokens.
 
 ## Medios
 

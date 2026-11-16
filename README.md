@@ -31,12 +31,24 @@ cp .env.example .env   # y genera YTAUTO_MASTER_KEY
 python -m pytest -q
 ```
 
+## Uso por línea de comandos
+```bash
+python -m ytauto new --name "Pulpos" --topic "curiosidades de los pulpos" --duration 60
+python -m ytauto run --forever          # worker (cola de producción)
+python -m ytauto status <project_id>
+python -m ytauto approve <project_id> script_approval
+python -m ytauto queue                  # carriles, pausas por límite de uso
+python -m ytauto resume-claude          # tras un límite de uso o `claude /login`
+python -m ytauto backup
+```
+`--offline --mock-providers` permite probar el flujo completo sin Claude ni proveedores.
+
 ## Progreso
 | Fase | Contenido | Estado |
 |---|---|---|
 | 1 | Análisis y arquitectura | ✅ `docs/` |
 | 2 | Motor multiagente | ✅ agentes, orquestador, capa Claude |
-| 3 | Cola, memoria y persistencia | ⏳ |
+| 3 | Cola, memoria y persistencia | ✅ SQLite, cola por carriles, worker, backups |
 | 4 | Sistema modular de proveedores | ⏳ (interfaces ya definidas) |
 | 5 | Motor audiovisual local | ⏳ |
 | 6 | Vídeos cortos y montaje | ⏳ |

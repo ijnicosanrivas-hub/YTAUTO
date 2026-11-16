@@ -54,6 +54,9 @@ def _default_runner(cmd: list[str], stdin: str, timeout: float, cwd: Path) -> su
 
 def classify_error(text: str) -> LLMError:
     if _LIMIT_PATTERNS.search(text):
+        epoch = re.search(r"\|\s*(\d{10})\b", text)  # formato "usage limit reached|<epoch>"
+        if epoch:
+            return UsageLimitError(text.strip()[:500], resets_at=epoch.group(1))
         m = _RESET_PATTERN.search(text)
         return UsageLimitError(text.strip()[:500], resets_at=m.group(1).strip() if m else None)
     if _AUTH_PATTERNS.search(text):

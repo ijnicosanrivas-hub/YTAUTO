@@ -16,12 +16,14 @@ Arquitectura: `docs/architecture.md`. Decisiones: `docs/adr/`.
 
 ## Comandos
 - Pruebas: `python -m pytest -q` (desde la raíz). Las de Claude real: `python -m pytest -m claude`.
+- CLI: `python -m ytauto --help` (`--offline --mock-providers` para pruebas sin Claude).
 - Estilo: Python 3.11+, pydantic v2, tipado; textos de usuario en español.
 
 ## Estructura
 - `backend/ytauto/core` dominio (modelos, narrativa, espacio de trabajo, eventos, plataformas).
 - `backend/ytauto/llm` motor LLM (CLI de Claude Code, simulados).
 - `backend/ytauto/agents` los 9 agentes. Cada agente con Claude define esquema + criterios de aceptación.
+- `backend/ytauto/db` SQLite (esquema, `SqlStateStore`, backups); `backend/ytauto/queue` cola y worker.
 - `backend/ytauto/orchestrator` flujo de 18 fases (DAG), estados, aprobaciones, correcciones.
 - `backend/ytauto/providers/interfaces` contratos; adaptadores en subcarpetas por categoría.
 - `.claude/agents/*.md` instrucciones de rol de cada agente (usadas por `claude -p --agent`).
