@@ -5,9 +5,11 @@ predicción de viralidad ni de rendimiento en plataformas.
 """
 from __future__ import annotations
 
+import unicodedata
 from pathlib import Path
+from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from ..core.models import MAX_DURATION_S, MIN_DURATION_S, CorrectionRequest, Script
 from ..core.timeline import EditManifest, VoiceManifest
@@ -26,11 +28,40 @@ class EditorialScores(BaseModel):
     legibility: int = Field(ge=0, le=10, description="Subtítulos cortos y legibles")
 
 
+TargetAgent = Literal["director", "scriptwriter", "resources", "voice", "editor", "sound"]
+# Sinónimos que un revisor razonable puede escribir. Los subtítulos los genera y alinea el agente de voz.
+_AGENT_ALIASES = {
+    "script": "scriptwriter", "guion": "scriptwriter", "guionista": "scriptwriter", "writer": "scriptwriter",
+    "subtitles": "voice", "subtitulos": "voice", "captions": "voice", "voz": "voice", "narracion": "voice",
+    "audio": "sound", "sonido": "sound", "music": "sound", "musica": "sound", "mix": "sound",
+    "video": "editor", "montaje": "editor", "animator": "editor", "animador": "editor", "render": "editor",
+    "images": "resources", "imagenes": "resources", "recursos": "resources", "visuals": "resources",
+    "direccion": "director",
+}
+
+
+def normalize_agent(value: object) -> object:
+    if not isinstance(value, str):
+        return value
+    key = "".join(c for c in unicodedata.normalize("NFKD", value.strip().lower()) if not unicodedata.combining(c))
+    return _AGENT_ALIASES.get(key, key)
+
+
 class EditorialIssue(BaseModel):
-    target_agent: str  # scriptwriter | resources | voice | editor | sound | director
+    target_agent: TargetAgent = Field(description="Agente responsable de corregirlo")
     scene_index: int | None = None
     reason: str
-    severity: str = "major"
+    severity: Literal["minor", "major", "critical"] = "major"
+
+    @field_validator("target_agent", mode="before")
+    @classmethod
+    def _normalize(cls, v: object) -> object:
+        return normalize_agent(v)
+
+    @field_validator("severity", mode="before")
+    @classmethod
+    def _severity(cls, v: object) -> object:
+        return v.strip().lower() if isinstance(v, str) else v
 
 
 class EditorialReview(BaseModel):

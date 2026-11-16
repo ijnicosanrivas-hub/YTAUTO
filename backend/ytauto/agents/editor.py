@@ -34,7 +34,6 @@ class EditorAgent(Agent):
     def _edit(self, ctx: AgentContext) -> AgentResult:
         spec = ctx.spec
         brief = ctx.workspace.load("planning", "creative_brief", CreativeBrief)
-        script = ctx.workspace.load("scripts", "script", Script)
         voice = ctx.workspace.load("voice", "voice_manifest", VoiceManifest)
         assets = {int(k): MediaAsset.model_validate(v) for k, v in ctx.workspace.load("resources", "assets").items()}
         max_static = ctx.narrative.max_static_shot_s[spec.intensity]

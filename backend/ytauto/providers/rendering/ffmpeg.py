@@ -23,8 +23,7 @@ from ...core.errors import ProviderError
 from ...core.models import AssetKind, License, MediaAsset
 from ...core.workspace import sha256_file
 from ..interfaces import (
-    AssembleSpec, AudioMixSpec, FinalizeSpec, HealthStatus, MediaProbe, SceneRenderSpec, SubtitleStyle,
-    VideoRenderingProvider,
+    AssembleSpec, AudioMixSpec, FinalizeSpec, HealthStatus, MediaProbe, SceneRenderSpec, VideoRenderingProvider,
 )
 from .ass import write_ass
 
@@ -34,6 +33,9 @@ DRAWTEXT_FONTS = ["/usr/share/fonts/opentype/inter/Inter-Black.otf", "/usr/share
                   "C:/Windows/Fonts/arialbd.ttf"]
 XFADE_OK = {"fade", "slideleft", "slideright", "slideup", "slidedown", "wipeleft", "wiperight", "zoomin",
             "circleopen", "circleclose", "dissolve", "smoothleft", "smoothright"}
+# La codificación a AAC añade sobrepico (medido: +0,8 dB sobre la mezcla). Se deja ese margen en la mezcla para
+# que el archivo ENTREGADO cumpla el pico verdadero pedido (−1 dBTP), no solo la mezcla intermedia.
+AAC_PEAK_HEADROOM_DB = 1.0
 INTERNAL = License(name="derived", attribution="ytauto render", commercial_use=True)
 
 
@@ -267,19 +269,20 @@ class FFmpegRenderingProvider(VideoRenderingProvider):
             self._run([*inputs, "-filter_complex", ";".join(chains), "-map", "[pre]", "-ar", "48000",
                        "-c:a", "pcm_s16le", str(pre)])
             # Normalización en dos pasadas (medición + corrección lineal).
+            tp = spec.true_peak_db - AAC_PEAK_HEADROOM_DB
             measure = subprocess.run([self.params["ffmpeg"], "-hide_banner", "-nostdin", "-i", str(pre), "-af",
-                                      f"loudnorm=I={spec.target_lufs}:TP={spec.true_peak_db}:LRA=11:print_format=json",
+                                      f"loudnorm=I={spec.target_lufs}:TP={tp}:LRA=11:print_format=json",
                                       "-f", "null", "-"], capture_output=True, text=True)
             m = re.search(r"\{[^{}]*\"input_i\"[^{}]*\}", measure.stderr, re.DOTALL)
             if m:
                 st = json.loads(m.group(0))
-                ln = (f"loudnorm=I={spec.target_lufs}:TP={spec.true_peak_db}:LRA=11:measured_I={st['input_i']}:"
+                ln = (f"loudnorm=I={spec.target_lufs}:TP={tp}:LRA=11:measured_I={st['input_i']}:"
                       f"measured_TP={st['input_tp']}:measured_LRA={st['input_lra']}:measured_thresh="
                       f"{st['input_thresh']}:offset={st['target_offset']}:linear=true")
             else:
-                ln = f"loudnorm=I={spec.target_lufs}:TP={spec.true_peak_db}:LRA=11"
+                ln = f"loudnorm=I={spec.target_lufs}:TP={tp}:LRA=11"
             # Limitador final de seguridad para no superar el pico verdadero.
-            limit = 10 ** ((spec.true_peak_db - 0.3) / 20)
+            limit = 10 ** ((tp - 0.3) / 20)
             self._run(["-i", str(pre), "-af", f"{ln},alimiter=limit={limit:.4f}:level=disabled,aresample=48000",
                        "-t", dur, "-ar", "48000", "-c:a", "pcm_s16le", str(spec.out_path)])
         return self._asset(AssetKind.AUDIO_MIX, spec.out_path, duration_s=spec.duration_s)

@@ -193,3 +193,29 @@ def test_full_local_production_produces_valid_vertical_mp4(tmp_path):
     assert review["passed"] and failed == [], failed
     # Proveedores usados: todos locales y gratuitos
     assert app.provider_system.budget.ledger(pid) == []
+
+
+@needs_ffmpeg
+def test_delivered_aac_file_respects_the_true_peak_target(ff, tmp_path):
+    """Regresión (hallada con Claude real): la mezcla cumplía −1 dBTP pero el MP4 final salía en −0,4 por el
+    sobrepico del AAC. Señal con transitorios casi a fondo de escala sobre un fondo bajo: sin el margen reservado
+    la mezcla queda en −1,3 y el MP4 final en −0,8 (incumple); con él, −2,3 y −2,0."""
+    import numpy as np
+    from ytauto.providers.audio_synth import SR, write_wav
+    rng = np.random.default_rng(1)
+    x = rng.normal(0, 0.02, 9 * SR)
+    for t in (1.0, 3.0, 5.0, 7.0):
+        i = int(t * SR)
+        x[i:i + 40] += np.sin(np.linspace(0, 6 * np.pi, 40)) * 0.9
+    voice = write_wav(tmp_path / "v.wav", x)
+    mix = ff.mix_audio(AudioMixSpec(tracks=[AudioTrack(path=voice, role="voice")], duration_s=9.0,
+                                    out_path=tmp_path / "mix.wav"))
+    mix_peak = ff.probe(Path(mix.path), analyze=True).true_peak_db
+    assert mix_peak is not None and mix_peak <= -1.8, mix_peak  # la mezcla reserva margen para el AAC
+    img = tmp_path / "f.png"
+    Image.new("RGB", (1080, 1920), (30, 30, 30)).save(img)
+    seg = ff.render_scene(SceneRenderSpec(scene_index=0, visual_path=img, visual_kind="image", duration_s=9.0,
+                                          out_path=tmp_path / "s.mp4"))
+    final = ff.finalize(FinalizeSpec(video_path=Path(seg.path), audio_path=Path(mix.path), out_path=tmp_path / "f.mp4"))
+    p = ff.probe(Path(final.path), analyze=True)
+    assert p.true_peak_db is not None and p.true_peak_db <= -0.9, p.true_peak_db  # el MP4 ENTREGADO cumple −1 dBTP

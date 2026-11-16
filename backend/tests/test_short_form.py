@@ -176,3 +176,45 @@ def test_small_deficit_is_absorbed_without_spending_rounds_and_keeps_safety_marg
     corr = []
     VoiceAgent._fit_total(m, 45, corr, can_request=True)
     assert corr == [] and m.total_duration_s >= 45.3
+
+
+# ---------------------------------------------------------------- las líneas de subtítulo del guionista se respetan
+def _cue(words, t0=0.0):
+    ws, t = [], t0
+    for w in words.split():
+        ws.append(WordTiming(word=w, start_s=round(t, 2), end_s=round(t + 0.3, 2)))
+        t += 0.3
+    return SubtitleCue(start_s=ws[0].start_s, end_s=ws[-1].end_s, text=words, words=ws)
+
+
+def test_regroup_cues_honors_the_scriptwriters_lines():
+    from ytauto.core.captions import regroup_cues
+    cues = [_cue("Un cerebro minúsculo, un lenguaje enorme. Mira la naturaleza con otros ojos.")]
+    lines = ["Un cerebro minúsculo,", "un lenguaje enorme.", "Mira la naturaleza", "con otros ojos."]
+    out = regroup_cues(cues, lines)
+    assert [c.text for c in out] == lines  # sin palabras huérfanas como «ojos.»
+    assert out[0].start_s == 0.0 and out[-1].end_s == cues[0].end_s  # los tiempos de palabra se conservan
+    assert all(a.end_s <= b.start_s + 1e-9 for a, b in zip(out, out[1:]))
+
+
+def test_regroup_cues_keeps_original_cues_when_words_do_not_match_exactly():
+    from ytauto.core.captions import regroup_cues
+    cues = [_cue("Hola mundo cruel")]
+    assert regroup_cues(cues, ["Hola mundo", "malo"]) is cues  # texto distinto: no se toca
+    assert regroup_cues(cues, []) is cues
+
+
+def test_voice_agent_uses_the_script_line_breaks(make_ctx):
+    from test_agents import run_until
+    ctx = make_ctx()
+    run_until(ctx, "creative_direction", "script")
+    script = ctx.workspace.load("scripts", "script", Script)
+    scene = next(s for s in script.scenes if len(s.narration.split()) >= 6)
+    words = scene.narration.split()
+    scene.subtitle_lines = [" ".join(words[:2]), " ".join(words[2:4]), " ".join(words[4:])]
+    ctx.workspace.save("scripts", "script", script)
+    run_until(ctx, "voice")
+    vm = ctx.workspace.load("voice", "voice_manifest", VoiceManifest)
+    vs = next(v for v in vm.scenes if v.index == scene.index)
+    mine = [c.text for c in vm.cues if vs.start_s <= c.start_s < vs.start_s + vs.scene_duration_s]
+    assert mine == scene.subtitle_lines

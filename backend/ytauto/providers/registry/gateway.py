@@ -13,8 +13,6 @@ from __future__ import annotations
 import logging
 from typing import Any, Callable
 
-from pydantic import BaseModel
-
 from ...core.errors import BudgetExceeded, ProviderError, ProviderNotConfigured, SpendNotAuthorized
 from ...core.events import EventBus
 from ...core.models import MediaAsset
@@ -155,6 +153,3 @@ class RegistryGateway(ProviderGateway):
                 last = e
         raise ProviderError(chain[-1].id, f"Consulta '{operation}' fallida: {last}")
 
-
-def describe_request(request: Any) -> dict[str, Any]:
-    return request.model_dump(mode="json") if isinstance(request, BaseModel) else {"value": str(request)}

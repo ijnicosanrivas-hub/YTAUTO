@@ -10,6 +10,8 @@ import re
 
 from pydantic import BaseModel, Field
 
+from ..providers.interfaces import SubtitleCue
+
 from .platforms import MetadataLimits, PlatformProfile
 
 _HASHTAG = re.compile(r"^#[^\s#]+$")
@@ -99,3 +101,25 @@ def fit_hashtags(profile: PlatformProfile, title: str, description: str, hashtag
         tags = tags[:-1]
         fields = compose(profile, title, description, tags)
     return fields
+
+
+def regroup_cues(cues: list[SubtitleCue], lines: list[str]) -> list[SubtitleCue]:
+    """Reagrupa las palabras ya temporizadas según las líneas de subtítulo que escribió el guionista.
+
+    Solo se aplica si las líneas contienen EXACTAMENTE las mismas palabras que el alineador (si no, se conservan
+    los subtítulos originales): así se respetan los cortes pensados para la lectura sin arriesgar el texto.
+    """
+    words = [w for c in cues for w in c.words]
+    expected = [w for line in lines for w in line.split()]
+    if not lines or not words or [w.word for w in words] != expected:
+        return cues
+    out: list[SubtitleCue] = []
+    i = 0
+    for line in lines:
+        n = len(line.split())
+        chunk = words[i:i + n]
+        i += n
+        if chunk:
+            out.append(SubtitleCue(start_s=chunk[0].start_s, end_s=chunk[-1].end_s,
+                                   text=" ".join(w.word for w in chunk), words=chunk))
+    return out

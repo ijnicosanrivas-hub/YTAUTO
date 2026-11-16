@@ -16,7 +16,7 @@ from ytauto.agents.scriptwriter import ScriptwriterAgent
 from ytauto.agents.sound import SoundAgent
 from ytauto.agents.voice import VoiceAgent, normalize_for_tts
 from ytauto.core.errors import AcceptanceError
-from ytauto.core.models import CorrectionRequest, CreativeBrief, MediaAsset, Script
+from ytauto.core.models import CorrectionRequest, CreativeBrief, Script
 from ytauto.core.timeline import EditManifest, VoiceManifest
 from ytauto.llm.mock import LocalDraftLLM, ScriptedLLM
 
@@ -254,3 +254,30 @@ def test_publisher_publishes_only_authorized_platform(make_ctx, mock_providers):
     pub = next(p for k, p in mock_providers.items() if k.value == "publishing")
     assert [p.platform for p in pub.published] == ["tiktok"]
     assert r.metrics["results"]["youtube_shorts"]["status"] == "skipped"
+
+
+def test_reviewer_issue_targets_are_closed_and_aliases_are_normalized():
+    """Hallado con Claude real: devolvía agentes inexistentes («subtitles», «script») y se descartaban en silencio."""
+    from pydantic import ValidationError
+    from ytauto.agents.reviewer import EditorialIssue, EditorialReview
+    props = EditorialIssue.model_json_schema()["properties"]["target_agent"]
+    assert set(props["enum"]) == {"director", "scriptwriter", "resources", "voice", "editor", "sound"}  # lo que ve Claude
+    for alias, expected in (("subtitles", "voice"), ("Subtítulos", "voice"), ("script", "scriptwriter"),
+                            ("AUDIO", "sound"), ("Montaje", "editor"), ("imágenes", "resources")):
+        assert EditorialIssue(target_agent=alias, reason="x").target_agent == expected, alias
+    with pytest.raises(ValidationError):  # un agente imposible NO se acepta: se reintenta con el motivo
+        EditorialIssue(target_agent="marketing", reason="x")
+    assert EditorialIssue(target_agent="sound", reason="x", severity=" MAJOR ").severity == "major"
+    assert EditorialReview.model_json_schema()["$defs"]["EditorialIssue"]["properties"]["severity"]["enum"] == [
+        "minor", "major", "critical"]
+
+
+def test_reviewer_aliased_issue_becomes_a_correction_for_the_right_agent(make_ctx):
+    from ytauto.llm.mock import LocalDraftLLM, ScriptedLLM
+    llm = ScriptedLLM({"reviewer": lambda r: {
+        "scores": {"hook": 3, "pacing": 3, "coherence": 3, "spelling": 5, "legibility": 3},
+        "issues": [{"target_agent": "subtitles", "scene_index": 2, "reason": "Palabra huérfana", "severity": "major"}],
+        "summary": "mal"}}, fallback=LocalDraftLLM())
+    ctx = make_ctx(llm=llm, settings={"review_threshold": 95})
+    r = run_until(ctx, *PIPE, "review")
+    assert any(c.target_agent == "voice" and c.phase == "voice" and c.scene_index == 2 for c in r.corrections)

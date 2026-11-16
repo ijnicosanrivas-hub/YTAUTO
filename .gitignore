@@ -25,3 +25,5 @@ frontend/dist/
 *.mp3
 !backend/tests/fixtures/**
 demo_output/
+.coverage
+htmlcov/

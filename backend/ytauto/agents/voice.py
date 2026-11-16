@@ -6,6 +6,7 @@ import re
 
 from pydantic import BaseModel
 
+from ..core.captions import regroup_cues
 from ..core.models import MAX_DURATION_S, MIN_DURATION_S, CorrectionRequest, Script
 from ..core.timeline import VoiceManifest, VoiceScene
 from ..core.workspace import stable_hash
@@ -182,11 +183,13 @@ class VoiceAgent(Agent):
         for vs in manifest.scenes:
             if not vs.path:
                 continue
-            cues += ctx.providers.query(
+            scene_cues = ctx.providers.query(
                 ProviderCategory.SUBTITLE, "align",
                 SubtitleRequest(text=by_idx[vs.index].narration, audio_path=vs.path,
                                 audio_duration_s=vs.voice_duration_s, language=ctx.spec.language,
                                 offset_s=vs.start_s + vs.voice_offset_s), project_id=ctx.project_id)
+            # Los cortes de línea que escribió el guionista (pensados para leer en móvil) tienen prioridad.
+            cues += regroup_cues(scene_cues, by_idx[vs.index].subtitle_lines)
         return cues
 
     def _llm_pronunciation(self, ctx: AgentContext, texts: dict[int, str]) -> dict[int, str]:

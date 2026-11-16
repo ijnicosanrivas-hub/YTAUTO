@@ -5,13 +5,11 @@ import logging
 import os
 import socket
 import threading
-import time
 import uuid
 from concurrent.futures import Future, ThreadPoolExecutor
 
 from ..core.models import PhaseStatus, ProjectStatus
 from ..orchestrator.orchestrator import Orchestrator
-from ..orchestrator.pipeline import PHASES
 from .task_queue import LANES, Task, TaskQueue
 
 log = logging.getLogger("ytauto.worker")

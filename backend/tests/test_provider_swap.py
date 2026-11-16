@@ -9,7 +9,7 @@ from cryptography.fernet import Fernet
 
 from ytauto.core.errors import BudgetExceeded, ProviderError, SpendNotAuthorized
 from ytauto.core.events import EventBus
-from ytauto.core.models import AssetKind, License, MediaAsset, PhaseStatus, ProjectSpec, ProjectStatus
+from ytauto.core.models import AssetKind, License, MediaAsset, ProjectSpec, ProjectStatus
 from ytauto.db.schema import make_engine
 from ytauto.db.store import SqlStateStore
 from ytauto.llm.mock import LocalDraftLLM
