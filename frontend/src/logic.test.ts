@@ -70,3 +70,39 @@ describe("formato", () => {
     expect(elapsed("2026-01-01T00:00:00Z", "2026-01-01T00:01:05Z")).toBe("1m 05s");
   });
 });
+
+import { CLASSIC_THEME, bodyColor, displayName, quoteFor } from "./theme";
+import type { Theme } from "./types";
+
+describe("tema de personajes", () => {
+  const theme: Theme = {
+    ...CLASSIC_THEME,
+    id: "gotham",
+    agents: {
+      chief: {
+        character: "Batman", alias: "Bruce Wayne", epithet: "El Caballero Oscuro", alignment: "héroe",
+        color: "#FFD400", glyph: "🦇", persona: "x",
+        quotes: { idle: "i", started: "s", finished: "f", waiting: "w", error: "e" },
+      },
+    },
+  };
+  const base = { name: "chief", title: "Jefe", status: "idle" as const, runs: 0, last_result: null };
+
+  it("muestra el personaje o, sin tema, el título funcional", () => {
+    expect(displayName(theme, base)).toBe("Batman");
+    expect(displayName(CLASSIC_THEME, base)).toBe("Jefe");
+  });
+  it("el color del cuerpo es el del personaje; sin personaje, el del estado", () => {
+    expect(bodyColor(theme, base)).toBe("#FFD400");
+    expect(bodyColor(CLASSIC_THEME, { name: "chief", status: "error" })).toBe("#f43f5e");
+  });
+  it("la frase depende del estado real, no de nada inventado", () => {
+    expect(quoteFor(theme, base)).toBe("i");
+    expect(quoteFor(theme, { ...base, status: "running" })).toBe("s");
+    expect(quoteFor(theme, { ...base, status: "waiting" })).toBe("w");
+    expect(quoteFor(theme, { ...base, status: "error" })).toBe("e");
+    expect(quoteFor(theme, { ...base, runs: 2, last_result: "ok" })).toBe("f");
+    expect(quoteFor(theme, { ...base, runs: 2, last_result: null })).toBe("i");
+    expect(quoteFor(CLASSIC_THEME, base)).toBeUndefined();
+  });
+});

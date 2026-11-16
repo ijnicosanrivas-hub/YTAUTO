@@ -5,7 +5,8 @@ import * as THREE from "three";
 import { PageHead, useApi } from "../components/ui";
 import { AGENT_COLOR, elapsed, statusLabel } from "../format";
 import { useLive } from "../store";
-import type { AgentState, Link } from "../types";
+import { bodyColor, displayName, personaFor, quoteFor } from "../theme";
+import type { AgentState, Link, Theme } from "../types";
 
 const RING_ORDER = ["director", "scriptwriter", "resources", "voice", "editor", "sound", "reviewer", "publisher"];
 const RADIUS = 5;
@@ -29,9 +30,12 @@ export function linkActive(link: Link, agents: Record<string, AgentState>, last:
 
 type Overlay = React.RefObject<HTMLDivElement | null>;
 
-function Node({ agent, position, central, overlay }: { agent: AgentState; position: [number, number, number]; central: boolean; overlay: Overlay }) {
+function Node({ agent, position, central, overlay, theme }: { agent: AgentState; position: [number, number, number]; central: boolean; overlay: Overlay; theme: Theme }) {
   const mesh = useRef<THREE.Mesh>(null);
-  const color = AGENT_COLOR[agent.status] ?? "#5b6b8c";
+  const statusColor = AGENT_COLOR[agent.status] ?? "#5b6b8c";
+  const color = bodyColor(theme, agent);
+  const persona = personaFor(theme, agent.name);
+  const quote = quoteFor(theme, agent);
   const [, force] = useState(0);
   useEffect(() => {
     if (agent.status !== "running") return;
@@ -56,10 +60,16 @@ function Node({ agent, position, central, overlay }: { agent: AgentState; positi
         <sphereGeometry args={[size * 0.55, 24, 24]} />
         <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.6} transparent opacity={0.85} />
       </mesh>
+      {/* Anillo con el color del ESTADO real: el cuerpo lleva el color del personaje */}
+      <mesh rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[size * 1.25, 0.04, 8, 48]} />
+        <meshBasicMaterial color={statusColor} />
+      </mesh>
       {/* Las etiquetas van a una capa propia (portal): evita que React y drei compitan por los mismos nodos DOM al salir */}
       <Html position={[0, size + 0.35, 0]} center distanceFactor={11} zIndexRange={[10, 0]} portal={overlay as React.RefObject<HTMLElement>}>
         <div className="node-card">
-          <b>{agent.title}</b> <span style={{ color }}>● {statusLabel(agent.status)}</span>
+          {persona && <span>{persona.glyph} </span>}<b style={persona ? { color } : undefined}>{displayName(theme, agent)}</b>{persona && <span className="muted"> · {agent.title}</span>} <span style={{ color: statusColor }}>● {statusLabel(agent.status)}</span>
+          {quote && <div className="quote">«{quote}»</div>}
           {agent.status === "running" && (
             <>
               <div className="task">{agent.task}</div>
@@ -93,7 +103,34 @@ function Pulse({ from, to }: { from: THREE.Vector3; to: THREE.Vector3 }) {
   );
 }
 
-function Scene({ agents, links, overlay }: { agents: Record<string, AgentState>; links: Link[]; overlay: Overlay }) {
+/** Ambientación Gotham: horizonte de edificios y señal del Murciélago. Decorativo, sin significado de estado. */
+function Gotham({ accent }: { accent: string }) {
+  const towers = useMemo(
+    () => Array.from({ length: 28 }, (_, i) => {
+      const a = (i / 28) * Math.PI * 2;
+      const h = 3 + ((i * 7919) % 11) * 0.9; // alturas deterministas
+      return { x: Math.cos(a) * 22, z: Math.sin(a) * 22, h, w: 1.4 + (i % 3) * 0.5 };
+    }),
+    [],
+  );
+  return (
+    <>
+      {towers.map((t, i) => (
+        <mesh key={i} position={[t.x, -1.6 + t.h / 2, t.z]}>
+          <boxGeometry args={[t.w, t.h, t.w]} />
+          <meshStandardMaterial color="#0b0d14" emissive="#10131f" emissiveIntensity={0.6} />
+        </mesh>
+      ))}
+      {/* Haz de la señal sobre el jefe */}
+      <mesh position={[0, 5, 0]}>
+        <coneGeometry args={[2.2, 14, 32, 1, true]} />
+        <meshBasicMaterial color={accent} transparent opacity={0.07} side={THREE.DoubleSide} depthWrite={false} />
+      </mesh>
+    </>
+  );
+}
+
+function Scene({ agents, links, overlay, theme }: { agents: Record<string, AgentState>; links: Link[]; overlay: Overlay; theme: Theme }) {
   const last = useLive((s) => s.lastActivity);
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
@@ -120,7 +157,8 @@ function Scene({ agents, links, overlay }: { agents: Record<string, AgentState>;
           </group>
         );
       })}
-      {Object.entries(pos).map(([name, p]) => agents[name] && <Node key={name} agent={agents[name]} position={p} central={name === "chief"} overlay={overlay} />)}
+      {Object.entries(pos).map(([name, p]) => agents[name] && <Node key={name} agent={agents[name]} position={p} central={name === "chief"} overlay={overlay} theme={theme} />)}
+      {theme.id !== "classic" && <Gotham accent={theme.palette.accent} />}
       <OrbitControls enablePan={false} minDistance={6} maxDistance={22} maxPolarAngle={Math.PI / 2.1} />
     </>
   );
@@ -131,6 +169,7 @@ export default function ProductionRoom() {
   const { data } = useApi<{ agents: AgentState[]; links: Link[] }>("/api/agents");
   const live = useLive((s) => s.agents);
   const connected = useLive((s) => s.connected);
+  const theme = useLive((s) => s.theme);
   const agents = useMemo(() => {
     const base = Object.fromEntries((data?.agents ?? []).map((a) => [a.name, a]));
     return { ...base, ...live };
@@ -138,20 +177,21 @@ export default function ProductionRoom() {
   const running = Object.values(agents).filter((a) => a.status === "running");
   return (
     <>
-      <PageHead title="Sala de producción" subtitle="Nueve agentes y sus conexiones. Todo lo que se mueve corresponde a actividad real.">
+      <PageHead title={theme.room_title} subtitle={`${theme.room_subtitle}. Nueve agentes y sus conexiones: todo lo que se mueve corresponde a actividad real.`}>
         <span className={`badge ${connected ? "s-completed" : "s-error"}`}>{connected ? "En directo" : "Sin conexión"}</span>
         <span className="badge s-running">{running.length} en ejecución</span>
       </PageHead>
       <div className="panel room">
         <Canvas camera={{ position: [0, 7, 11], fov: 50 }} dpr={[1, 2]}>
-          <color attach="background" args={["#05070f"]} />
-          <Scene agents={agents} links={data?.links ?? []} overlay={overlay} />
+          <color attach="background" args={[theme.id === "classic" ? "#05070f" : theme.palette.background]} />
+          <Scene agents={agents} links={data?.links ?? []} overlay={overlay} theme={theme} />
         </Canvas>
         <div ref={overlay} className="room-overlay" />
         <div className="room-legend">
           {(["idle", "running", "waiting", "error"] as const).map((s) => (
             <span key={s}><span style={{ color: AGENT_COLOR[s] }}>●</span> {statusLabel(s)}</span>
           ))}
+          <span>○ anillo = estado · cuerpo = personaje</span>
           <span>── control (jefe → agente)</span>
           <span>- - entrega entre agentes</span>
         </div>

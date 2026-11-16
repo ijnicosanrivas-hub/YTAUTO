@@ -1,3 +1,4 @@
+import { displayName } from "../theme";
 import { AGENT_COLOR, describeEvent, eur, shortDate } from "../format";
 import { Badge, ErrorBox, PageHead, Progress, useApi } from "../components/ui";
 import { useLive } from "../store";
@@ -20,6 +21,7 @@ export default function Dashboard() {
   const seen = new Set(liveEvents.map((e) => e.at + e.type + e.agent));
   const events = [...liveEvents, ...[...(recent ?? [])].reverse().filter((e) => !seen.has(e.at + e.type + e.agent))];
   const liveAgents = useLive((s) => s.agents);
+  const theme = useLive((s) => s.theme);
   const agents = Object.keys(liveAgents).length ? Object.values(liveAgents) : (data?.agents ?? []);
   const claudeLane = data?.claude.lanes.claude;
 
@@ -89,7 +91,7 @@ export default function Dashboard() {
               {agents.map((a) => (
                 <tr key={a.name}>
                   <td>
-                    <span style={{ color: AGENT_COLOR[a.status] }}>●</span> {a.title}
+                    <span style={{ color: AGENT_COLOR[a.status] }}>●</span> {displayName(theme, a)}{theme.agents[a.name] ? <span className="muted"> · {a.title}</span> : null}
                   </td>
                   <td className="muted" style={{ maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {a.status === "running" ? a.task : a.last_result ?? "—"}

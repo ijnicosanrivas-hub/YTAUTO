@@ -1,18 +1,32 @@
 import { Badge, PageHead, Progress, useApi } from "../components/ui";
 import { elapsed } from "../format";
+import { quoteFor, personaFor, bodyColor } from "../theme";
 import { useLive } from "../store";
 import type { AgentState } from "../types";
 
 export default function Agents() {
   const { data } = useApi<{ agents: AgentState[]; pipeline: { id: string; number: number; title: string; agent: string | null }[] }>("/api/agents", { live: true });
   const live = useLive((s) => s.agents);
+  const theme = useLive((s) => s.theme);
   const agents = (data?.agents ?? []).map((a) => live[a.name] ?? a);
   return (
     <>
       <PageHead title="Agentes" subtitle="Responsabilidades, fases y estadísticas reales de cada agente" />
       <div className="grid cols-3">
         {agents.map((a) => (
-          <div key={a.name} className="panel">
+          <div key={a.name} className="panel" style={personaFor(theme, a.name) ? { borderTop: `3px solid ${bodyColor(theme, a)}` } : undefined}>
+            {personaFor(theme, a.name) && (
+              <div className="persona">
+                <div className="row">
+                  <span className="glyph">{personaFor(theme, a.name)!.glyph}</span>
+                  <div>
+                    <b style={{ color: bodyColor(theme, a) }}>{personaFor(theme, a.name)!.character}</b>
+                    <div className="muted">{personaFor(theme, a.name)!.epithet} · {personaFor(theme, a.name)!.alignment}</div>
+                  </div>
+                </div>
+                <p className="quote">«{quoteFor(theme, a)}»</p>
+              </div>
+            )}
             <div className="row">
               <b>{a.title}</b>
               <span className="spacer" />

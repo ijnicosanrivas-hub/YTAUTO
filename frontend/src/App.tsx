@@ -1,6 +1,7 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { useApi } from "./components/ui";
 import { useLive } from "./store";
+import type { Theme } from "./types";
 import Agents from "./pages/Agents";
 import Budget from "./pages/Budget";
 import Dashboard from "./pages/Dashboard";
@@ -33,6 +34,21 @@ export default function App() {
   const connected = useLive((s) => s.connected);
   const { data: dash } = useApi<{ waiting_approval: unknown[] }>("/api/dashboard", { live: true });
   const pending = dash?.waiting_approval.length ?? 0;
+  const theme = useLive((s) => s.theme);
+  const setTheme = useLive((s) => s.setTheme);
+  const { data: themeData } = useApi<Theme>("/api/theme");
+  useEffect(() => {
+    if (themeData) setTheme(themeData);
+  }, [themeData, setTheme]);
+  useEffect(() => {
+    const root = document.documentElement;
+    const gotham = theme.id !== "classic";
+    if (gotham) root.dataset.theme = "dark"; // los personajes se ven en oscuro: fuerza el modo oscuro
+    else delete root.dataset.theme;
+    if (gotham) root.style.setProperty("--accent", theme.palette.accent);
+    else root.style.removeProperty("--accent");
+    document.title = gotham ? `${theme.brand} · ${theme.room_title}` : "YTAUTO · Sala de producción";
+  }, [theme]);
 
   let page: React.ReactNode;
   switch (route.page) {
@@ -75,11 +91,11 @@ export default function App() {
     <div className="layout">
       <nav className="sidebar" aria-label="Secciones">
         <div className="brand">
-          <span className="brand-dot" /> YTAUTO
+          <span className="brand-dot" /> {theme.id === "classic" ? "YTAUTO" : `🦇 ${theme.brand}`}
         </div>
         {NAV.map((n) => (
           <a key={n.page} href={`#/${n.page}`} className={`nav-item ${route.page === n.page ? "active" : ""}`}>
-            {n.label}
+            {n.page === "room" ? theme.room_title : n.label}
             {n.page === "projects" && pending > 0 && <span className="nav-count">{pending}</span>}
           </a>
         ))}

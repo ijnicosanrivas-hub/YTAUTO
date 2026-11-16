@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { wsUrl } from "./api";
-import type { AgentState, YtEvent } from "./types";
+import { CLASSIC_THEME } from "./theme";
+import type { AgentState, Theme, YtEvent } from "./types";
 
 export type Route = { page: string; id?: string };
 
@@ -13,6 +14,8 @@ interface LiveState {
   route: Route;
   connected: boolean;
   agents: Record<string, AgentState>;
+  theme: Theme;
+  setTheme: (t: Theme) => void;
   events: YtEvent[];
   /** Última vez (ms) que cada agente emitió un evento real: anima las conexiones de la sala. */
   lastActivity: Record<string, number>;
@@ -34,6 +37,8 @@ export const useLive = create<LiveState>((set) => ({
   route: parseHash(typeof location !== "undefined" ? location.hash : ""),
   connected: false,
   agents: {},
+  theme: CLASSIC_THEME,
+  setTheme: (theme) => set({ theme }),
   events: [],
   lastActivity: {},
   revision: 0,

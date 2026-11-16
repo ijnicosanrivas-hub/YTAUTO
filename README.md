@@ -22,6 +22,10 @@ paquete de publicación → publicación solo con tu autorización → informe`
 | 8 | Revisor | sí + medidas | Nota 0–100 (**no predice viralidad**) y correcciones dirigidas |
 | 9 | Publicador | sí (haiku) | Exportaciones validadas, textos por plataforma, publicación autorizada |
 
+## Tema Gotham
+Los agentes son personajes de Gotham (Batman es el jefe; el Joker, el guionista…) y la sala es *La Baticueva*.
+Es solo presentación: no cambia el contenido de los vídeos. Detalles y cómo volver al estilo clásico en `docs/theme.md`.
+
 ## ¿Usas Windows y no sabes de informática?
 Sigue la **[guía paso a paso para Windows](docs/WINDOWS.md)**: descargas el ZIP, haces doble clic en
 `INSTALAR_WINDOWS.bat`, inicias sesión en Claude una vez y abres `INICIAR_WINDOWS.bat`. `DIAGNOSTICO_WINDOWS.bat`
@@ -99,6 +103,7 @@ están **desactivados** y exigen credenciales, presupuesto y autorización: ver 
 | `docs/platforms.md` | Requisitos verificados de Reels/Shorts/TikTok y qué **no** está verificado |
 | `docs/integrations.md` | Publicación oficial y proveedores de pago; qué falta para usarlos en real |
 | `docs/ui.md` | Interfaz y sala de producción |
+| `docs/theme.md` | Tema de personajes de Gotham (Batman, Joker…) y cómo cambiarlo |
 | `docs/testing.md` | Pruebas, cobertura y qué no está probado |
 | `docs/adr/` | Decisiones de arquitectura |
 

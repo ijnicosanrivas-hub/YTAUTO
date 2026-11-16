@@ -1,0 +1,11 @@
+# Tema clásico: nombres y colores neutros (sin personajes).
+id: classic
+name: Clásico
+brand: YTAUTO
+room_title: Sala de producción
+room_subtitle: Fábrica multiagente de vídeos cortos
+palette:
+  accent: "#22d3ee"
+  background: "#0b1020"
+  panel: "#121a30"
+agents: {}

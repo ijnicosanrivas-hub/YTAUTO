@@ -25,6 +25,7 @@ from ..app import App
 from ..core.events import Event
 from ..core.models import PhaseStatus, ProjectSpec
 from ..core.settings import REPO_ROOT
+from ..core.theme import Theme, load_theme
 from ..core.workspace import Workspace
 from ..orchestrator.pipeline import PHASES, PIPELINE
 from ..providers.interfaces import ProviderCategory
@@ -122,7 +123,8 @@ def _project_view(app: App, pid: str) -> dict[str, Any]:
 
 
 def create_api(app: App, start_worker: bool = False, token: str | None = None,
-               allowed_origins: list[str] | None = None) -> FastAPI:
+               allowed_origins: list[str] | None = None, theme: Theme | None = None) -> FastAPI:
+    theme = theme or load_theme()
     token = token if token is not None else os.environ.get("YTAUTO_API_TOKEN") or None
     board = Board()
     rebuild(board, app.store.events(limit=2000))
@@ -313,6 +315,10 @@ def create_api(app: App, start_worker: bool = False, token: str | None = None,
                 "links": [link.model_dump() for link in board.links()],
                 "pipeline": [{"id": p.id, "number": p.number, "title": p.title, "agent": p.agent, "kind": p.kind}
                              for p in PIPELINE]}
+
+    @api.get("/api/theme", dependencies=A)
+    def get_theme() -> dict[str, Any]:
+        return theme.model_dump()
 
     @api.get("/api/events", dependencies=A)
     def events(limit: int = Query(200, le=2000)) -> list[dict[str, Any]]:
