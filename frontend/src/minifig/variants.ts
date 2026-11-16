@@ -2,7 +2,7 @@
  * Las nueve variantes de la minifigura. SOLO colores, estampados y accesorios: ninguna dimensión
  * (las proporciones salen de `styleBible.ts`, idénticas para todos). Identidades fijadas por el usuario.
  */
-import type { Op } from "./ops";
+import { BAT_POLY, type Op } from "./ops";
 import { PLASTIC as P } from "./styleBible";
 
 export type Accessory =
@@ -29,7 +29,7 @@ export interface Variant {
   accessories: Accessory[];
 }
 
-const BAT: [number, number][] = [[18, 42], [34, 36], [42, 30], [46, 35], [50, 27], [54, 35], [58, 30], [66, 36], [82, 42], [72, 54], [64, 47], [56, 58], [50, 53], [44, 58], [36, 47], [28, 54]];
+const BAT = BAT_POLY;
 
 // Piezas de cara reutilizables (mismo lenguaje de dibujo para los nueve).
 const eyes = (y: number, c: string = P.black, white = true): Op[] => [
@@ -98,14 +98,14 @@ export const VARIANTS: Record<string, Variant> = {
     accessories: [{ t: "ears", kind: "cat", color: P.black }],
   },
   voice: {
-    agent: "voice", character: "Bane", head: P.tan,
+    agent: "voice", character: "Bane", head: P.nougat,
     face: [...slits(38), { k: "line", x1: 16, y1: 30, x2: 36, y2: 34, c: P.darkGrey, w: 3 }, { k: "line", x1: 84, y1: 30, x2: 64, y2: 34, c: P.darkGrey, w: 3 }],
     torsoColor: P.darkGrey,
     torso: [
       { k: "rect", x: 0, y: 0, w: 100, h: 100, c: P.tan },
       { k: "rect", x: 0, y: 0, w: 100, h: 30, c: P.darkGrey }, // hombreras/arneses
       { k: "line", x1: 18, y1: 0, x2: 44, y2: 100, c: P.black, w: 7 }, { k: "line", x1: 82, y1: 0, x2: 56, y2: 100, c: P.black, w: 7 },
-      { k: "line", x1: 30, y1: 40, x2: 70, y2: 40, c: P.flesh, w: 2 }, { k: "line", x1: 50, y1: 38, x2: 50, y2: 78, c: P.flesh, w: 2 },
+      { k: "line", x1: 30, y1: 40, x2: 70, y2: 40, c: P.lightNougat, w: 2 }, { k: "line", x1: 50, y1: 38, x2: 50, y2: 78, c: P.lightNougat, w: 2 },
       { k: "rect", x: 0, y: 84, w: 100, h: 14, c: P.black }, { k: "rect", x: 42, y: 86, w: 16, h: 10, c: P.grey },
     ],
     hips: P.black, legs: { l: P.darkGrey, r: P.darkGrey }, arms: { l: P.tan, r: P.tan }, hands: P.black,
@@ -125,8 +125,8 @@ export const VARIANTS: Record<string, Variant> = {
     accessories: [{ t: "hair", style: "nightwing", a: P.black }],
   },
   sound: {
-    agent: "sound", character: "El Pingüino", head: P.flesh,
-    face: [...eyes(42, P.black), { k: "poly", pts: [[44, 50], [56, 50], [50, 66]], c: P.flesh }, ...smile(78, 14), { k: "line", x1: 16, y1: 34, x2: 40, y2: 38, c: P.black, w: 2.5 }],
+    agent: "sound", character: "El Pingüino", head: P.lightNougat,
+    face: [...eyes(42, P.black), { k: "poly", pts: [[44, 50], [56, 50], [50, 66]], c: P.lightNougat }, ...smile(78, 14), { k: "line", x1: 16, y1: 34, x2: 40, y2: 38, c: P.black, w: 2.5 }],
     torsoColor: P.black,
     torso: [
       { k: "rect", x: 0, y: 0, w: 100, h: 100, c: P.black },

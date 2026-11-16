@@ -6,7 +6,7 @@ import type { AgentState, Theme, YtEvent } from "./types";
 export type Route = { page: string; id?: string };
 
 export function parseHash(hash: string): Route {
-  const [page, id] = hash.replace(/^#\/?/, "").split("/");
+  const [page, id] = hash.replace(/^#\/?/, "").split("?")[0].split("/"); // el «?» admite parámetros (p. ej. ?calidad=alta)
   return { page: page || "dashboard", id: id || undefined };
 }
 

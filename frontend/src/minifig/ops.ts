@@ -6,6 +6,9 @@ export type Op =
   | { k: "line"; x1: number; y1: number; x2: number; y2: number; c: string; w?: number }
   | { k: "text"; x: number; y: number; s: string; c: string; size: number };
 
+/** Silueta del murciélago en el lienzo 100×100 (torso de Batman, mosaico del suelo y proyector). */
+export const BAT_POLY: [number, number][] = [[18, 42], [34, 36], [42, 30], [46, 35], [50, 27], [54, 35], [58, 30], [66, 36], [82, 42], [72, 54], [64, 47], [56, 58], [50, 53], [44, 58], [36, 47], [28, 54]];
+
 /** Lienzo lógico 100×100 (el origen es la esquina superior izquierda). */
 export const CANVAS = 100;
 

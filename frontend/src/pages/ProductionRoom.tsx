@@ -1,20 +1,32 @@
-import { Environment, Html, Line, OrbitControls, Stars } from "@react-three/drei";
+import { Environment, Html, Line, OrbitControls, PerformanceMonitor, Stars } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
+import { Bloom, EffectComposer, Vignette } from "@react-three/postprocessing";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { PageHead, useApi } from "../components/ui";
 import { AGENT_COLOR, elapsed, statusLabel } from "../format";
 import { useLive } from "../store";
 import { bodyColor, displayName, personaFor, quoteFor } from "../theme";
-import { Batcave, FLOOR_Y, PLATE_H, Plate, StudioLights } from "../minifig/Batcave";
+import { Batcave, FLOOR_Y, PLATE_H, Plate, StudioLights, plateRadius } from "../minifig/Batcave";
+import { FigureFx, Workstation } from "../minifig/Extras";
 import { Minifig } from "../minifig/Minifig";
 import { animationState } from "../minifig/pose";
-import { FIGURE_HEIGHT, FIGURE_SCALE } from "../minifig/styleBible";
+import { FIGURE_HEIGHT, LDU } from "../minifig/styleBible";
 import { VARIANTS } from "../minifig/variants";
 import type { AgentState, Link, Theme } from "../types";
 
+/** Calidad gráfica: «alta» (brillo, antialiasing, sombras) o «baja» (equipos modestos). Se degrada sola si los fotogramas caen. */
+function initialQuality(): { quality: "high" | "low"; locked: boolean } {
+  try {
+    const q = new URLSearchParams(location.hash.split("?")[1] ?? "").get("calidad") ?? localStorage.getItem("ytauto.calidad");
+    if (q === "alta") return { quality: "high", locked: true };
+    if (q === "baja") return { quality: "low", locked: true };
+  } catch { /* sin almacenamiento: calidad automática */ }
+  return { quality: "high", locked: false };
+}
+
 const FEET_Y = FLOOR_Y + PLATE_H;
-const CHEST_Y = FEET_Y + 0.7 * FIGURE_SCALE; // las conexiones y etiquetas se anclan a esta altura
+const CHEST_Y = FEET_Y + 0.62 * FIGURE_HEIGHT * LDU; // las conexiones y etiquetas se anclan a esta altura
 
 const RING_ORDER = ["director", "scriptwriter", "resources", "voice", "editor", "sound", "reviewer", "publisher"];
 const RADIUS = 5;
@@ -70,13 +82,15 @@ function Node({ agent, position, central, overlay, theme, figure, receiving, see
     <group position={position}>
       {variant ? (
         <>
-          <group position={[0, FEET_Y - position[1], 0]} scale={FIGURE_SCALE}>
+          <group position={[0, FEET_Y - position[1], 0]}>
             <Minifig variant={variant} getAnim={getAnim} seed={seed} />
+            <Workstation active={agent.status === "running"} tint={color} seed={seed} />
+            <FigureFx getAnim={getAnim} finishedAt={agent.finished_at} seed={seed} />
           </group>
           <Plate position={[0, FLOOR_Y - position[1], 0]} color={color} big={central} />
           {/* Anillo de ESTADO en el borde de la placa; el color del personaje va en la figura y la placa */}
           <mesh position={[0, FEET_Y - position[1] + 0.04, 0]} rotation={[Math.PI / 2, 0, 0]}>
-            <torusGeometry args={[central ? 1.2 : 0.92, 0.035, 8, 56]} />
+            <torusGeometry args={[plateRadius(central) + 0.07, 0.035, 8, 64]} />
             <meshBasicMaterial color={statusColor} />
           </mesh>
         </>
@@ -98,8 +112,8 @@ function Node({ agent, position, central, overlay, theme, figure, receiving, see
       </>
       )}
       {/* Las etiquetas van a una capa propia (portal): evita que React y drei compitan por los mismos nodos DOM al salir */}
-      <Html position={[0, variant ? FEET_Y - position[1] + FIGURE_HEIGHT * FIGURE_SCALE + (central ? 1.15 : 1.0) : size + 0.35, 0]} center distanceFactor={11} zIndexRange={[10, 0]} portal={overlay as React.RefObject<HTMLElement>}>
-        <div className="node-card">
+      <Html position={[0, variant ? FEET_Y - position[1] + FIGURE_HEIGHT * LDU + 0.95 : size + 0.35, 0]} center distanceFactor={variant ? 8.5 : 11} zIndexRange={[10, 0]} portal={overlay as React.RefObject<HTMLElement>}>
+        <div className={`node-card${variant && agent.status === "idle" ? " compact" : ""}`}>
           {persona && <span>{persona.glyph} </span>}<b style={persona ? { color } : undefined}>{displayName(theme, agent)}</b>{persona && <span className="muted"> · {agent.title}</span>} <span style={{ color: statusColor }}>● {statusLabel(agent.status)}</span>
           {quote && <div className="quote">«{quote}»</div>}
           {agent.status === "running" && (
@@ -126,16 +140,17 @@ function Pulse({ from, to }: { from: THREE.Vector3; to: THREE.Vector3 }) {
     if (!ref.current) return;
     const t = (state.clock.elapsedTime * 0.8) % 1;
     ref.current.position.lerpVectors(from, to, t);
+    ref.current.rotation.set(state.clock.elapsedTime * 4, state.clock.elapsedTime * 3, 0); // el paquete de datos es un ladrillo que gira
   });
   return (
-    <mesh ref={ref}>
-      <sphereGeometry args={[0.09, 12, 12]} />
-      <meshBasicMaterial color="#22d3ee" />
+    <mesh ref={ref} castShadow>
+      <boxGeometry args={[0.2, 0.1, 0.1]} />
+      <meshPhysicalMaterial color="#F2CD37" roughness={0.3} clearcoat={0.5} emissive="#F2CD37" emissiveIntensity={0.5} />
     </mesh>
   );
 }
 
-function Scene({ agents, links, overlay, theme }: { agents: Record<string, AgentState>; links: Link[]; overlay: Overlay; theme: Theme }) {
+function Scene({ agents, links, overlay, theme, quality }: { agents: Record<string, AgentState>; links: Link[]; overlay: Overlay; theme: Theme; quality: "high" | "low" }) {
   const last = useLive((s) => s.lastActivity);
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
@@ -162,6 +177,12 @@ function Scene({ agents, links, overlay, theme }: { agents: Record<string, Agent
             <StudioLights />
           </Environment>
           <Batcave accent={theme.palette.accent} />
+          {quality === "high" && (
+          <EffectComposer multisampling={4}>
+            <Bloom intensity={0.55} luminanceThreshold={0.9} mipmapBlur />
+            <Vignette offset={0.25} darkness={0.6} />
+          </EffectComposer>
+          )}
         </>
       ) : (
         <>
@@ -195,6 +216,8 @@ function Scene({ agents, links, overlay, theme }: { agents: Record<string, Agent
 
 export default function ProductionRoom() {
   const overlay = useRef<HTMLDivElement>(null);
+  const initial = useMemo(initialQuality, []);
+  const [quality, setQuality] = useState<"high" | "low">(initial.quality);
   const { data } = useApi<{ agents: AgentState[]; links: Link[] }>("/api/agents");
   const live = useLive((s) => s.agents);
   const connected = useLive((s) => s.connected);
@@ -209,11 +232,17 @@ export default function ProductionRoom() {
       <PageHead title={theme.room_title} subtitle={`${theme.room_subtitle}. Nueve agentes y sus conexiones: todo lo que se mueve corresponde a actividad real.`}>
         <span className={`badge ${connected ? "s-completed" : "s-error"}`}>{connected ? "En directo" : "Sin conexión"}</span>
         <span className="badge s-running">{running.length} en ejecución</span>
+        {theme.id !== "classic" && (
+          <button className="btn" title="Calidad gráfica: alta usa brillos, antialiasing y sombras; baja es para equipos modestos" onClick={() => { const q = quality === "high" ? "low" : "high"; setQuality(q); try { localStorage.setItem("ytauto.calidad", q === "high" ? "alta" : "baja"); } catch { /* sin almacenamiento */ } }}>
+            Calidad: {quality === "high" ? "alta" : "baja"}
+          </button>
+        )}
       </PageHead>
       <div className="panel room">
-        <Canvas shadows camera={{ position: [0, 8.5, 14], fov: 48 }} dpr={[1, 2]}>
+        <Canvas shadows={quality === "high"} dpr={quality === "high" ? [1, 2] : 1} camera={{ position: [0, 8.6, 13.4], fov: 46 }}>
+          {!initial.locked && theme.id !== "classic" && <PerformanceMonitor onDecline={() => setQuality("low")} />}
           <color attach="background" args={[theme.id === "classic" ? "#05070f" : theme.palette.background]} />
-          <Scene agents={agents} links={data?.links ?? []} overlay={overlay} theme={theme} />
+          <Scene agents={agents} links={data?.links ?? []} overlay={overlay} theme={theme} quality={quality} />
         </Canvas>
         <div ref={overlay} className="room-overlay" />
         <div className="room-legend">

@@ -43,6 +43,7 @@ export default function App() {
   useEffect(() => {
     const root = document.documentElement;
     const gotham = theme.id !== "classic";
+    root.classList.toggle("lego", gotham); // estilo de ladrillos LEGO
     if (gotham) root.dataset.theme = "dark"; // los personajes se ven en oscuro: fuerza el modo oscuro
     else delete root.dataset.theme;
     if (gotham) root.style.setProperty("--accent", theme.palette.accent);
@@ -91,7 +92,7 @@ export default function App() {
     <div className="layout">
       <nav className="sidebar" aria-label="Secciones">
         <div className="brand">
-          <span className="brand-dot" /> {theme.id === "classic" ? "YTAUTO" : `🦇 ${theme.brand}`}
+          <span className="brand-dot" /> {theme.id === "classic" ? "YTAUTO" : <>BATMAN<small>YTAUTO · Baticueva</small></>}
         </div>
         {NAV.map((n) => (
           <a key={n.page} href={`#/${n.page}`} className={`nav-item ${route.page === n.page ? "active" : ""}`}>

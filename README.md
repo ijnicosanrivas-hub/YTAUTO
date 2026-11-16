@@ -103,6 +103,7 @@ están **desactivados** y exigen credenciales, presupuesto y autorización: ver 
 | `docs/platforms.md` | Requisitos verificados de Reels/Shorts/TikTok y qué **no** está verificado |
 | `docs/integrations.md` | Publicación oficial y proveedores de pago; qué falta para usarlos en real |
 | `docs/ui.md` | Interfaz y sala de producción |
+| `docs/lego_research.md` | Investigación LEGO: medidas reales, colores, tipografía, qué no se pudo confirmar |
 | `docs/style_bible.md` | Guía visual: minifiguras LEGO Batman y Batcueva 3D |
 | `docs/theme.md` | Tema de personajes de Gotham (Batman, Joker…) y cómo cambiarlo |
 | `docs/testing.md` | Pruebas, cobertura y qué no está probado |

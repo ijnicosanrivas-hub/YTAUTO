@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CANVAS, drawOps, type Ctx, type Op } from "./ops";
 import { FINISH_MS, animationState, poseFor } from "./pose";
-import { ANIMATION_STATES, BODY, FIGURE_HEIGHT, FIGURE_SCALE, MATERIAL, PLASTIC } from "./styleBible";
+import { ANIMATION_STATES, BODY, BRICK, FIGURE_HEIGHT, LDU, MATERIAL, PLASTIC, STUD } from "./styleBible";
 import { VARIANTS } from "./variants";
 
 const NINE: Record<string, string> = {
@@ -25,13 +25,19 @@ describe("Style Bible: una única minifigura para los nueve", () => {
     }
   });
 
-  it("las proporciones son una constante común y coherentes con una minifigura", () => {
-    expect(FIGURE_HEIGHT).toBeCloseTo(BODY.legs.h + BODY.hips.h + BODY.torso.h + BODY.neck.h + BODY.head.h, 6);
-    expect(BODY.head.r * 2).toBeGreaterThan(BODY.torso.wTop * 0.8); // cabeza grande de juguete
-    expect(BODY.arm.shoulderX).toBeGreaterThan(BODY.torso.wTop / 2); // brazos fuera del torso
+  it("las proporciones son las de las piezas oficiales LEGO (medidas LDraw en LDU)", () => {
+    expect(STUD).toMatchObject({ pitch: 20, r: 6, h: 4 }); // taco: Ø 4,8 mm, 1,6 mm de alto, paso 8 mm
+    expect(BRICK).toMatchObject({ h: 24, plate: 8 });
+    expect(BODY.torso).toMatchObject({ wBottom: 38, h: 32, d: 20 }); // pieza 973
+    expect(BODY.torso.wTop).toBeLessThan(BODY.torso.wBottom); // trapecio: más ancho abajo
+    expect(BODY.legs.w * 2).toBeCloseTo(BODY.hips.w, 0); // dos piernas = ancho de la cadera
+    expect(BODY.arm.tilt).toBeCloseTo((9.782 * Math.PI) / 180, 3); // brazos 9,782° hacia fuera
+    expect(BODY.arm.shoulderX).toBeCloseTo(15.55, 1);
     expect(BODY.hand.arc).toBeLessThan(Math.PI * 2); // pinza abierta (C), no anillo
-    expect(FIGURE_SCALE).toBeGreaterThan(0);
-    expect(MATERIAL.clearcoat).toBeGreaterThan(0); // plástico moldeado brillante
+    expect(BODY.head.r * 2).toBeLessThan(BODY.torso.wBottom); // cabeza más estrecha que el torso
+    expect(FIGURE_HEIGHT).toBe(BODY.legs.h + BODY.hips.h + BODY.torso.h + BODY.head.h + BODY.headStud.h);
+    expect(FIGURE_HEIGHT * LDU).toBeGreaterThan(1.5); // tamaño visible en la sala
+    expect(MATERIAL.clearcoat).toBeGreaterThan(0); // plástico ABS brillante
   });
 
   it("cada variante tiene cara y torso estampados con operaciones válidas dentro del lienzo", () => {
@@ -112,7 +118,7 @@ describe("animación común", () => {
   });
   it("los seis estados existen, son finitos y distintos entre sí", () => {
     const poses = ANIMATION_STATES.map((s) => poseFor(s, 1.3, 0.7, 0.4));
-    for (const p of poses) for (const n of [p.bodyY, p.bodyYaw, p.headYaw, p.headPitch, p.armL.x, p.armL.z, p.armR.x, p.armR.z, p.legL, p.legR, p.cape]) expect(Number.isFinite(n)).toBe(true);
+    for (const p of poses) for (const n of [p.bodyY, p.bodyYaw, p.headYaw, p.headPitch, p.armL.x, p.armL.spread, p.armR.x, p.armR.spread, p.legL, p.legR, p.cape]) expect(Number.isFinite(n)).toBe(true);
     expect(new Set(poses.map((p) => JSON.stringify(p))).size).toBe(ANIMATION_STATES.length);
   });
   it("cada estado tiene el movimiento que dice su nombre", () => {
