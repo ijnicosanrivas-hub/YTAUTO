@@ -24,3 +24,4 @@ frontend/dist/
 *.wav
 *.mp3
 !backend/tests/fixtures/**
+demo_output/

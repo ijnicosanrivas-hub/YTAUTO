@@ -15,7 +15,8 @@ Arquitectura: `docs/architecture.md`. Decisiones: `docs/adr/`.
 5. No declarar nada terminado sin pruebas que lo demuestren.
 
 ## Comandos
-- Pruebas: `python -m pytest -q` (desde la raíz). Las de Claude real: `python -m pytest -m claude`.
+- Pruebas: `python -m pytest -q` (desde la raíz). Producción real E2E: `python -m pytest -m slow`. Claude real: `python -m pytest -m claude`.
+- Demo: `python scripts/demo_production.py [--claude]`.
 - CLI: `python -m ytauto --help` (`--offline --mock-providers` para pruebas sin Claude).
 - Estilo: Python 3.11+, pydantic v2, tipado; textos de usuario en español.
 

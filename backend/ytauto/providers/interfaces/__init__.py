@@ -49,6 +49,8 @@ class BaseProvider(ABC):
     display_name: ClassVar[str] = ""
     is_paid: ClassVar[bool] = False
     is_local: ClassVar[bool] = True
+    # Orden por defecto al darse de alta automáticamente (menor = preferente).
+    default_priority: ClassVar[int] = 100
     # Claves de credenciales requeridas (p. ej. ["api_key"]). Vacío = no requiere.
     required_credentials: ClassVar[list[str]] = []
     # Esquema simple de parámetros configurables: {nombre: valor_por_defecto}
@@ -303,6 +305,7 @@ class FinalizeSpec(BaseModel):
     subtitle_style: SubtitleStyle | None = None  # None = sin subtítulos grabados
     profile: EncodeProfile = Field(default_factory=EncodeProfile)
     metadata: dict[str, str] = Field(default_factory=dict)
+    draft: bool = False  # codificación rápida (previsualización para revisión)
     out_path: Path
 
 

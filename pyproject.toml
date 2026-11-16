@@ -30,4 +30,4 @@ markers = [
   "slow: pruebas que renderizan vídeo real",
   "claude: requieren una sesión real de Claude Code (no se ejecutan por defecto)",
 ]
-addopts = "-m 'not claude'"
+addopts = "-m 'not claude and not slow'"

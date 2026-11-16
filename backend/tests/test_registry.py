@@ -140,6 +140,8 @@ def test_seed_defaults_registers_only_free_local_real_adapters(registry):
     assert "proportional" in added
     assert not any(a.startswith("mock") for a in added)
     assert registry.seed_defaults() == []  # idempotente
+    registry.remove("proportional")
+    assert registry.seed_defaults() == []  # lo que el usuario quita no reaparece
 
 
 def test_errors_and_rate_limits_are_tracked(registry):
@@ -152,11 +154,21 @@ def test_errors_and_rate_limits_are_tracked(registry):
 
 
 # ------------------------------------------------------------------ contratos de todos los adaptadores
+@pytest.fixture(scope="session")
+def test_library(tmp_path_factory):
+    from helpers import build_library
+    return build_library(tmp_path_factory.mktemp("library"))
+
+
 @pytest.mark.parametrize("name", sorted(n for n, c in discover(include_mocks=True).items()
                                         if not n.startswith("failing")))
-def test_every_adapter_satisfies_its_contract(name, tmp_path):
+def test_every_adapter_satisfies_its_contract(name, tmp_path, test_library):
     cls = discover(include_mocks=True)[name]
     creds = {k: "test-credential-000" for k in cls.required_credentials}
-    report = run_contract(cls(credentials=creds), workdir=tmp_path, allow_paid=True)
+    params = {"root": str(test_library)} if "root" in cls.default_params and name.startswith("library") else {}
+    provider = cls(params=params, credentials=creds)
+    if name in ("piper", "espeak") and not provider.health_check().ok:
+        pytest.skip(f"{name} no disponible en este entorno: {provider.health_check().message}")
+    report = run_contract(provider, workdir=tmp_path, allow_paid=True)
     failed = [f"{c.name}: {c.detail}" for c in report.checks if not c.passed]
     assert report.passed, f"{name} incumple el contrato: {failed}"

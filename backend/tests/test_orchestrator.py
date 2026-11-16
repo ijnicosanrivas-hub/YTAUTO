@@ -195,3 +195,15 @@ def test_llm_usage_is_recorded(make_orchestrator, spec):
     orch.run(pid)
     agents = {u["agent"] for u in orch.store.llm_usage(pid)}
     assert {"director", "scriptwriter"} <= agents
+
+
+def test_cannot_approve_gate_before_it_is_reached(make_orchestrator, spec):
+    import pytest
+    orch = make_orchestrator()
+    pid = orch.create_project(spec)
+    with pytest.raises(ValueError):
+        orch.approve(pid, "final_approval")
+    with pytest.raises(ValueError):
+        orch.approve(pid, "publish:tiktok")
+    orch.run(pid)
+    orch.approve(pid, "script_approval")  # ahora sí está pendiente

@@ -46,6 +46,7 @@ class Check(BaseModel):
     max_points: float
     detail: str = ""
     target_agent: str | None = None
+    critical: bool = False  # un fallo crítico impide aprobar aunque la nota supere el umbral
 
 
 AGENT_PHASE = {
@@ -58,9 +59,11 @@ def technical_checks(probe, voice: VoiceManifest, spec_fps: int) -> list[Check]:
     c: list[Check] = []
     d = probe.duration_s
     c.append(Check(name="duración", passed=MIN_DURATION_S <= d <= MAX_DURATION_S, points=0, max_points=8,
-                   detail=f"{d:.2f}s (rango {MIN_DURATION_S}-{MAX_DURATION_S})", target_agent="voice"))
+                   detail=f"{d:.2f}s (rango {MIN_DURATION_S}-{MAX_DURATION_S})", target_agent="voice",
+                   critical=not MIN_DURATION_S <= d <= MAX_DURATION_S))
     c.append(Check(name="resolución", passed=(probe.width, probe.height) == (EXPECTED_W, EXPECTED_H), points=0,
-                   max_points=6, detail=f"{probe.width}x{probe.height}", target_agent="editor"))
+                   max_points=6, detail=f"{probe.width}x{probe.height}", target_agent="editor",
+                   critical=(probe.width, probe.height) != (EXPECTED_W, EXPECTED_H)))
     c.append(Check(name="códecs", passed=probe.video_codec == "h264" and probe.audio_codec == "aac", points=0,
                    max_points=4, detail=f"{probe.video_codec}/{probe.audio_codec}", target_agent="editor"))
     c.append(Check(name="fps", passed=probe.fps is not None and abs(probe.fps - spec_fps) < 0.5, points=0,
@@ -73,7 +76,8 @@ def technical_checks(probe, voice: VoiceManifest, spec_fps: int) -> list[Check]:
                    detail=f"pico {probe.true_peak_db} dBTP", target_agent="sound"))
     black = sum(e - s for s, e in probe.black_segments)
     c.append(Check(name="fotogramas negros", passed=black < 0.5, points=0, max_points=4,
-                   detail=f"{black:.2f}s", target_agent="editor"))
+                   detail=f"{black:.2f}s", target_agent="resources",
+                   critical=black > 0.1 * max(d, 1.0)))
     frozen = max((e - s for s, e in probe.frozen_segments), default=0.0)
     c.append(Check(name="imagen congelada", passed=frozen < 5.0, points=0, max_points=3,
                    detail=f"máx {frozen:.1f}s", target_agent="editor"))
@@ -147,7 +151,8 @@ class ReviewerAgent(Agent):
         for c in checks:
             if not c.passed and c.target_agent:
                 corrections.append(CorrectionRequest(target_agent=c.target_agent, phase=AGENT_PHASE[c.target_agent],
-                                                     reason=f"{c.name}: {c.detail}"))
+                                                     reason=f"{c.name}: {c.detail}",
+                                                     severity="critical" if c.critical else "major"))
         for issue in editorial.issues:
             if issue.target_agent in AGENT_PHASE and issue.severity in ("major", "critical"):
                 corrections.append(CorrectionRequest(

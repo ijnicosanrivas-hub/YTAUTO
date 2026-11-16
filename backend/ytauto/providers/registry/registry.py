@@ -75,6 +75,7 @@ class ProviderRegistry:
         self.include_mocks = include_mocks
         self._adapters = adapters
         self._cache: dict[str, BaseProvider] = {}
+        self._health: dict[str, tuple[float, bool]] = {}
         self._lock = threading.RLock()
         self.clock = clock
         s.init_db(engine)
@@ -239,8 +240,10 @@ class ProviderRegistry:
         with self._lock:
             if pid is None:
                 self._cache.clear()
+                self._health.clear()
             else:
                 self._cache.pop(pid, None)
+                self._health.pop(pid, None)
 
     # ------------------------------------------------------------------ estado
     def status(self, pid: str) -> ProviderStatus:
@@ -265,6 +268,19 @@ class ProviderRegistry:
         if retry_after_s:
             values["rate_limited_until"] = self.clock() + retry_after_s
         self._upsert_status(pid, **values)
+
+    def is_healthy(self, pid: str, ttl_s: float = 60.0) -> bool:
+        """Comprobación de salud con caché (evita lanzar trabajo a proveedores no disponibles)."""
+        now = self.clock()
+        cached = self._health.get(pid)
+        if cached and now - cached[0] < ttl_s:
+            return cached[1]
+        try:
+            ok = self.instance(pid).health_check().ok
+        except Exception:  # noqa: BLE001
+            ok = False
+        self._health[pid] = (now, ok)
+        return ok
 
     def is_rate_limited(self, pid: str) -> bool:
         until = self.status(pid).rate_limited_until
@@ -325,12 +341,21 @@ class ProviderRegistry:
         """Primer arranque: registra los adaptadores locales y gratuitos incluidos."""
         added = []
         existing = {p.adapter for p in self.list()}
-        for name, cls in sorted(self.adapters().items()):
+        # Solo se dan de alta adaptadores nunca vistos: si el usuario quita uno, no reaparece.
+        with self.engine.connect() as c:
+            row = c.execute(select(s.app_settings.c.value).where(s.app_settings.c.key == "seeded_adapters")).first()
+        seeded = set(row[0] if row else [])
+        existing |= seeded
+        for name, cls in sorted(self.adapters().items(), key=lambda kv: (kv[1].default_priority, kv[0])):
             if cls.is_paid or not cls.is_local or cls.required_credentials or name in existing:
                 continue
             if cls.__module__.startswith("ytauto.providers.mock"):
                 continue
             if getattr(cls, "auto_register", True):
-                self.add(name)
+                self.add(name, priority=cls.default_priority)
                 added.append(name)
+        all_seeded = sorted(seeded | set(added) | {p.adapter for p in self.list()})
+        stmt = sqlite_insert(s.app_settings).values(key="seeded_adapters", value=all_seeded)
+        with self.engine.begin() as c:
+            c.execute(stmt.on_conflict_do_update(index_elements=["key"], set_={"value": all_seeded}))
         return added

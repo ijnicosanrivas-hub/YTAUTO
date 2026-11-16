@@ -108,12 +108,12 @@ class EditorAgent(Agent):
         meta = {"title": script.internal_title, "comment": f"ytauto project {ctx.project_id}"}
         clean = ctx.workspace.dir("exports") / "master_clean.mp4"
         preview = ctx.workspace.dir("review") / "master_preview.mp4"
-        for out, style in ((clean, None), (preview, SubtitleStyle())):
+        for out, style, draft in ((clean, None, False), (preview, SubtitleStyle(), True)):
             ctx.providers.invoke(
                 ProviderCategory.RENDERING, "finalize",
                 FinalizeSpec(video_path=Path(edit.video_path), audio_path=Path(sound.mix_path),
                              subtitles=voice.cues if style else [], subtitle_style=style,
-                             profile=profile, metadata=meta, out_path=out),
+                             profile=profile, metadata=meta, draft=draft, out_path=out),
                 project_id=ctx.project_id,
             )
         return AgentResult(

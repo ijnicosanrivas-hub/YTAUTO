@@ -114,6 +114,7 @@ def test_cli_offline_production(tmp_path, monkeypatch, capsys):
     by = {p["phase"]: p["status"] for p in status["phases"]}
     assert by["review"] == "completed" and by["final_approval"] == "in_review"
     main(base + ["approve", pid, "final_approval"])
+    main(base + ["run"])
     main(base + ["approve", pid, "publish_decision", "--note", "manual"])
     main(base + ["run"])
     capsys.readouterr()

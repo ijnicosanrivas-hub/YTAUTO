@@ -72,6 +72,9 @@ class RegistryGateway(ProviderGateway):
             except ProviderNotConfigured as e:
                 errors.append(ProviderError(cfg.id, str(e), transient=False))
                 continue
+            if not self.registry.is_healthy(cfg.id):
+                errors.append(ProviderError(cfg.id, "no disponible (health check)", transient=False))
+                continue
             entry_id = None
             estimate = 0.0
             if prov.is_paid:
@@ -144,7 +147,8 @@ class RegistryGateway(ProviderGateway):
         if not chain:
             raise ProviderNotConfigured(f"No hay ningún proveedor activo para '{category.value}'")
         last: Exception | None = None
-        for cfg in chain:
+        healthy = [c for c in chain if self.registry.is_healthy(c.id)] or chain
+        for cfg in healthy:
             try:
                 return getattr(self.registry.instance(cfg.id), operation)(*args, **kwargs)
             except Exception as e:  # noqa: BLE001

@@ -123,6 +123,14 @@ class Orchestrator:
         if gate not in ("script_approval", "final_approval", "publish_decision") \
                 and not gate.startswith(("publish:", "spend:")):
             raise ValueError(f"Puerta de aprobación desconocida: {gate}")
+        if gate in PHASES:
+            current = self.store.get_phase(pid, gate)
+            if current.status is not PhaseStatus.IN_REVIEW:
+                raise ValueError(f"'{gate}' no está esperando aprobación (estado: {current.status.value})")
+        if gate.startswith("publish:") or gate == "publish_decision":
+            prep = self.store.get_phase(pid, "publish_prep")
+            if not prep.status.is_done:
+                raise ValueError("La publicación solo puede autorizarse cuando el material está preparado")
         expires = None
         if gate.startswith("publish:"):
             from datetime import timedelta
