@@ -42,6 +42,9 @@ def check_script(script: Script, brief: CreativeBrief, tpl: NarrativeTemplate, l
     total_speech = sum(tpl.estimate_speech_s(s.narration, language) for s in script.scenes)
     if total_speech > target_s * 1.05:
         issues.append(f"La narración estimada ({total_speech:.1f}s) supera la duración ({target_s}s)")
+    if total_speech < target_s * tpl.min_speech_coverage:
+        issues.append(f"La narración estimada ({total_speech:.1f}s) es demasiado corta para {target_s}s: "
+                      f"amplía el contenido (mínimo {target_s * tpl.min_speech_coverage:.0f}s) para evitar tiempos muertos")
     return issues
 
 
@@ -66,7 +69,8 @@ Requisitos:
   introducciones lentas ("hola a todos", "en este vídeo...").
 - Mantén la atención: información nueva en cada escena, sin redundancias ni frases repetidas.
 - Respeta `max_words_per_scene` (velocidad realista de narración con pausas). Es preferible un texto
-  más corto y claro que uno que no cabe.
+  más corto y claro que uno que no cabe, pero la narración total debe cubrir al menos el
+  `min_speech_coverage` de la duración: nada de tiempos muertos.
 - Cierre satisfactorio; llamada a la acción solo si encaja.
 - Escribe en el idioma `language`, con ortografía impecable.
 - `visual_notes`, `sfx` y `music_cue` por escena; `subtitle_lines` divide la narración en líneas
@@ -92,6 +96,7 @@ class ScriptwriterAgent(Agent):
             "idea": spec.idea,
             "narration_type": spec.narration_type,
             "max_words_per_scene": {s.index: tpl.max_words(s.duration_s, spec.language) for s in brief.scenes},
+            "min_speech_coverage": tpl.min_speech_coverage,
         }
         scene_filter = ctx.scene_filter
         if previous and scene_filter is not None:

@@ -24,6 +24,8 @@ def main() -> int:
     ap.add_argument("--claude", action="store_true", help="Usar Claude Code (consume la suscripción)")
     ap.add_argument("--topic", default="los secretos de los pulpos")
     ap.add_argument("--duration", type=int, default=60)
+    ap.add_argument("--subtitles", choices=["karaoke", "word_pop", "line"], default=None)
+    ap.add_argument("--intensity", choices=["low", "medium", "high"], default="high")
     ap.add_argument("--data-dir", default=None, help="Directorio de datos (por defecto, temporal)")
     args = ap.parse_args()
     data = Path(args.data_dir or tempfile.mkdtemp(prefix="ytauto_demo_"))
@@ -35,7 +37,7 @@ def main() -> int:
     app = build_app(settings)
     print("Proveedores:", [(v.category.value, v.id, v.role) for v in app.provider_system.registry.views()])
     spec = ProjectSpec(name="Demo local", topic=args.topic, duration_s=args.duration, require_script_approval=False,
-                       intensity="high")
+                       intensity=args.intensity, subtitle_mode=args.subtitles)
     pid = app.orchestrator.create_project(spec)
     t0 = time.time()
     for gate, note in (("final_approval", "demo"), ("publish_decision", "publicación manual")):

@@ -1,6 +1,7 @@
 """Agente 5 — Voz: locución por escena, ritmo, pronunciación y sincronización."""
 from __future__ import annotations
 
+import math
 import re
 
 from pydantic import BaseModel
@@ -15,6 +16,19 @@ SPEED_BY_INTENSITY = {"low": 0.95, "medium": 1.0, "high": 1.05}
 MAX_SPEED = 1.1
 OVERRUN_TOLERANCE = 1.15
 TAIL_PAD_S = 0.35
+MAX_SCENE_GAP_S = 0.8  # silencio máximo tolerado tras la voz dentro de una escena
+MIN_SCENE_S = 1.5
+VOICE_OFFSET_S = 0.15  # la voz empieza justo después del corte (gancho inmediato)
+DURATION_SAFETY_S = 0.3  # margen sobre el mínimo: la codificación redondea a fotogramas enteros
+LENGTHEN_THRESHOLD_S = 3.0  # déficits menores se resuelven ajustando escenas, sin gastar rondas
+
+
+def fit_scene(planned_s: float, voice_s: float, offset_s: float = VOICE_OFFSET_S) -> float:
+    """Duración de escena ajustada a la locución: sin cortar la voz y sin tiempos muertos."""
+    tight = voice_s + offset_s + TAIL_PAD_S
+    if tight >= planned_s:
+        return round(tight, 3)
+    return round(max(MIN_SCENE_S, min(planned_s, tight + MAX_SCENE_GAP_S)), 3)
 
 _REPLACEMENTS = {
     "es": [(r"%", " por ciento"), (r"&", " y "), (r"\bvs\.?\b", "contra"), (r"\bkm\b", "kilómetros")],
@@ -73,12 +87,14 @@ class VoiceAgent(Agent):
             th = stable_hash([text, voice.id if voice else None, speed])
             prev = prev_by_idx.get(sc.index)
             if prev and prev.text_hash == th and not (ctx.scene_filter and sc.index in ctx.scene_filter):
-                voice_scene = prev.model_copy(update={"scene_duration_s": sc.duration_s})
-                voice_scene.scene_duration_s = max(sc.duration_s, voice_scene.voice_duration_s + voice_scene.voice_offset_s + TAIL_PAD_S)
+                voice_scene = prev.model_copy(update={
+                    "planned_duration_s": sc.duration_s,
+                    "scene_duration_s": fit_scene(sc.duration_s, prev.voice_duration_s, prev.voice_offset_s)})
                 scenes.append(voice_scene)
                 continue
             if not text:
-                scenes.append(VoiceScene(index=sc.index, path=None, scene_duration_s=sc.duration_s, text_hash=th))
+                scenes.append(VoiceScene(index=sc.index, path=None, scene_duration_s=sc.duration_s,
+                                         planned_duration_s=sc.duration_s, text_hash=th))
                 continue
             path = out_dir / f"s{sc.index:02d}_{th}.wav"
             asset = self._synth(ctx, text, voice, speed, path, sc.index)
@@ -91,14 +107,16 @@ class VoiceAgent(Agent):
                     target_agent="scriptwriter", phase="script", scene_index=sc.index,
                     reason=f"La locución dura {dur:.1f}s y la escena {sc.duration_s:.1f}s: acorta la narración",
                 ))
-            offset = 0.15
             scenes.append(VoiceScene(
-                index=sc.index, path=str(path), voice_duration_s=round(dur, 3), voice_offset_s=offset,
-                scene_duration_s=round(max(sc.duration_s, dur + offset + TAIL_PAD_S), 3), text_hash=th,
+                index=sc.index, path=str(path), voice_duration_s=round(dur, 3), voice_offset_s=VOICE_OFFSET_S,
+                scene_duration_s=fit_scene(sc.duration_s, dur), planned_duration_s=sc.duration_s, text_hash=th,
             ))
 
         manifest = VoiceManifest(voice_id=voice.id if voice else None, speed=speed, scenes=scenes)
-        self._fit_total(manifest, spec.duration_s, corrections)
+        can_request = ctx.settings.get("correction_rounds", 0) < ctx.settings.get("max_correction_rounds", 2)
+        note = self._fit_total(manifest, spec.duration_s, corrections, can_request)
+        if note:
+            ctx.memory.add_decision(self.name, note)
         manifest.recompute_starts()
         manifest.cues = self._align(ctx, script, manifest, texts)
         path = ctx.workspace.save("voice", "voice_manifest", manifest)
@@ -122,15 +140,33 @@ class VoiceAgent(Agent):
         )
 
     @staticmethod
-    def _fit_total(manifest: VoiceManifest, target_s: float, corrections: list[CorrectionRequest]) -> None:
+    def _fit_total(manifest: VoiceManifest, target_s: float, corrections: list[CorrectionRequest],
+                   can_request: bool = True) -> str | None:
+        """Ajusta la duración total. Devuelve una nota para la memoria si se tomó una decisión."""
         total = manifest.total_duration_s
-        if total < max(MIN_DURATION_S, target_s - 1.5):
-            # Faltan segundos: se reparten entre escenas (más tiempo de imagen, no de voz).
-            goal = max(MIN_DURATION_S, target_s)
-            extra = (goal - total) / len(manifest.scenes)
+        lower = max(MIN_DURATION_S + DURATION_SAFETY_S, target_s * 0.85)
+        if total < lower:
+            deficit = lower - total
+            if can_request and deficit > LENGTHEN_THRESHOLD_S:
+                # Narración insuficiente: se pide al guionista ampliar las escenas con más hueco.
+                gaps = sorted(manifest.scenes, key=lambda s: s.planned_duration_s - s.voice_duration_s, reverse=True)
+                for s in gaps[:3]:
+                    if s.planned_duration_s - s.voice_duration_s > 0.5:
+                        corrections.append(CorrectionRequest(
+                            target_agent="scriptwriter", phase="script", scene_index=s.index, severity="minor",
+                            reason=(f"La locución ({total:.1f}s en total) no llena el vídeo de {target_s}s: amplía "
+                                    f"la narración de esta escena (≈{s.planned_duration_s - s.voice_duration_s:.1f}s libres)"),
+                        ))
+                if corrections:
+                    return None
+            # Último recurso: se reparte el tiempo que falta (más imagen, no más silencio largo).
+            goal = lower
+            extra = math.ceil((goal - total) / len(manifest.scenes) * 1000) / 1000  # redondeo hacia arriba
             for s in manifest.scenes:
                 s.scene_duration_s = round(s.scene_duration_s + extra, 3)
-        elif total > MAX_DURATION_S:
+            return (f"Narración corta ({total:.1f}s): se alargan las escenas {extra:.2f}s cada una hasta "
+                    f"{goal:.1f}s (deficit {deficit:.1f}s)")
+        if total > MAX_DURATION_S:
             longest = sorted(manifest.scenes, key=lambda s: s.voice_duration_s, reverse=True)[:2]
             for s in longest:
                 if not any(c.scene_index == s.index for c in corrections):
@@ -138,6 +174,7 @@ class VoiceAgent(Agent):
                         target_agent="scriptwriter", phase="script", scene_index=s.index,
                         reason=f"Duración total {total:.1f}s supera {MAX_DURATION_S}s; acorta esta escena",
                     ))
+        return None
 
     def _align(self, ctx, script: Script, manifest: VoiceManifest, texts: dict[int, str]):
         cues = []

@@ -74,6 +74,7 @@ class ProjectSpec(BaseModel):
     voice_type: str | None = None
     music: str | None = None
     intensity: Intensity = "medium"
+    subtitle_mode: Literal["karaoke", "word_pop", "line"] | None = None  # None = el del perfil de plataforma
     platforms: list[Platform] = Field(
         default_factory=lambda: [Platform.YOUTUBE_SHORTS, Platform.INSTAGRAM_REELS, Platform.TIKTOK]
     )

@@ -26,7 +26,10 @@ def _escape(text: str) -> str:
 
 def build_ass(cues: list[SubtitleCue], style: SubtitleStyle, width: int = 1080, height: int = 1920) -> str:
     # En karaoke ASS: SecondaryColour = antes de pronunciar, PrimaryColour = ya pronunciado.
-    primary = _ass_color(style.highlight_color if style.karaoke else style.primary_color)
+    mode = style.mode if style.karaoke else "line"
+    highlight = _ass_color(style.highlight_color)
+    # karaoke: PrimaryColour es el color "ya pronunciado" (acento); en los demás modos, el color base.
+    primary = highlight if mode == "karaoke" else _ass_color(style.primary_color)
     secondary = _ass_color(style.primary_color)
     outline = _ass_color(style.outline_color)
     back = _ass_color("#000000", 0x80)
@@ -45,10 +48,24 @@ Style: Default,{style.font},{style.font_size},{primary},{secondary},{outline},{b
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """
     lines = []
+    if mode == "word_pop":
+        # Una palabra cada vez, más grande, con rebote; resaltada con el color de acento.
+        big = int(style.font_size * 1.35)
+        for cue in cues:
+            if not cue.words and cue.end_s > cue.start_s:  # sin tiempos por palabra: frase completa
+                lines.append(f"Dialogue: 0,{_ts(cue.start_s)},{_ts(cue.end_s)},Default,,0,0,0,,{_escape(cue.text)}")
+            for w in cue.words or []:
+                if w.end_s <= w.start_s:
+                    continue
+                word = _escape(w.word.upper() if style.uppercase else w.word)
+                fx = (f"{{\\fs{big}\\c{highlight}\\fscx70\\fscy70\\t(0,80,\\fscx112\\fscy112)"
+                      f"\\t(80,150,\\fscx100\\fscy100)}}")
+                lines.append(f"Dialogue: 0,{_ts(w.start_s)},{_ts(w.end_s)},Default,,0,0,0,,{fx}{word}")
+        return header + "\n".join(lines) + "\n"
     for cue in cues:
         if cue.end_s <= cue.start_s:
             continue
-        if style.karaoke and cue.words:
+        if mode == "karaoke" and cue.words:
             parts = []
             for w in cue.words:
                 cs = max(1, round((w.end_s - w.start_s) * 100))

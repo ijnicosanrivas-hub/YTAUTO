@@ -51,7 +51,7 @@ python -m ytauto backup
 | 3 | Cola, memoria y persistencia | ✅ SQLite, cola por carriles, worker, backups |
 | 4 | Sistema modular de proveedores | ✅ registro, credenciales cifradas, fallback, presupuesto — ver `docs/providers.md` |
 | 5 | Motor audiovisual local | ✅ FFmpeg, Piper/espeak, procedural, biblioteca — ver `docs/local_engine.md` |
-| 6 | Vídeos cortos y montaje | ⏳ |
+| 6 | Vídeos cortos y montaje | ✅ retención medida, voz↔escena, subtítulos acústicos y 3 estilos |
 | 7 | Interfaz y sala de producción | ⏳ |
 | 8 | Exportación multiplataforma | ⏳ (perfiles provisionales) |
 | 9 | Integraciones externas | ⏳ |

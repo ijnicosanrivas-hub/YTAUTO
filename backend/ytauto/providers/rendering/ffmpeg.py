@@ -74,8 +74,10 @@ class FFmpegRenderingProvider(VideoRenderingProvider):
 
     def capabilities(self):
         return {"max_resolution": "4K", "transitions": sorted(XFADE_OK), "subtitles": "ASS karaoke",
-                "loudness": "EBU R128 two-pass", "motions": ["slow_zoom_in", "zoom_out", "pan_left", "pan_right",
-                                                             "pan_up", "ken_burns", "static"]}
+                "loudness": "EBU R128 two-pass",
+                "motions": ["slow_zoom_in", "zoom_out", "pan_left", "pan_right", "pan_up", "tilt_down", "ken_burns",
+                            "punch_in", "drift", "static"],
+                "subtitle_modes": ["karaoke", "word_pop", "line"]}
 
     def health_check(self) -> HealthStatus:
         if not shutil.which(self.params["ffmpeg"]) or not shutil.which(self.params["ffprobe"]):
@@ -106,6 +108,10 @@ class FFmpegRenderingProvider(VideoRenderingProvider):
             "pan_up": ("1.18", center_x, f"(ih-ih/zoom)*(1-{p})"),
             "ken_burns": (f"1.05+0.12*{p}", f"(iw-iw/zoom)*(0.2+0.6*{p})", f"(ih-ih/zoom)*(0.7-0.4*{p})"),
             "static": ("1.0", center_x, center_y),
+            # Zoom rápido al inicio (remate) y luego casi quieto: acento visual para ritmo alto.
+            "punch_in": (f"1.0+0.22*min(1,{p}*5)+0.03*{p}", center_x, anchor_y),
+            "tilt_down": ("1.18", center_x, f"(ih-ih/zoom)*{p}"),
+            "drift": (f"1.08+0.04*{p}", f"(iw-iw/zoom)*(0.35+0.3*{p})", f"(ih-ih/zoom)*(0.6-0.2*{p})"),
         }
         z, x, y = exprs.get(motion, exprs["slow_zoom_in"])
         return f"zoompan=z='{z}':x='{x}':y='{y}':d=1:s={w}x{h}:fps={fps}"
@@ -115,7 +121,8 @@ class FFmpegRenderingProvider(VideoRenderingProvider):
         w, h, fps = spec.width, spec.height, spec.fps
         shots = max(1, spec.shot_changes)
         motions = [spec.camera_motion]
-        cycle = ["slow_zoom_in", "pan_right", "zoom_out", "pan_left", "pan_up", "ken_burns"]
+        cycle = ["slow_zoom_in", "pan_right", "punch_in", "zoom_out", "pan_left", "tilt_down", "pan_up",
+                 "drift", "ken_burns"]
         for i in range(1, shots):
             motions.append(cycle[(cycle.index(spec.camera_motion) + i) % len(cycle)
                                  if spec.camera_motion in cycle else i % len(cycle)])

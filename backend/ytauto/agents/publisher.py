@@ -90,7 +90,9 @@ class PublisherAgent(Agent):
             ctx.providers.invoke(
                 ProviderCategory.RENDERING, "finalize",
                 FinalizeSpec(video_path=Path(edit.video_path), audio_path=Path(sound.mix_path),
-                             subtitles=voice.cues, subtitle_style=prof.subtitles, profile=enc,
+                             subtitles=voice.cues, profile=enc,
+                             subtitle_style=prof.subtitles.model_copy(update={"mode": ctx.spec.subtitle_mode})
+                             if ctx.spec.subtitle_mode else prof.subtitles,
                              metadata={"title": script.internal_title}, out_path=out),
                 project_id=ctx.project_id,
             )

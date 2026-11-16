@@ -14,7 +14,8 @@ from .base import Agent, AgentContext, AgentResult
 
 TRANSITION_S = {"low": 0.45, "medium": 0.3, "high": 0.2}
 VALID_TRANSITIONS = {"cut", "fade", "slideleft", "slideright", "slideup", "wipeleft", "zoomin", "circleopen"}
-VALID_MOTIONS = {"slow_zoom_in", "zoom_out", "pan_left", "pan_right", "pan_up", "ken_burns", "static"}
+VALID_MOTIONS = {"slow_zoom_in", "zoom_out", "pan_left", "pan_right", "pan_up", "tilt_down", "ken_burns",
+                 "punch_in", "drift", "static"}
 
 
 def shot_changes_for(duration_s: float, max_static_s: float) -> int:
@@ -76,7 +77,8 @@ class EditorAgent(Agent):
                     project_id=ctx.project_id, scene_index=vs.index,
                 )
                 rendered += 1
-            segments.append(EditSegment(index=vs.index, path=str(path), duration_s=duration, input_hash=h))
+            segments.append(EditSegment(index=vs.index, path=str(path), duration_s=duration, input_hash=h,
+                                        shots=inputs["shots"]))
 
         video_path = out_dir / f"master_video_{stable_hash([s.input_hash for s in segments] + transitions)}.mp4"
         if not video_path.exists():
@@ -108,7 +110,8 @@ class EditorAgent(Agent):
         meta = {"title": script.internal_title, "comment": f"ytauto project {ctx.project_id}"}
         clean = ctx.workspace.dir("exports") / "master_clean.mp4"
         preview = ctx.workspace.dir("review") / "master_preview.mp4"
-        for out, style, draft in ((clean, None, False), (preview, SubtitleStyle(), True)):
+        preview_style = SubtitleStyle(mode=ctx.spec.subtitle_mode or "karaoke")
+        for out, style, draft in ((clean, None, False), (preview, preview_style, True)):
             ctx.providers.invoke(
                 ProviderCategory.RENDERING, "finalize",
                 FinalizeSpec(video_path=Path(edit.video_path), audio_path=Path(sound.mix_path),

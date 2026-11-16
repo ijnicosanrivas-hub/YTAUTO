@@ -28,6 +28,7 @@ class NarrativeTemplate(BaseModel):
     hook_max_s: float = 3.0
     words_per_second: dict[str, float]  # por idioma
     pause_overhead: float = 0.08  # fracción del tiempo reservada a pausas/silencios
+    min_speech_coverage: float = 0.8  # la narración debe cubrir al menos este % de la duración
     max_static_shot_s: dict[str, float]  # por intensidad
 
     @classmethod

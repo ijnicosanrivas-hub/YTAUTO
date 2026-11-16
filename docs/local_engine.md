@@ -11,7 +11,7 @@ Adaptadores incluidos y dados de alta automáticamente en el primer arranque
 | video | `library_videos` | — | Clips propios con licencia |
 | music | `library_music` | `procedural_music` | Música sintetizada CC0 por estado de ánimo |
 | sfx | `library_sfx` | `synth_sfx` | whoosh, impact, riser, pop, ambience, click |
-| subtitle | `proportional` | — | Alineación por longitud de palabra sobre la duración real de la voz |
+| subtitle | `acoustic` | `proportional` | Frases alineadas a las pausas reales del audio (FFmpeg); respaldo proporcional |
 | storage | `local_storage` | — | `data/storage` |
 
 Los proveedores que no superan su `health_check` (p. ej. biblioteca vacía o Piper sin
@@ -52,3 +52,18 @@ python scripts/demo_production.py                 # sin Claude (borradores local
 python scripts/demo_production.py --claude        # con Claude Code (consume la suscripción)
 python -m pytest -m slow                          # E2E: MP4 45–75 s, 1080×1920, H.264/AAC, sincronía
 ```
+
+## Calidad de vídeo corto (fase 6)
+- **Guion**: la narración debe cubrir entre el 80 % y el 105 % de la duración (sin tiempos muertos
+  ni textos que no caben); el guionista recibe el máximo de palabras por escena.
+- **Voz ↔ escena**: cada escena se ajusta a su locución (nunca corta la voz, deja ≤ 0,8 s de aire).
+  Si falta narración (> 3 s), la voz pide al guionista ampliar las escenas con más hueco; si no quedan
+  rondas, alarga las escenas como último recurso. Margen de 0,3 s sobre el mínimo de 45 s.
+- **Retención (medida con datos reales, 15 puntos del revisor)**: gancho ≤ 3 s, primera palabra
+  ≤ 0,5 s, ningún hueco sin voz > 1,5 s, ningún plano sin cambio visual > 2,5/4/6 s (intensidad
+  alta/media/baja).
+- **Puntuación del revisor**: técnica 30 + sincronía 15 + retención 15 + editorial (Claude) 40.
+  Fallos críticos (fotogramas negros, duración, resolución) impiden aprobar.
+- **Movimientos**: slow_zoom_in, zoom_out, pan_left/right/up, tilt_down, ken_burns, punch_in, drift.
+- **Subtítulos** (`subtitle_mode` del proyecto o del perfil de plataforma): `karaoke` (resaltado
+  palabra a palabra), `word_pop` (una palabra grande con rebote), `line` (frase clásica).

@@ -93,33 +93,95 @@ class LocalDraftLLM(LLMProvider):
         }
 
     # ------------------------------------------------------------------ guionista
-    _TEMPLATES = [
-        "¿Sabías que {t} esconde algo que casi nadie conoce?",
-        "Para entenderlo hay que mirar de dónde viene {t} y por qué importa hoy.",
-        "El primer detalle sorprende: todo empezó mucho antes de lo que imaginas.",
-        "Después llegó un cambio que transformó por completo la historia.",
-        "Los expertos tardaron años en descubrir la pieza que faltaba.",
-        "Cada nuevo dato encajaba como un rompecabezas inesperado.",
+    _HOOKS = ["¿Sabías que {t} esconde algo que casi nadie conoce?", "Esto sobre {t} te va a sorprender.",
+              "Nadie te contó esto.", "Mira esto."]
+    _CLOSES = ["Ahora ya conoces la parte de {t} que casi todos ignoran. Síguenos para descubrir más.",
+               "Ahora ya conoces el secreto. Síguenos para más.", "Ahora ya lo sabes.", "Síguenos."]
+    _POOL = [
+        "Para entenderlo hay que mirar de dónde viene {t} y por qué importa tanto hoy.",
+        "El primer detalle sorprende, porque todo empezó mucho antes de lo que imaginas.",
+        "Después llegó un cambio que transformó por completo esta historia.",
+        "Los expertos tardaron años en descubrir la pieza que faltaba en el puzle.",
+        "Cada nuevo dato encajaba como un rompecabezas inesperado y fascinante.",
         "Y entonces apareció la prueba que nadie esperaba encontrar.",
-        "Esa pista cambió la forma de ver todo lo anterior.",
-        "Lo más increíble es que sigue ocurriendo ahora mismo.",
-        "La revelación final deja una pregunta abierta sobre {t}.",
-        "Ahora ya conoces la parte que casi todos ignoran.",
-        "Síguenos para descubrir la siguiente historia.",
+        "Esa pista cambió para siempre la forma de ver todo lo anterior.",
+        "Lo más increíble es que sigue ocurriendo ahora mismo, delante de nosotros.",
+        "Hay quien piensa que es casualidad, pero los números dicen lo contrario.",
+        "Si lo comparas con cualquier otro caso, la diferencia resulta enorme.",
+        "Detrás de cada respuesta aparecía una pregunta todavía más interesante.",
+        "Imagina lo que significa esto a escala de todo el planeta.",
+        "Por eso los investigadores siguen estudiándolo con tanta atención.",
+        "Y lo mejor es que todavía quedan secretos por descubrir.",
+        "Parece sencillo, pero no lo es.",
+        "Y aquí viene lo interesante.",
+        "Los datos no mienten.",
+        "Nadie lo vio venir.",
+        "Todo cambió en un instante.",
+        "La respuesta está más cerca de lo que crees.",
+        "Y eso no es todo.",
+        "Fíjate bien en este detalle.",
+        "Es más común de lo que parece.",
+        "Y no es una exageración.",
+        "Suena raro, ¿verdad?",
+        "Pero hay más.",
+        "Vamos por partes.",
+        "Aquí está la clave.",
+        "Eso lo explica todo.",
+        "La ciencia lo confirma.",
+        "Y pasa cada día.",
+        "Nadie habla de esto.",
+        "Ojo a este dato.",
+        "Esto sí que sorprende.",
+        "Hablemos de {t}.",
+        "Un detalle casi invisible.",
+        "Y el resultado es asombroso.",
+        "Así funciona en realidad.",
+        "Increíble, ¿no?",
+        "Atento ahora.",
+        "Fascinante.",
+        "Y funciona.",
+        "Piénsalo.",
     ]
+    _EXTRA = ["Y hay un detalle más que lo cambia todo.", "Piensa en ello la próxima vez que lo veas.",
+              "Nadie lo había explicado así hasta ahora.", "Y eso lo cambia todo."]
+
+    @staticmethod
+    def _words(text: str) -> int:
+        return len(text.split())
+
+    def _pack(self, pool: list[str], used: set[str], budget: int, topic: str) -> list[str]:
+        """Elige frases COMPLETAS no usadas que quepan en el presupuesto (nunca trunca)."""
+        chosen: list[str] = []
+        remaining = budget
+        while remaining >= 1:
+            fits = [p.format(t=topic) for p in pool if p not in used and self._words(p.format(t=topic)) <= remaining]
+            if not fits:
+                break
+            best = max(fits, key=self._words)
+            chosen.append(best)
+            used.add(next(p for p in pool if p.format(t=topic) == best))
+            remaining -= self._words(best)
+        return chosen
 
     def _scriptwriter(self, c: dict) -> dict:
         brief = c["creative_brief"]
         topic = c["topic"]
         maxw = {int(k): v for k, v in c["max_words_per_scene"].items()}
-        scenes = []
+        scenes: list[dict] = []
+        used: set[str] = set()
         n = len(brief["scenes"])
+        rewrite = set(c.get("rewrite_only_scenes") or [])
         for i, sc in enumerate(brief["scenes"]):
-            tpl = self._TEMPLATES[min(i, len(self._TEMPLATES) - 3)] if i < n - 1 else self._TEMPLATES[-2]
-            text = tpl.format(t=topic)
-            if i not in (0, n - 1) and i >= len(self._TEMPLATES) - 3:
-                text = f"Dato {i}: {topic} tiene una faceta sorprendente número {i}."
-            text = _clip_words(text, int(maxw[sc["index"]] * 0.9))
+            budget = max(2, int(maxw[sc["index"]]))
+            if i in (0, n - 1):
+                options = self._HOOKS if i == 0 else self._CLOSES
+                text = next((o.format(t=topic) for o in options if self._words(o.format(t=topic)) <= budget),
+                            options[-1].format(t=topic))
+            else:
+                sentences = self._pack(self._POOL, used, budget, topic)
+                if sc["index"] in rewrite:
+                    sentences += self._pack(self._EXTRA, used, budget - self._words(" ".join(sentences)), topic)
+                text = " ".join(sentences) or f"Dato {i}: {topic}."
             scenes.append({
                 "index": sc["index"], "section": sc["section"], "duration_s": sc["duration_s"],
                 "narration": text, "dialogue": [], "visual_notes": sc["visual_direction"],

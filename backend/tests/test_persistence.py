@@ -131,7 +131,8 @@ def test_app_uses_persistent_registry_and_cli_manages_providers(tmp_path, monkey
     from ytauto.cli import main
     main(["providers", "list"])
     listed = json.loads(capsys.readouterr().out)
-    assert any(p["id"] == "proportional" and p["role"] == "primary" for p in listed)
+    roles = {p["id"]: p["role"] for p in listed}
+    assert roles["acoustic"] == "primary" and roles["proportional"] == "fallback"
     assert (tmp_path / "data" / "secrets" / "master.key").exists()
     main(["budget", "--monthly", "25"])
     assert json.loads(capsys.readouterr().out)["monthly_budget_eur"] == 25

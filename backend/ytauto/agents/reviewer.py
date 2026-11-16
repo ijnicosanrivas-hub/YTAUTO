@@ -10,7 +10,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 
 from ..core.models import MAX_DURATION_S, MIN_DURATION_S, CorrectionRequest, Script
-from ..core.timeline import VoiceManifest
+from ..core.timeline import EditManifest, VoiceManifest
 from ..providers.interfaces import ProviderCategory
 from .base import Agent, AgentContext, AgentResult
 
@@ -39,14 +39,7 @@ class EditorialReview(BaseModel):
     summary: str
 
 
-class Check(BaseModel):
-    name: str
-    passed: bool
-    points: float
-    max_points: float
-    detail: str = ""
-    target_agent: str | None = None
-    critical: bool = False  # un fallo crítico impide aprobar aunque la nota supere el umbral
+from ..core.retention import QualityCheck as Check, retention_checks  # noqa: E402
 
 
 AGENT_PHASE = {
@@ -58,31 +51,31 @@ AGENT_PHASE = {
 def technical_checks(probe, voice: VoiceManifest, spec_fps: int) -> list[Check]:
     c: list[Check] = []
     d = probe.duration_s
-    c.append(Check(name="duración", passed=MIN_DURATION_S <= d <= MAX_DURATION_S, points=0, max_points=8,
+    c.append(Check(name="duración", passed=MIN_DURATION_S <= d <= MAX_DURATION_S, points=0, max_points=6,
                    detail=f"{d:.2f}s (rango {MIN_DURATION_S}-{MAX_DURATION_S})", target_agent="voice",
                    critical=not MIN_DURATION_S <= d <= MAX_DURATION_S))
     c.append(Check(name="resolución", passed=(probe.width, probe.height) == (EXPECTED_W, EXPECTED_H), points=0,
-                   max_points=6, detail=f"{probe.width}x{probe.height}", target_agent="editor",
+                   max_points=5, detail=f"{probe.width}x{probe.height}", target_agent="editor",
                    critical=(probe.width, probe.height) != (EXPECTED_W, EXPECTED_H)))
     c.append(Check(name="códecs", passed=probe.video_codec == "h264" and probe.audio_codec == "aac", points=0,
-                   max_points=4, detail=f"{probe.video_codec}/{probe.audio_codec}", target_agent="editor"))
+                   max_points=3, detail=f"{probe.video_codec}/{probe.audio_codec}", target_agent="editor"))
     c.append(Check(name="fps", passed=probe.fps is not None and abs(probe.fps - spec_fps) < 0.5, points=0,
                    max_points=2, detail=f"{probe.fps}", target_agent="editor"))
     lufs_ok = probe.integrated_lufs is not None and -16.5 <= probe.integrated_lufs <= -11.5
-    c.append(Check(name="sonoridad", passed=lufs_ok, points=0, max_points=6,
+    c.append(Check(name="sonoridad", passed=lufs_ok, points=0, max_points=5,
                    detail=f"{probe.integrated_lufs} LUFS (objetivo −14)", target_agent="sound"))
     peak_ok = probe.true_peak_db is not None and probe.true_peak_db <= -0.5
-    c.append(Check(name="saturación", passed=peak_ok, points=0, max_points=4,
+    c.append(Check(name="saturación", passed=peak_ok, points=0, max_points=3,
                    detail=f"pico {probe.true_peak_db} dBTP", target_agent="sound"))
     black = sum(e - s for s, e in probe.black_segments)
-    c.append(Check(name="fotogramas negros", passed=black < 0.5, points=0, max_points=4,
+    c.append(Check(name="fotogramas negros", passed=black < 0.5, points=0, max_points=3,
                    detail=f"{black:.2f}s", target_agent="resources",
                    critical=black > 0.1 * max(d, 1.0)))
     frozen = max((e - s for s, e in probe.frozen_segments), default=0.0)
-    c.append(Check(name="imagen congelada", passed=frozen < 5.0, points=0, max_points=3,
+    c.append(Check(name="imagen congelada", passed=frozen < 5.0, points=0, max_points=2,
                    detail=f"máx {frozen:.1f}s", target_agent="editor"))
     long_silence = max((e - s for s, e in probe.silence_segments), default=0.0)
-    c.append(Check(name="silencios", passed=long_silence < 2.0, points=0, max_points=3,
+    c.append(Check(name="silencios", passed=long_silence < 2.0, points=0, max_points=1,
                    detail=f"máx {long_silence:.1f}s", target_agent="voice"))
     for ch in c:
         ch.points = ch.max_points if ch.passed else 0.0
@@ -92,7 +85,7 @@ def technical_checks(probe, voice: VoiceManifest, spec_fps: int) -> list[Check]:
 def sync_checks(voice: VoiceManifest, video_duration_s: float) -> list[Check]:
     c: list[Check] = []
     drift = abs(video_duration_s - voice.total_duration_s)
-    c.append(Check(name="sincronía audio/vídeo", passed=drift <= 0.25, points=0, max_points=8,
+    c.append(Check(name="sincronía audio/vídeo", passed=drift <= 0.25, points=0, max_points=6,
                    detail=f"desfase {drift:.2f}s", target_agent="editor"))
     bad_cues = 0
     for cue in voice.cues:
@@ -100,10 +93,10 @@ def sync_checks(voice: VoiceManifest, video_duration_s: float) -> list[Check]:
         if owner is None or cue.end_s > owner.start_s + owner.scene_duration_s + 0.05 or cue.end_s <= cue.start_s:
             bad_cues += 1
     c.append(Check(name="subtítulos dentro de su escena", passed=bad_cues == 0 and bool(voice.cues), points=0,
-                   max_points=7, detail=f"{bad_cues} subtítulos fuera de rango de {len(voice.cues)}",
+                   max_points=5, detail=f"{bad_cues} subtítulos fuera de rango de {len(voice.cues)}",
                    target_agent="voice"))
     overlaps = sum(1 for a, b in zip(voice.cues, voice.cues[1:]) if b.start_s < a.end_s - 0.01)
-    c.append(Check(name="subtítulos sin solapes", passed=overlaps == 0, points=0, max_points=5,
+    c.append(Check(name="subtítulos sin solapes", passed=overlaps == 0, points=0, max_points=4,
                    detail=f"{overlaps} solapes", target_agent="voice"))
     for ch in c:
         ch.points = ch.max_points if ch.passed else 0.0
@@ -130,7 +123,9 @@ class ReviewerAgent(Agent):
         preview = ctx.workspace.dir("review") / "master_preview.mp4"
         self.progress(ctx, phase, 0.1, "Análisis técnico")
         probe = ctx.providers.query(ProviderCategory.RENDERING, "probe", Path(preview), True, project_id=ctx.project_id)
-        checks = technical_checks(probe, voice, ctx.spec.fps) + sync_checks(voice, probe.duration_s)
+        edit = ctx.workspace.load("scenes", "edit_manifest", EditManifest)
+        checks = (technical_checks(probe, voice, ctx.spec.fps) + sync_checks(voice, probe.duration_s)
+                  + retention_checks(voice, edit, ctx.narrative, ctx.spec.intensity))
 
         self.progress(ctx, phase, 0.5, "Revisión editorial")
         editorial = self.ask_llm(
@@ -144,14 +139,14 @@ class ReviewerAgent(Agent):
         )
         s = editorial.scores
         editorial_points = (s.hook * 1.2 + s.pacing + s.coherence + s.spelling * 0.4 + s.legibility * 0.4)  # máx 40
-        technical_points = sum(c.points for c in checks)  # máx 60
+        technical_points = sum(c.points for c in checks)  # técnica 30 + sincronía 15 + retención 15
         score = round(technical_points + editorial_points)
 
         corrections: list[CorrectionRequest] = []
         for c in checks:
             if not c.passed and c.target_agent:
                 corrections.append(CorrectionRequest(target_agent=c.target_agent, phase=AGENT_PHASE[c.target_agent],
-                                                     reason=f"{c.name}: {c.detail}",
+                                                     reason=f"{c.name}: {c.detail}", scene_index=c.scene_index,
                                                      severity="critical" if c.critical else "major"))
         for issue in editorial.issues:
             if issue.target_agent in AGENT_PHASE and issue.severity in ("major", "critical"):

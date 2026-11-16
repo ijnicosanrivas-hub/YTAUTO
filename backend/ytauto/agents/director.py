@@ -61,7 +61,8 @@ Requisitos:
 - La suma de duraciones debe ser `target_duration_s`.
 - Ritmo: con intensidad `intensity`, ningún plano debe quedar estático más de `max_static_shot_s` s
   (el editor subdividirá planos, pero diseña cambios visuales frecuentes).
-- camera_motion ∈ slow_zoom_in, zoom_out, pan_left, pan_right, pan_up, ken_burns, static.
+- camera_motion ∈ slow_zoom_in, zoom_out, pan_left, pan_right, pan_up, tilt_down, ken_burns, punch_in,
+  drift, static. Usa punch_in para golpes de efecto (gancho, revelación) y varía los movimientos.
 - transition ∈ cut, fade, slideleft, slideright, slideup, wipeleft, zoomin, circleopen.
 - Describe en visual_direction lo que debe verse, siempre pensado en vertical.
 - Si el usuario no indicó estilo/tono/música, decide tú lo más adecuado al tema.

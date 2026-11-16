@@ -13,7 +13,7 @@ from ...core.errors import ProviderError
 from ...core.models import AssetKind, License, MediaAsset
 from ..interfaces import HealthStatus, TextToSpeechProvider, TTSRequest, Voice
 
-BASE_WPM = 165
+BASE_WPM = 150  # ≈2,5 palabras/s: la velocidad que asume el guionista
 
 
 class EspeakTTSProvider(TextToSpeechProvider):

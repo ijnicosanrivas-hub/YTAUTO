@@ -281,7 +281,10 @@ class SubtitleStyle(BaseModel):
     margin_v: int = 420  # px desde abajo (zona segura)
     margin_h: int = 90
     uppercase: bool = False
-    karaoke: bool = True
+    karaoke: bool = True  # compatibilidad: equivale a mode="karaoke"
+    # karaoke: frase con resaltado palabra a palabra · word_pop: una palabra grande cada vez ·
+    # line: frase completa sin resaltado
+    mode: Literal["karaoke", "word_pop", "line"] = "karaoke"
 
 
 class EncodeProfile(BaseModel):

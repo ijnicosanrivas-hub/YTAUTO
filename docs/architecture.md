@@ -147,3 +147,7 @@ FFmpeg es el motor principal: cada escena se renderiza a `scenes/sNN.mp4` con no
 derivado del hash de sus entradas (render incremental), se ensamblan con `xfade`/concat,
 se mezcla audio (ducking con `sidechaincompress`, `loudnorm` a −14 LUFS / −1 dBTP) y se
 aplican subtítulos ASS por perfil de plataforma.
+
+## Calidad de vídeo corto
+`ytauto.core.retention` calcula con el montaje real (manifiestos de voz y edición) las
+comprobaciones de retención que el revisor suma a su nota. Detalle en `docs/local_engine.md`.

@@ -12,6 +12,7 @@ class VoiceScene(BaseModel):
     voice_duration_s: float = 0.0
     start_s: float = 0.0  # inicio de la escena en la línea temporal final
     scene_duration_s: float
+    planned_duration_s: float = 0.0  # duración prevista por el director (antes de ajustar a la voz)
     voice_offset_s: float = 0.15  # la voz empieza un poco después del corte
     text_hash: str = ""
 
@@ -38,6 +39,7 @@ class EditSegment(BaseModel):
     path: str
     duration_s: float
     input_hash: str
+    shots: int = 1  # sub-planos dentro de la escena (cambios visuales)
 
 
 class EditManifest(BaseModel):
