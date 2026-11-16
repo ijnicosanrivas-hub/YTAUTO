@@ -1,0 +1,23 @@
+# Estructura narrativa inicial para vídeos cortos (configurable).
+# Las fracciones se reparten sobre la duración elegida; el director puede justificar otra.
+name: short_form_default
+fractions:
+  hook: 0.04        # ~0-3 s (limitado por hook_max_s)
+  context: 0.16     # ~3-15 s en 75 s
+  development: 0.47 # ~15-50 s
+  climax: 0.20      # ~50-65 s
+  closing: 0.13     # ~65-75 s
+hook_max_s: 3.0
+# Velocidad realista de narración (palabras/segundo) por idioma.
+words_per_second:
+  es: 2.5
+  en: 2.6
+  pt: 2.4
+  fr: 2.5
+  default: 2.5
+pause_overhead: 0.08
+# Máximo de segundos sin cambio visual según intensidad de montaje.
+max_static_shot_s:
+  low: 6.0
+  medium: 4.0
+  high: 2.5

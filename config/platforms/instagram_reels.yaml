@@ -1,0 +1,41 @@
+# Perfil de exportación: Instagram Reels
+# VALORES PROVISIONALES: verificar con la documentación oficial antes de publicar (fase 8)
+# y actualizar 'verified_at'. Las reglas de las plataformas cambian con frecuencia.
+id: instagram_reels
+display_name: Instagram Reels
+min_duration_s: 45
+max_duration_s: 75
+encode:
+  width: 1080
+  height: 1920
+  fps: 30
+  video_codec: libx264
+  video_bitrate: 8M
+  max_bitrate: 10M
+  audio_codec: aac
+  audio_bitrate: 192k
+  audio_sample_rate: 48000
+  pix_fmt: yuv420p
+  container: mp4
+subtitles:
+  font: Inter
+  font_size: 70
+  primary_color: "#FFFFFF"
+  highlight_color: "#FFD400"
+  outline_color: "#000000"
+  outline: 5
+  margin_v: 420
+  margin_h: 90
+  uppercase: false
+  karaoke: true
+# Zona segura (px) que tapan los controles de la app
+safe_area: {top: 220, bottom: 420, left: 60, right: 90}
+metadata:
+  title_required: false
+  title_max_chars: 150
+  description_max_chars: 2200
+  hashtags_max: 30
+thumbnail: {supported: true, width: 1080, height: 1920}
+verified_at: null
+docs:
+  - https://developers.facebook.com/docs/instagram-platform/content-publishing

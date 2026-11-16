@@ -1,0 +1,19 @@
+# Modelo de Claude por agente. Usa alias (sonnet / opus / haiku) para no fijar versiones
+# obsoletas: Claude Code los resuelve a la versión más reciente disponible en tu plan.
+# "fallback" se usa si el modelo preferido no está disponible (p. ej. Opus no incluido).
+default: sonnet
+fallback: sonnet
+agents:
+  chief: sonnet
+  director: sonnet
+  scriptwriter: sonnet
+  resources: sonnet
+  voice: haiku
+  editor: sonnet
+  sound: haiku
+  reviewer: sonnet
+  publisher: haiku
+# Para planificación o revisiones críticas puedes poner "opus" (si tu plan lo incluye).
+concurrency: 1
+max_concurrency: 2
+timeout_s: 600

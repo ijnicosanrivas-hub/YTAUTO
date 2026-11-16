@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+*.egg-info/
+# Datos locales y secretos
+.env
+data/
+projects/*
+!projects/.gitkeep
+library/*
+!library/.gitkeep
+backups/
+*.db
+*.db-wal
+*.db-shm
+secrets/
+# Frontend
+frontend/node_modules/
+frontend/dist/
+# Medios generados
+*.mp4
+*.wav
+*.mp3
+!backend/tests/fixtures/**
