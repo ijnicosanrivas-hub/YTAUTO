@@ -15,7 +15,7 @@ se omiten los dos.
 | Requisito | Dónde se prueba |
 |---|---|
 | Los nueve agentes (esquema, criterios de aceptación, reintentos) | `test_agents.py`, `test_short_form.py` |
-| Orquestador (flujo de 18 fases, aprobaciones, correcciones, pausa/reanudación) | `test_orchestrator.py` (con memoria **y** SQLite) |
+| Orquestador (flujo de 18 fases, aprobaciones, correcciones, mejora automática acotada, pausa/reanudación) | `test_orchestrator.py` (con memoria **y** SQLite) |
 | Dependencias entre fases | `test_orchestrator.py` (`downstream`, invalidaciones) |
 | Cola de tareas (idempotencia, concurrencia, leases, pausa por límite) | `test_queue.py`, `test_worker.py` |
 | Persistencia y copias de seguridad | `test_persistence.py` |

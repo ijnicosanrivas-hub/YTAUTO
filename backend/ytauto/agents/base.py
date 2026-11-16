@@ -116,18 +116,25 @@ class Agent(ABC):
         context: dict[str, Any],
         output_model: type[T],
         accept: Callable[[T], list[str]] | None = None,
+        advise: Callable[[T], list[str]] | None = None,
         max_attempts: int = 2,
         schema: dict[str, Any] | None = None,
     ) -> T:
         """Pide a Claude una salida estructurada y la valida con código.
 
-        Si la salida no cumple el esquema o los criterios de aceptación se reintenta con
-        el detalle de los fallos (máx. `max_attempts`). Si persiste -> AcceptanceError.
+        - `accept`: criterios DUROS. Si no se cumplen se reintenta con el detalle de los fallos (máx.
+          `max_attempts`) y, si persisten, AcceptanceError.
+        - `advise`: criterios SUAVES (calidad, no corrección). Se usan para pedir una mejora en el reintento, pero
+          una salida válida que solo incumple avisos se ACEPTA al agotar los intentos (con una nota en la memoria):
+          un déficit pequeño no debe tirar toda la producción. Si un reintento posterior fallara en lo duro, se
+          conserva la mejor salida válida anterior.
         """
         model = ctx.models.for_agent(self.name)
         feedback: list[str] = []
         schema = schema or output_model.model_json_schema()
         full_context = {**context, "project_memory": ctx.memory.digest()}
+        best_soft: T | None = None
+        soft_notes: list[str] = []
         for attempt in range(1, max_attempts + 1):
             request = LLMRequest(
                 agent=self.name, model=model, task=task, context=full_context,
@@ -135,7 +142,9 @@ class Agent(ABC):
             )
             ctx.events.emit(
                 "llm.call", project_id=ctx.project_id, agent=self.name, phase=phase,
-                data={"model": model, "attempt": attempt},
+                data={"model": model, "attempt": attempt,
+                      # Por qué se reintenta (visible en el historial): permite diagnosticar con datos reales.
+                      **({"retry_reason": [f[:200] for f in feedback[:3]]} if feedback else {})},
             )
             try:
                 response = ctx.llm.complete(request)
@@ -154,6 +163,16 @@ class Agent(ABC):
                 continue
             issues = accept(parsed) if accept else []
             if not issues:
-                return parsed
+                advice = advise(parsed) if advise else []
+                if not advice:
+                    return parsed
+                best_soft, soft_notes = parsed, advice  # válida, pero mejorable
+                if attempt == max_attempts:
+                    break
+                feedback = advice
+                continue
             feedback = issues
+        if best_soft is not None:
+            ctx.memory.add_decision(self.name, "Aceptado con aviso tras agotar los intentos: " + "; ".join(soft_notes))
+            return best_soft
         raise AcceptanceError(self.name, feedback)

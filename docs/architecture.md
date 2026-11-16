@@ -151,3 +151,14 @@ aplican subtítulos ASS por perfil de plataforma.
 ## Calidad de vídeo corto
 `ytauto.core.retention` calcula con el montaje real (manifiestos de voz y edición) las
 comprobaciones de retención que el revisor suma a su nota. Detalle en `docs/local_engine.md`.
+
+## Correcciones tras la revisión
+- **Nota no apta** (< umbral, por defecto 75) o fallo crítico: el revisor dirige correcciones a agentes y escenas
+  concretas; hasta `max_correction_rounds` (2) rondas; después decide el usuario.
+- **Nota apta con incidencias graves de contenido** (guion o recursos, marcadas por Claude): **una** ronda de
+  mejora automática, solo si no se gastó ninguna ronda. No se aplica a audio/montaje (repetir un cálculo
+  determinista da lo mismo) ni al director (replantear todo es caro). Si el usuario aprobó el guion, el guion
+  **no se reescribe en silencio**: esas incidencias quedan visibles en «Revisión». Se desactiva con
+  `YTAUTO_FIX_MAJOR_ISSUES=0`. Cuesta unas llamadas más de Claude (guion o prompts, y una nueva revisión).
+- El guionista recibe **siempre** las correcciones y el guion anterior (también el comentario del usuario al
+  rechazar un guion); antes solo llegaban las correcciones por escena.

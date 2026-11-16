@@ -207,3 +207,129 @@ def test_cannot_approve_gate_before_it_is_reached(make_orchestrator, spec):
         orch.approve(pid, "publish:tiktok")
     orch.run(pid)
     orch.approve(pid, "script_approval")  # ahora sí está pendiente
+
+
+def test_script_rejection_comment_actually_reaches_the_scriptwriter(make_orchestrator, spec):
+    """Hallado al revisar la fase 10: el comentario del usuario al rechazar el guion no llegaba a Claude
+    (solo se enviaban las correcciones por escenas), así que el guion se regeneraba a ciegas."""
+    draft = LocalDraftLLM()
+    scripts = []
+
+    def scriptwriter(req):
+        scripts.append(req)
+        return draft.complete(req).data
+
+    orch = make_orchestrator(llm=ScriptedLLM({"scriptwriter": scriptwriter}, fallback=draft))
+    pid = orch.create_project(spec)
+    orch.run(pid)
+    assert scripts[0].context.get("corrections") in (None, [])  # primera vez: sin correcciones
+    orch.approve(pid, "script_approval", approved=False, note="Más humor y menos datos técnicos")
+    orch.run(pid)
+    second = scripts[1].context
+    assert any("Más humor" in c["reason"] for c in second["corrections"])
+    assert second["previous_script"]["scenes"]  # y ve el guion anterior para mejorarlo, no empezar de cero
+    assert "corrections" in scripts[1].task.lower() or "correc" in scripts[1].task.lower()
+
+
+# ---------------------------------------------------------------- mejora automática de incidencias graves (nota apta)
+GOOD = {"hook": 9, "pacing": 9, "coherence": 9, "spelling": 10, "legibility": 9}
+
+
+def reviewer_with(issues_per_call):
+    """Revisor simulado: devuelve las incidencias de cada llamada (la última se repite) con una nota apta."""
+    calls = {"n": 0}
+
+    def handler(req):
+        issues = issues_per_call[min(calls["n"], len(issues_per_call) - 1)]
+        calls["n"] += 1
+        return {"scores": GOOD, "issues": issues, "summary": "ok"}
+
+    return handler, calls
+
+
+def issue(agent, scene, severity="major", reason="Mejorable"):
+    return {"target_agent": agent, "scene_index": scene, "reason": reason, "severity": severity}
+
+
+def auto_orch(make_orchestrator, handler, **kw):
+    draft = LocalDraftLLM()
+    return make_orchestrator(llm=ScriptedLLM({"reviewer": handler}, fallback=draft), **kw)
+
+
+def test_passed_review_with_major_resource_issue_gets_exactly_one_improvement_round(make_orchestrator, spec):
+    handler, calls = reviewer_with([[issue("resources", 3, reason="Imagen poco clara")], [issue("resources", 3)]])
+    orch = auto_orch(make_orchestrator, handler)
+    pid = orch.create_project(spec.model_copy(update={"require_script_approval": False}))
+    r = orch.run(pid)
+    assert r.phase == "final_approval"
+    assert calls["n"] == 2  # revisó, mejoró una vez y volvió a revisar; la segunda vez NO insiste
+    assert orch.store.get_project(pid).correction_rounds == 1
+    assert orch.store.get_phase(pid, "script").attempts == 1  # el guion no se tocó
+    assert orch.store.get_phase(pid, "resource_generation").attempts == 2
+    assert orch.store.get_phase(pid, "edit").result["metrics"]["rendered"] == 1  # solo la escena 3
+
+
+def test_major_script_issue_rewrites_the_script_when_the_user_did_not_need_to_approve_it(make_orchestrator, spec):
+    handler, calls = reviewer_with([[issue("scriptwriter", 2, reason="La escena 2 se adelanta a la revelación")], []])
+    seen = []
+    draft = LocalDraftLLM()
+
+    def scriptwriter(req):
+        seen.append(req)
+        return draft.complete(req).data
+
+    orch = make_orchestrator(llm=ScriptedLLM({"reviewer": handler, "scriptwriter": scriptwriter}, fallback=draft))
+    pid = orch.create_project(spec.model_copy(update={"require_script_approval": False}))
+    orch.run(pid)
+    assert orch.store.get_phase(pid, "script").attempts == 2 and calls["n"] == 2
+    assert any("se adelanta a la revelación" in c["reason"] for c in seen[1].context["corrections"])  # Claude lo ve
+
+
+def test_script_approved_by_the_user_is_never_rewritten_silently(make_orchestrator, spec):
+    handler, calls = reviewer_with([[issue("scriptwriter", 2), issue("resources", 4)], []])
+    orch = auto_orch(make_orchestrator, handler)
+    pid = orch.create_project(spec)  # require_script_approval=True
+    orch.run(pid)
+    orch.approve(pid, "script_approval")
+    orch.run(pid)
+    assert orch.store.get_phase(pid, "script").attempts == 1  # su guion aprobado se respeta
+    assert orch.store.get_phase(pid, "resource_generation").attempts == 2  # lo visual sí se mejora
+    from ytauto.core.workspace import ProjectMemory, Workspace
+    decisions = [d["decision"] for d in ProjectMemory(Workspace(orch.settings.projects_dir, pid)).decisions()]
+    assert any("lo aprobaste tú" in d for d in decisions)  # queda constancia de por qué no se tocó el guion
+
+
+def test_only_content_agents_and_only_major_issues_are_applied(make_orchestrator, spec):
+    handler, calls = reviewer_with([[issue("sound", None), issue("editor", 1), issue("resources", 2, "minor"),
+                                     issue("scriptwriter", 1, "minor"), issue("director", None)]])
+    orch = auto_orch(make_orchestrator, handler)
+    pid = orch.create_project(spec.model_copy(update={"require_script_approval": False}))
+    orch.run(pid)
+    assert calls["n"] == 1 and orch.store.get_project(pid).correction_rounds == 0  # nada que aplicar automáticamente
+
+
+def test_automatic_improvement_can_be_disabled(make_orchestrator, spec):
+    handler, calls = reviewer_with([[issue("resources", 3)]])
+    orch = auto_orch(make_orchestrator, handler, fix_major_when_passed=False)
+    pid = orch.create_project(spec.model_copy(update={"require_script_approval": False}))
+    orch.run(pid)
+    assert calls["n"] == 1 and orch.store.get_phase(pid, "resource_generation").attempts == 1
+
+
+def test_improvement_is_skipped_if_a_correction_round_was_already_used(make_orchestrator, spec):
+    """Una nota NO apta ya gastó la ronda: la mejora de una nota apta no se acumula encima."""
+    bad = {"scores": {"hook": 1, "pacing": 1, "coherence": 1, "spelling": 1, "legibility": 1},
+           "issues": [issue("editor", None)], "summary": "mal"}
+    good_with_issue = {"scores": GOOD, "issues": [issue("resources", 3)], "summary": "ok"}
+    seq = [bad, good_with_issue]
+    calls = {"n": 0}
+
+    def handler(req):
+        out = seq[min(calls["n"], 1)]
+        calls["n"] += 1
+        return out
+
+    orch = auto_orch(make_orchestrator, handler)
+    pid = orch.create_project(spec.model_copy(update={"require_script_approval": False}))
+    orch.run(pid)
+    assert calls["n"] == 2 and orch.store.get_project(pid).correction_rounds == 1

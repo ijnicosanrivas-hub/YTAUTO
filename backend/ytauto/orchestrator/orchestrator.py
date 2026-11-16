@@ -45,6 +45,7 @@ class OrchestratorSettings:
     projects_dir: Path
     review_threshold: int = 75
     max_correction_rounds: int = 2
+    fix_major_when_passed: bool = True  # una ronda de mejora de incidencias graves aunque la nota sea apta
     voice_llm_pronunciation: bool = False
     publish_privacy: str = "private"
     publish_auth_ttl_hours: int = 24
@@ -264,6 +265,7 @@ class Orchestrator:
         settings = {
             "review_threshold": self.settings.review_threshold,
             "max_correction_rounds": self.settings.max_correction_rounds,
+            "fix_major_when_passed": self.settings.fix_major_when_passed,
             "correction_rounds": project.correction_rounds,
             "voice_llm_pronunciation": self.settings.voice_llm_pronunciation,
             "publish_privacy": self.settings.publish_privacy,

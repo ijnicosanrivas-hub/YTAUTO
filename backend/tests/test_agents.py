@@ -281,3 +281,82 @@ def test_reviewer_aliased_issue_becomes_a_correction_for_the_right_agent(make_ct
     ctx = make_ctx(llm=llm, settings={"review_threshold": 95})
     r = run_until(ctx, *PIPE, "review")
     assert any(c.target_agent == "voice" and c.phase == "voice" and c.scene_index == 2 for c in r.corrections)
+
+
+# ---------------------------------------------------------------- criterios duros frente a suaves (hallado con Claude real)
+def _scaled_script(draft, req, fraction):
+    """Guion válido cuya narración cubre `fraction` de lo que cabe en cada escena."""
+    data = draft.complete(req).data
+    maxw = {int(k): v for k, v in req.context["max_words_per_scene"].items()}
+    for sc in data["scenes"]:
+        n = max(1, int(maxw[sc["index"]] * fraction))
+        words = sc["narration"].split() or ["Hola."]
+        sc["narration"] = " ".join((words * (n // len(words) + 1))[:n])  # recorta o alarga hasta n palabras
+        sc["subtitle_lines"] = []
+    return data
+
+
+def _coverage(ctx, data):
+    from ytauto.core.models import Script as S
+    sc = S.model_validate(data)
+    return sum(ctx.narrative.estimate_speech_s(x.narration, "es") for x in sc.scenes) / ctx.spec.duration_s
+
+
+def test_slightly_short_script_is_accepted_with_a_note_instead_of_killing_the_production(make_ctx):
+    """Claude escribió 35,6 s para un objetivo de 45 s (mínimo 36): dos intentos fallidos abortaban todo."""
+    draft = LocalDraftLLM()
+    ctx = make_ctx(llm=ScriptedLLM({"director": lambda r: draft.complete(r).data,
+                                    "scriptwriter": lambda r: _scaled_script(draft, r, 0.78)}))
+    DirectorAgent().run("creative_direction", ctx)
+    r = ScriptwriterAgent().run("script", ctx)  # no lanza AcceptanceError
+    assert r.status == "completed" and len(ctx.llm.calls) == 3  # director + 2 intentos del guionista
+    assert ctx.llm.calls[2].feedback and "algo corta" in ctx.llm.calls[2].feedback[0]  # el 2.º intento recibió el aviso
+    notes = [d["decision"] for d in ctx.memory.decisions()]
+    assert any("Aceptado con aviso" in n for n in notes)
+
+
+def test_slightly_short_script_is_improved_on_retry_when_claude_can(make_ctx):
+    draft = LocalDraftLLM()
+    ctx = make_ctx(llm=ScriptedLLM({"director": lambda r: draft.complete(r).data,
+                                    "scriptwriter": lambda r: _scaled_script(draft, r, 1.0 if r.feedback else 0.78)}))
+    DirectorAgent().run("creative_direction", ctx)
+    ScriptwriterAgent().run("script", ctx)
+    assert not any("Aceptado con aviso" in d["decision"] for d in ctx.memory.decisions())  # mejoró: sin aviso
+
+
+def test_a_seriously_short_script_is_still_rejected(make_ctx):
+    draft = LocalDraftLLM()
+    ctx = make_ctx(llm=ScriptedLLM({"director": lambda r: draft.complete(r).data,
+                                    "scriptwriter": lambda r: _scaled_script(draft, r, 0.2)}))
+    DirectorAgent().run("creative_direction", ctx)
+    with pytest.raises(AcceptanceError) as e:
+        ScriptwriterAgent().run("script", ctx)
+    assert "demasiado corta" in str(e.value)
+
+
+def test_soft_acceptance_keeps_the_best_valid_output_if_a_retry_breaks_a_hard_rule(make_ctx):
+    draft = LocalDraftLLM()
+
+    def writer(req):
+        if req.feedback:  # el reintento empeora: demasiado largo (criterio duro)
+            return _scaled_script(draft, req, 2.5)
+        return _scaled_script(draft, req, 0.78)
+
+    ctx = make_ctx(llm=ScriptedLLM({"director": lambda r: draft.complete(r).data, "scriptwriter": writer}))
+    DirectorAgent().run("creative_direction", ctx)
+    r = ScriptwriterAgent().run("script", ctx)
+    cov = _coverage(ctx, ctx.workspace.load("scripts", "script"))
+    assert r.status == "completed" and 0.6 <= cov < 0.8, cov  # se conservó la primera salida válida (algo corta)
+
+
+def test_retry_reason_is_recorded_in_the_activity_log(make_ctx):
+    bad = {"concept": "x", "tone": "x", "visual_style": "x", "pacing": "x", "target_duration_s": 60,
+           "music_direction": "x", "scenes": []}
+    good = LocalDraftLLM()
+    llm = ScriptedLLM({"director": lambda r: bad if not r.feedback else good.complete(r).data})
+    ctx = make_ctx(llm=llm)
+    seen = []
+    ctx.events.subscribe(lambda e: seen.append(e) if e.type == "llm.call" else None)
+    DirectorAgent().run("creative_direction", ctx)
+    assert "retry_reason" not in seen[0].data and seen[1].data["attempt"] == 2
+    assert seen[1].data["retry_reason"] and "escenas" in " ".join(seen[1].data["retry_reason"]).lower()

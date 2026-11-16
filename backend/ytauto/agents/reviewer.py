@@ -73,6 +73,9 @@ class EditorialReview(BaseModel):
 from ..core.retention import QualityCheck as Check, retention_checks  # noqa: E402
 
 
+# Solo el contenido creativo se mejora de forma automática cuando la nota ya es apta: repetir un cálculo
+# determinista (audio, montaje) da el mismo resultado, y replantear todo (director) sería demasiado caro.
+CONTENT_AGENTS = {"scriptwriter", "resources"}
 AGENT_PHASE = {
     "director": "creative_direction", "scriptwriter": "script", "resources": "resource_generation",
     "voice": "voice", "editor": "edit", "sound": "sound",
@@ -179,8 +182,13 @@ class ReviewerAgent(Agent):
                 corrections.append(CorrectionRequest(target_agent=c.target_agent, phase=AGENT_PHASE[c.target_agent],
                                                      reason=f"{c.name}: {c.detail}", scene_index=c.scene_index,
                                                      severity="critical" if c.critical else "major"))
+        actionable: list[CorrectionRequest] = []  # graves y de contenido: regenerar sí cambia el resultado
         for issue in editorial.issues:
             if issue.target_agent in AGENT_PHASE and issue.severity in ("major", "critical"):
+                if issue.target_agent in CONTENT_AGENTS:
+                    actionable.append(CorrectionRequest(
+                        target_agent=issue.target_agent, phase=AGENT_PHASE[issue.target_agent],
+                        scene_index=issue.scene_index, reason=issue.reason, severity=issue.severity))
                 corrections.append(CorrectionRequest(
                     target_agent=issue.target_agent, phase=AGENT_PHASE[issue.target_agent],
                     scene_index=issue.scene_index, reason=issue.reason,
@@ -194,6 +202,7 @@ class ReviewerAgent(Agent):
             "technical": [c.model_dump() for c in checks],
             "editorial": editorial.model_dump(mode="json"),
             "corrections": [c.model_dump(mode="json") for c in corrections],
+            "actionable": [c.model_dump(mode="json") for c in actionable],
             "probe": probe.model_dump(mode="json"),
         }
         path = ctx.workspace.save("review", f"review_{round_no}", report)

@@ -8,6 +8,9 @@ from ..core.narrative import NarrativeTemplate
 from .base import Agent, AgentContext, AgentResult
 
 
+HARD_FLOOR_RATIO = 0.75  # por debajo del 75 % de la cobertura mínima (≈60 % de la duración) se rechaza
+
+
 def _sentences(text: str) -> list[str]:
     return [s.strip().lower() for s in re.split(r"[.!?¡¿]+", text) if len(s.strip().split()) >= 3]
 
@@ -42,10 +45,22 @@ def check_script(script: Script, brief: CreativeBrief, tpl: NarrativeTemplate, l
     total_speech = sum(tpl.estimate_speech_s(s.narration, language) for s in script.scenes)
     if total_speech > target_s * 1.05:
         issues.append(f"La narración estimada ({total_speech:.1f}s) supera la duración ({target_s}s)")
-    if total_speech < target_s * tpl.min_speech_coverage:
+    floor = target_s * tpl.min_speech_coverage * HARD_FLOOR_RATIO
+    if total_speech < floor:  # déficit grave: el vídeo quedaría con grandes tiempos muertos
         issues.append(f"La narración estimada ({total_speech:.1f}s) es demasiado corta para {target_s}s: "
-                      f"amplía el contenido (mínimo {target_s * tpl.min_speech_coverage:.0f}s) para evitar tiempos muertos")
+                      f"amplía el contenido (mínimo {floor:.0f}s)")
     return issues
+
+
+def script_advice(script: Script, tpl: NarrativeTemplate, language: str, target_s: float) -> list[str]:
+    """Avisos suaves: cobertura algo corta. Se pide mejorarla, pero no se rechaza un guion válido por ello:
+    la voz ya ajusta las escenas a la locución (hallado con Claude real: 35,6 s frente a 36 s mataban la producción)."""
+    total_speech = sum(tpl.estimate_speech_s(s.narration, language) for s in script.scenes)
+    wanted = target_s * tpl.min_speech_coverage
+    if total_speech < wanted:
+        return [f"La narración estimada ({total_speech:.1f}s) es algo corta para {target_s}s: amplía el contenido "
+                f"hasta unos {wanted:.0f}s para evitar tiempos muertos"]
+    return []
 
 
 def default_subtitle_lines(text: str, max_chars: int = 32) -> list[str]:
@@ -99,17 +114,25 @@ class ScriptwriterAgent(Agent):
             "min_speech_coverage": tpl.min_speech_coverage,
         }
         scene_filter = ctx.scene_filter
-        if previous and scene_filter is not None:
+        # Las correcciones (del revisor, de la voz o el comentario del usuario al rechazar el guion) llegan SIEMPRE,
+        # también cuando se reescribe el guion entero; antes solo llegaban las que iban por escenas.
+        mine = [c.model_dump(mode="json") for c in ctx.corrections if c.target_agent == self.name]
+        if mine:
+            context["corrections"] = mine
+        if previous and (mine or scene_filter is not None):
             context["previous_script"] = previous.model_dump(mode="json")
-            context["rewrite_only_scenes"] = sorted(scene_filter)
-            context["corrections"] = [c.model_dump(mode="json") for c in ctx.corrections if c.target_agent == self.name]
         task = TASK
         if scene_filter is not None:
+            context["rewrite_only_scenes"] = sorted(scene_filter)
             task += "\nReescribe SOLO las escenas de `rewrite_only_scenes` aplicando `corrections`; copia el resto sin cambios."
+        elif mine:
+            task += ("\nHay correcciones (`corrections`, incluidos los comentarios del usuario) sobre el guion anterior "
+                     "(`previous_script`): mejóralo aplicándolas y conserva lo que ya funciona.")
 
         script = self.ask_llm(
             ctx, phase=phase, task=task, context=context, output_model=Script,
             accept=lambda s: check_script(s, brief, tpl, spec.language, spec.duration_s, scene_filter),
+            advise=lambda s: script_advice(s, tpl, spec.language, spec.duration_s),
         )
         # Normalización: duraciones del plan y subtítulos por defecto si faltan.
         for scene, plan in zip(script.scenes, brief.scenes):

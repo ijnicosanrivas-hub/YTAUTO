@@ -73,7 +73,9 @@ export function describeEvent(type: string, data: Record<string, unknown>): stri
     case "agent.progress":
       return `${Math.round(Number(data.progress ?? 0) * 100)}% ${data.message ?? ""}`;
     case "llm.call":
-      return `consulta a Claude (${data.model}, intento ${data.attempt})`;
+      return `consulta a Claude (${data.model}, intento ${data.attempt})${
+        Array.isArray(data.retry_reason) && data.retry_reason.length ? ` — reintento por: ${(data.retry_reason as string[]).join(" · ")}` : ""
+      }`;
     case "phase.status":
       return `fase → ${statusLabel(String(data.status))}${data.error ? `: ${data.error}` : ""}`;
     case "provider.fallback":

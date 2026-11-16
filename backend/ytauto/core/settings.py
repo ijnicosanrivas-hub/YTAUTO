@@ -33,6 +33,7 @@ class Settings(BaseModel):
     claude_bin: str = "claude"
     claude_concurrency: int = 1
     claude_timeout_s: int = 600
+    fix_major_issues: bool = True
     master_key: str | None = None
 
     @classmethod
@@ -56,6 +57,7 @@ class Settings(BaseModel):
             claude_bin=os.environ.get("YTAUTO_CLAUDE_BIN", "claude"),
             claude_concurrency=int(os.environ.get("YTAUTO_CLAUDE_CONCURRENCY", "1")),
             claude_timeout_s=int(os.environ.get("YTAUTO_CLAUDE_TIMEOUT", "600")),
+            fix_major_issues=os.environ.get("YTAUTO_FIX_MAJOR_ISSUES", "1").strip().lower() not in ("0", "false", "no"),
             master_key=os.environ.get("YTAUTO_MASTER_KEY") or None,
         )
 

@@ -57,6 +57,8 @@ Una producción de prueba sin Claude: `make demo` · con Claude real: `python sc
 
 ## Consumo de Claude (una sola licencia Pro)
 - **Una tarea de Claude a la vez** por defecto (máximo 2). Más concurrencia no aumenta tu cuota, solo la agota antes.
+- Si la nota del revisor es apta pero marca incidencias **graves** de guion o recursos, se aplica **una** ronda de
+  mejora (unas llamadas más; `YTAUTO_FIX_MAJOR_ISSUES=0` la desactiva). Un guion que aprobaste tú no se reescribe solo.
 - Se guarda cada resultado y se reutiliza: reanudar o rehacer una escena **no repite** llamadas ya hechas.
 - Si Claude Code avisa de un límite de uso o de sesión no iniciada, **solo se pausa el carril de Claude** (lo local
   sigue) y se reanuda solo (si se conoce la hora) o con `python -m ytauto resume-claude`.

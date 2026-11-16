@@ -71,7 +71,8 @@ def build_app(settings: Settings, providers: ProviderGateway | None = None, llm:
         providers = system.gateway
         models.apply_overrides(system.budget.get_setting("model_overrides"))  # cambios hechos desde el panel
     orch = Orchestrator(store=store, llm=llm, providers=providers,
-                        settings=orchestrator_settings or OrchestratorSettings(projects_dir=settings.projects_dir),
+                        settings=orchestrator_settings or OrchestratorSettings(
+                            projects_dir=settings.projects_dir, fix_major_when_passed=settings.fix_major_issues),
                         events=events, models=models,
                         cost_reader=(lambda pid: system.budget.ledger(pid)) if system else None)
     holder["o"] = orch

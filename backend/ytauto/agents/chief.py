@@ -69,7 +69,7 @@ class ChiefAgent(Agent):
     def _corrections(self, ctx: AgentContext) -> AgentResult:
         review = ctx.workspace.load("review", "latest")
         if review.get("passed"):
-            return AgentResult(summary="Sin correcciones: la revisión es apta", metrics={"invalidate": []})
+            return self._improve_passed_review(ctx, review)
         corrections = [CorrectionRequest.model_validate(c) for c in review.get("corrections", [])]
         max_rounds = ctx.settings.get("max_correction_rounds", MAX_CORRECTION_ROUNDS_DEFAULT)
         rounds = ctx.settings.get("correction_rounds", 0)
@@ -83,6 +83,32 @@ class ChiefAgent(Agent):
         ctx.memory.add_decision(self.name, f"Ronda de correcciones {rounds + 1}: " +
                                 ", ".join(f"{p['phase']}{p['scenes'] or ''}" for p in plan))
         return AgentResult(summary=f"Correcciones asignadas a {len(plan)} fases", metrics={"invalidate": plan})
+
+    def _improve_passed_review(self, ctx: AgentContext, review: dict) -> AgentResult:
+        """Nota apta: aplica UNA ronda de mejora a las incidencias graves de contenido que marcó el revisor.
+
+        Límites (para no gastar cuota de Claude ni deshacer decisiones del usuario):
+        - solo una ronda y solo si aún no se hizo ninguna corrección;
+        - solo guion y recursos (lo que cambia al regenerar);
+        - si el usuario aprobó el guion, el guion no se reescribe en silencio: esas incidencias quedan visibles.
+        """
+        actionable = [CorrectionRequest.model_validate(c) for c in review.get("actionable", [])]
+        skipped = ""
+        if ctx.spec.require_script_approval:
+            kept = [c for c in actionable if c.target_agent != "scriptwriter"]
+            if len(kept) != len(actionable):
+                skipped = " (las del guion no se aplican: lo aprobaste tú)"
+            actionable = kept
+        enabled = ctx.settings.get("fix_major_when_passed", True)
+        if not actionable or not enabled or ctx.settings.get("correction_rounds", 0) != 0:
+            pending = len(review.get("actionable", []))
+            note = f"; {pending} incidencias graves sin aplicar{skipped}" if pending else ""
+            return AgentResult(summary="Sin correcciones: la revisión es apta" + note, metrics={"invalidate": []})
+        plan = plan_invalidation(actionable)
+        ctx.memory.add_decision(self.name, f"Revisión apta ({review.get('score')}/100) con {len(actionable)} incidencias "
+                                f"graves de contenido: una ronda de mejora ({', '.join(p['phase'] for p in plan)})" + skipped)
+        return AgentResult(summary=f"Revisión apta; mejora automática de {len(actionable)} incidencias graves{skipped}",
+                           metrics={"invalidate": plan})
 
     def _report(self, ctx: AgentContext) -> AgentResult:
         ws = ctx.workspace
