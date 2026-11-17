@@ -4,7 +4,14 @@
 GitHub** (un *Codespace*). Se crea desde el navegador —sirve el del iPhone, de una tablet o de cualquier PC sin
 instalar nada— y YTAUTO se instala y arranca solo. La interfaz se abre en una pestaña del navegador.
 
-## Una sola vez: crear tu Codespace
+## Lo más corto: un solo toque
+Abre este enlace con tu sesión de GitHub iniciada (sirve en el iPhone) y pulsa **«Create new codespace»**:
+
+**https://codespaces.new/ijnicosanrivas-hub/ytauto/tree/claude/multiagent-audiovisual-system-hv0bwv?quickstart=1**
+
+Eso crea el Codespace ya en la rama correcta. Después solo falta el inicio de sesión de Claude (paso 5 de abajo).
+
+## Una sola vez: crear tu Codespace (a mano)
 1. Abre en el navegador **github.com/ijnicosanrivas-hub/ytauto** e inicia sesión en GitHub.
 2. Arriba a la izquierda, elige la rama **`claude/multiagent-audiovisual-system-hv0bwv`** (la configuración está ahí).
 3. Pulsa el botón verde **`<> Code`** → pestaña **Codespaces** → **«Create codespace on claude/multiagent-…»**.
