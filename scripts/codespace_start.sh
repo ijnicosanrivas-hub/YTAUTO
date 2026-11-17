@@ -7,7 +7,14 @@ export PATH="$HOME/.local/bin:$PATH"
 PORT="${YTAUTO_PORT:-8000}"
 mkdir -p data
 
-if pgrep -f "ytauto.api.server" >/dev/null 2>&1; then
+# La interfaz compilada no está en git: si falta (instalación incompleta), se reconstruye aquí.
+if [ ! -f frontend/dist/index.html ]; then
+  echo "Falta la interfaz compilada: reconstruyéndola (1-2 min)..."
+  (cd frontend && npm ci && npm run build) >> data/build.log 2>&1 \
+    && echo "Interfaz lista." || echo "AVISO: no se pudo compilar la interfaz; mira data/build.log"
+fi
+
+if pgrep -f "ytauto.api.server --port $PORT" >/dev/null 2>&1; then
   echo "YTAUTO ya está en marcha (puerto $PORT)."
   exit 0
 fi

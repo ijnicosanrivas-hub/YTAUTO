@@ -17,7 +17,7 @@ from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -35,6 +35,13 @@ from .board import Board, rebuild
 log = logging.getLogger("ytauto.api")
 MODEL_RE = re.compile(r"^(sonnet|opus|haiku|claude-[a-z0-9\-\.]+)$")
 FRONTEND_DIST = REPO_ROOT / "frontend" / "dist"
+_NO_UI_PAGE = """<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>YTAUTO · falta la interfaz</title><style>body{font-family:system-ui,sans-serif;background:#0b1020;color:#e6ecff;margin:0;padding:24px;line-height:1.5}
+code{background:#1b2440;padding:2px 6px;border-radius:6px}main{max-width:560px;margin:40px auto}</style></head><body><main>
+<h1>El servidor funciona, pero falta la interfaz</h1>
+<p>La interfaz web aún no está compilada (suele ocurrir mientras termina la instalación, o si ese paso falló).</p>
+<p>En la terminal escribe: <code>cd frontend &amp;&amp; npm ci &amp;&amp; npm run build</code> y recarga esta página.</p>
+<p>Si usas Codespaces, también vale: <code>bash scripts/codespace_start.sh</code> (la reconstruye sola).</p></main></body></html>"""
 
 
 # ---------------------------------------------------------------- esquemas de entrada
@@ -520,6 +527,10 @@ def create_api(app: App, start_worker: bool = False, token: str | None = None,
     # ------------------------------------------------------------ interfaz compilada
     if FRONTEND_DIST.exists():
         api.mount("/", StaticFiles(directory=FRONTEND_DIST, html=True), name="frontend")
+    else:
+        @api.get("/", include_in_schema=False)
+        def sin_interfaz() -> HTMLResponse:
+            return HTMLResponse(_NO_UI_PAGE, status_code=503)
     return api
 
 

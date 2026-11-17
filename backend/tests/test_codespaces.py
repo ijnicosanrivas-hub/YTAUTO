@@ -67,4 +67,30 @@ def test_start_script_launches_the_server_once(tmp_path):
         second = subprocess.run(["bash", script], env=env, capture_output=True, text=True, timeout=30)
         assert "ya está en marcha" in second.stdout  # idempotente: no lanza una segunda copia
     finally:
-        subprocess.run(["pkill", "-f", "ytauto.api.server"], check=False)
+        subprocess.run(["pkill", "-f", f"ytauto.api.server --port {port}"], check=False)
+
+
+def test_start_script_rebuilds_the_ui_when_it_is_missing():
+    text = (REPO_ROOT / "scripts" / "codespace_start.sh").read_text(encoding="utf-8")
+    assert "frontend/dist/index.html" in text and "npm ci" in text and "npm run build" in text
+    assert text.index("npm run build") < text.index("nohup python")  # primero la interfaz, luego el servidor
+
+
+def test_server_explains_a_missing_ui_instead_of_a_blank_page(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from ytauto.api import server
+    from ytauto.app import build_app
+    from ytauto.core.settings import Settings
+    from ytauto.llm.mock import LocalDraftLLM
+
+    monkeypatch.setattr(server, "FRONTEND_DIST", tmp_path / "no-existe")
+    monkeypatch.delenv("YTAUTO_MASTER_KEY", raising=False)
+    s = Settings.from_env(load_env_file=False)
+    s.data_dir, s.projects_dir = tmp_path / "data", tmp_path / "projects"
+    s.db_path, s.logs_dir, s.backups_dir = tmp_path / "data/y.db", tmp_path / "logs", tmp_path / "b"
+    c = TestClient(server.create_api(build_app(s, llm=LocalDraftLLM(), include_mock_providers=True)))
+    r = c.get("/")
+    assert r.status_code == 503 and "text/html" in r.headers["content-type"]
+    assert "falta la interfaz" in r.text and "npm run build" in r.text
+    assert c.get("/api/health").status_code == 200  # la API sigue funcionando
