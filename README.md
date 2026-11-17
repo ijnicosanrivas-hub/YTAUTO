@@ -97,6 +97,7 @@ están **desactivados** y exigen credenciales, presupuesto y autorización: ver 
 | | |
 |---|---|
 | `docs/WINDOWS.md` | **Instalación en Windows paso a paso** |
+| `docs/NUBE.md` | **Usarlo sin instalar nada en tu PC** (GitHub Codespaces, desde el navegador) |
 | `docs/MOVIL.md` | **Usarlo desde el iPhone** (mismo Wi-Fi, con `INICIAR_WINDOWS_MOVIL.bat`) |
 | `docs/architecture.md` | Arquitectura, capas y flujo de 18 fases |
 | `docs/providers.md` | Proveedores intercambiables: escribir un adaptador, sustituir uno, fallback y presupuesto |
