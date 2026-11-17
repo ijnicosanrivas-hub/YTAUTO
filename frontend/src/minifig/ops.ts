@@ -2,7 +2,8 @@
 export type Op =
   | { k: "rect"; x: number; y: number; w: number; h: number; c: string }
   | { k: "circle"; x: number; y: number; r: number; c: string }
-  | { k: "poly"; pts: [number, number][]; c: string }
+  | { k: "ellipse"; x: number; y: number; rx: number; ry: number; c: string; rot?: number }
+  | { k: "poly"; pts: [number, number][]; c: string; s?: string; sw?: number }
   | { k: "line"; x1: number; y1: number; x2: number; y2: number; c: string; w?: number }
   | { k: "text"; x: number; y: number; s: string; c: string; size: number };
 
@@ -13,8 +14,8 @@ export const BAT_POLY: [number, number][] = [[18, 42], [34, 36], [42, 30], [46, 
 export const CANVAS = 100;
 
 export type Ctx = Pick<CanvasRenderingContext2D,
-  "fillRect" | "beginPath" | "arc" | "fill" | "moveTo" | "lineTo" | "closePath" | "stroke" | "fillText"> &
-  { fillStyle: unknown; strokeStyle: unknown; lineWidth: number; font: string; textAlign: unknown; textBaseline: unknown; lineCap: unknown };
+  "fillRect" | "beginPath" | "arc" | "ellipse" | "fill" | "moveTo" | "lineTo" | "closePath" | "stroke" | "fillText"> &
+  { fillStyle: unknown; strokeStyle: unknown; lineWidth: number; font: string; textAlign: unknown; textBaseline: unknown; lineCap: unknown; lineJoin: unknown };
 
 export function drawOps(ctx: Ctx, ops: Op[], size: number): void {
   const u = size / CANVAS;
@@ -30,11 +31,22 @@ export function drawOps(ctx: Ctx, ops: Op[], size: number): void {
         ctx.arc(op.x * u, op.y * u, op.r * u, 0, Math.PI * 2);
         ctx.fill();
         break;
+      case "ellipse":
+        ctx.beginPath();
+        ctx.ellipse(op.x * u, op.y * u, op.rx * u, op.ry * u, op.rot ?? 0, 0, Math.PI * 2);
+        ctx.fill();
+        break;
       case "poly":
         ctx.beginPath();
         op.pts.forEach(([x, y], i) => (i ? ctx.lineTo(x * u, y * u) : ctx.moveTo(x * u, y * u)));
         ctx.closePath();
         ctx.fill();
+        if (op.s) {
+          ctx.strokeStyle = op.s;
+          ctx.lineWidth = (op.sw ?? 1.5) * u;
+          ctx.lineJoin = "round";
+          ctx.stroke();
+        }
         break;
       case "line":
         ctx.lineWidth = (op.w ?? 2) * u;

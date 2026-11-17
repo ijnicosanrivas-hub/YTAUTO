@@ -109,17 +109,17 @@ function Cone({ r, h, color, pos, rot, seg = 4 }: { r: number; h: number; color:
   return <Part color={color} pos={pos} rot={rot}><coneGeometry args={[r, h, seg]} /></Part>;
 }
 
-/** Banda de pelo/capucha: lathe parcial que deja libre la cara. */
-function HairCap({ color, lift = 0 }: { color: string; lift?: number }) {
+/** Banda de pelo/capucha: lathe parcial que deja libre la cara (o una mitad, para el pelo partido). */
+function HairCap({ color, lift = 0, phiStart = 0.75, phiLength = Math.PI * 2 - 1.5, top = true, topStart = 0, topLength = Math.PI * 2 }: { color: string; lift?: number; phiStart?: number; phiLength?: number; top?: boolean; topStart?: number; topLength?: number }) {
   const geo = useMemo(() => {
     const pts = [[13.1, 10.5], [13.3, 13], [13.2, 17], [12.6, 20.2], [10.5, 22.4], [6.5, 24], [0, 24.6]].map(([x, y]) => new THREE.Vector2(x, y + lift));
-    return new THREE.LatheGeometry(pts, 40, 0.75, Math.PI * 2 - 1.5);
-  }, [lift]);
-  const top = useMemo(() => new THREE.LatheGeometry([[13.0, 18.4], [12.6, 20.2], [10.5, 22.4], [6.5, 24], [0, 24.6]].map(([x, y]) => new THREE.Vector2(x, y + lift)), 40), [lift]);
+    return new THREE.LatheGeometry(pts, 40, phiStart, phiLength);
+  }, [lift, phiStart, phiLength]);
+  const cap = useMemo(() => new THREE.LatheGeometry([[13.0, 18.4], [12.6, 20.2], [10.5, 22.4], [6.5, 24], [0, 24.6]].map(([x, y]) => new THREE.Vector2(x, y + lift)), 40, topStart, topLength), [lift, topStart, topLength]);
   return (
     <>
       <mesh geometry={geo} castShadow material={plastic(color)} />
-      <mesh geometry={top} castShadow material={plastic(color)} />
+      {top && <mesh geometry={cap} castShadow material={plastic(color)} />}
     </>
   );
 }
@@ -139,6 +139,14 @@ function HeadAccessory({ a }: { a: Accessory }) {
           <>
             <HairCap color={a.a} />
             {[-8, -4.5, -1.5, 1.5, 4.5, 8].map((x, i) => <Cone key={i} r={2.6} h={13 - Math.abs(x) * 0.35} color={a.a} pos={[x, H + 7, -2 - Math.abs(x) * 0.4]} rot={[-0.55, 0, -x * 0.07]} seg={6} />)}
+          </>
+        );
+      if (a.style === "split") // Dos Caras: mitad peinada en negro, mitad blanca y de punta (lado quemado)
+        return (
+          <>
+            <HairCap color={a.a} phiStart={Math.PI} phiLength={Math.PI - 0.75} topStart={Math.PI} topLength={Math.PI} />
+            <HairCap color={a.b ?? a.a} phiStart={0.75} phiLength={Math.PI - 0.75} topStart={0} topLength={Math.PI} />
+            {[3, 7, 10.5].map((x, i) => <Cone key={i} r={2.4} h={9 - i} color={a.b ?? a.a} pos={[x, H + 6.2, -1.5 - i]} rot={[-0.35, 0, -0.25 - i * 0.2]} seg={6} />)}
           </>
         );
       if (a.style === "nightwing")
@@ -174,16 +182,48 @@ function HeadAccessory({ a }: { a: Accessory }) {
     case "monocle":
       return <mesh position={[4.6, H * 0.58, R + 0.2]} material={plastic("#C9A227")}><torusGeometry args={[3, 0.45, 8, 24]} /></mesh>;
     case "baneMask":
-      return (
-        <group>
-          <Block w={14} h={7} d={5} color={PLASTIC.grey} pos={[0, 5.5, R + 0.6]} bevel={1} />
-          <Block w={12} h={1.6} d={3.6} color={PLASTIC.black} pos={[0, 5.5, R + 3.4]} bevel={0.5} />
-          {[-1, 1].map((s) => <Cyl key={s} r={1.2} h={14} color={PLASTIC.black} pos={[s * 10.4, 12, R - 2.2]} rot={[0.35, 0, s * 0.3]} seg={10} />)}
-        </group>
-      );
+      return <BaneMask mask={a.mask} hose={a.hose} />;
     default:
       return null;
   }
+}
+
+/** Máscara de luchador de Bane: placa respiradora y mangueras verdes que rodean la cabeza hasta la nuca. */
+function BaneMask({ mask, hose }: { mask: string; hose: string }) {
+  const R = BODY.head.r;
+  const tubes = useMemo(() => [-1, 1].map((s) => new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
+    new THREE.Vector3(s * 7.2, 5.5, R + 1.4), new THREE.Vector3(s * 11.2, 8, R - 2.5), new THREE.Vector3(s * 13.3, 13, 2), new THREE.Vector3(s * 9.5, 17.5, -R + 1), new THREE.Vector3(s * 3, 14, -R - 1.6),
+  ]), 24, 1.35, 8)), [R]);
+  return (
+    <group>
+      <Block w={15} h={9} d={5} color={PLASTIC.grey} pos={[0, 5.2, R + 0.9]} bevel={1.2} />
+      {[-4.5, -1.5, 1.5, 4.5].map((x) => <Block key={x} w={0.9} h={6.5} d={0.8} color={PLASTIC.black} pos={[x, 5.2, R + 3.6]} bevel={0.2} />)}
+      <Block w={11} h={2} d={4} color={mask} pos={[0, 14, R - 0.6]} bevel={0.6} />
+      {tubes.map((g, i) => <mesh key={i} geometry={g} castShadow material={plastic(hose)} />)}
+    </group>
+  );
+}
+
+/** Estampado fino (transparente) sobre una cara plana: piernas, espalda… */
+function Decal({ ops, w, h, pos, rotY = 0 }: { ops: Parameters<typeof drawOps>[1]; w: number; h: number; pos: V3; rotY?: number }) {
+  const tex = useMemo(() => printTexture(ops), [ops]);
+  useEffect(() => () => tex.dispose(), [tex]);
+  return (
+    <mesh position={pos} rotation={[0, rotY, 0]}>
+      <planeGeometry args={[w, h]} />
+      <meshPhysicalMaterial map={tex} transparent alphaTest={0.02} {...MATERIAL} />
+    </mesh>
+  );
+}
+
+function BackPrint({ ops, geometry }: { ops: Parameters<typeof drawOps>[1]; geometry: THREE.BufferGeometry }) {
+  const tex = useMemo(() => printTexture(ops), [ops]);
+  useEffect(() => () => tex.dispose(), [tex]);
+  return (
+    <mesh geometry={geometry} position={[0, 0, -BODY.torso.d / 2 - 0.04]} rotation={[0, Math.PI, 0]} scale={[-1, 1, 1]}>
+      <meshPhysicalMaterial map={tex} side={THREE.DoubleSide} {...MATERIAL} />
+    </mesh>
+  );
 }
 
 function Torso({ v }: { v: Variant }) {
@@ -197,6 +237,7 @@ function Torso({ v }: { v: Variant }) {
       <mesh geometry={g.decal} position={[0, 0, T.d / 2 + 0.04]}>
         <meshPhysicalMaterial map={tex} {...MATERIAL} />
       </mesh>
+      {v.torsoBack && <BackPrint ops={v.torsoBack} geometry={g.decal} />}
     </group>
   );
 }
@@ -311,8 +352,14 @@ export function Minifig({ variant: v, getAnim, seed = 0 }: { variant: Variant; g
   return (
     <group scale={LDU}>
       <group ref={root}>
-        <group ref={legL} position={[-L.x, LEG_TOP_Y, 0]}><Block w={L.w} h={L.h} d={L.d} color={v.legs.l} pos={[0, -L.h / 2, 0]} bevel={L.bevel} /></group>
-        <group ref={legR} position={[L.x, LEG_TOP_Y, 0]}><Block w={L.w} h={L.h} d={L.d} color={v.legs.r} pos={[0, -L.h / 2, 0]} bevel={L.bevel} /></group>
+        <group ref={legL} position={[-L.x, LEG_TOP_Y, 0]}>
+          <Block w={L.w} h={L.h} d={L.d} color={v.legs.l} pos={[0, -L.h / 2, 0]} bevel={L.bevel} />
+          {v.legsPrint?.l && <Decal ops={v.legsPrint.l} w={L.w - 0.6} h={L.h - 0.6} pos={[0, -L.h / 2, L.d / 2 + 0.05]} />}
+        </group>
+        <group ref={legR} position={[L.x, LEG_TOP_Y, 0]}>
+          <Block w={L.w} h={L.h} d={L.d} color={v.legs.r} pos={[0, -L.h / 2, 0]} bevel={L.bevel} />
+          {v.legsPrint?.r && <Decal ops={v.legsPrint.r} w={L.w - 0.6} h={L.h - 0.6} pos={[0, -L.h / 2, L.d / 2 + 0.05]} />}
+        </group>
         <Block w={BODY.hips.w} h={BODY.hips.h} d={BODY.hips.d} color={v.hips} pos={[0, LEG_TOP_Y + BODY.hips.h / 2, 0]} bevel={BODY.hips.bevel} />
         {/* tronco, brazos y cabeza: pivotan juntos en la cadera */}
         <group ref={upper} position={[0, HIPS_TOP_Y, 0]}>

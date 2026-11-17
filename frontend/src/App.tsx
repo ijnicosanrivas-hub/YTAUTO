@@ -40,16 +40,17 @@ export default function App() {
   useEffect(() => {
     if (themeData) setTheme(themeData);
   }, [themeData, setTheme]);
+  const lego = theme.id !== "classic" && route.page === "room";
   useEffect(() => {
     const root = document.documentElement;
     const gotham = theme.id !== "classic";
-    root.classList.toggle("lego", gotham); // estilo de ladrillos LEGO
+    root.classList.toggle("lego", lego); // estilo de ladrillos LEGO: solo en la sala 3D; el resto de pantallas conserva el diseño anterior
     if (gotham) root.dataset.theme = "dark"; // los personajes se ven en oscuro: fuerza el modo oscuro
     else delete root.dataset.theme;
     if (gotham) root.style.setProperty("--accent", theme.palette.accent);
     else root.style.removeProperty("--accent");
     document.title = gotham ? `${theme.brand} · ${theme.room_title}` : "YTAUTO · Sala de producción";
-  }, [theme]);
+  }, [theme, lego]);
 
   let page: React.ReactNode;
   switch (route.page) {
@@ -92,7 +93,7 @@ export default function App() {
     <div className="layout">
       <nav className="sidebar" aria-label="Secciones">
         <div className="brand">
-          <span className="brand-dot" /> {theme.id === "classic" ? "YTAUTO" : <>BATMAN<small>YTAUTO · Baticueva</small></>}
+          <span className="brand-dot" /> {theme.id === "classic" ? "YTAUTO" : lego ? <>BATMAN<small>YTAUTO · Baticueva</small></> : `🦇 ${theme.brand}`}
         </div>
         {NAV.map((n) => (
           <a key={n.page} href={`#/${n.page}`} className={`nav-item ${route.page === n.page ? "active" : ""}`}>

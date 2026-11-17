@@ -24,18 +24,20 @@ La **robustez de Bane** y el resto de rasgos se expresan con estampado y accesor
 Solo **colores**, **estampados** (datos de dibujo sobre un lienzo 100×100) y **accesorios** (orejas, capa, pelo,
 sombrero, paraguas, monóculo, máscara de Bane, flor). Una prueba comprueba que no hay ninguna otra clave.
 
-## Los nueve (identidades fijadas, sin cambios)
-| Agente | Personaje | Rasgos conservados |
+## Los nueve (diseños oficiales más populares, ver `docs/lego_research.md`)
+| Agente | Personaje | Diseño y rasgos |
 |---|---|---|
-| Jefe | Batman | Traje negro, capucha con orejas, capa, emblema del murciélago, cinturón amarillo |
-| Director | El Acertijo | Verde y morado, sombrero bombín, antifaz, signos «?» |
-| Guionista | El Joker | Pelo verde, traje morado, chaleco verde, cara blanca, sonrisa roja, flor |
-| Recursos | Catwoman | Traje y capucha negros con orejas de gata, ojos verdes, cinturón dorado |
-| Voz | Bane | Complexión marcada (estampado), arneses, máscara respiratoria con tubos |
-| Editor | Nightwing | Traje oscuro con detalles azules (brazos, «ala» del pecho), antifaz, pelo negro |
-| Sonido | El Pingüino | Frac con pajarita, chistera, monóculo, paraguas |
-| Revisor | Dos Caras | Cara, traje, brazos y piernas divididos en dos mitades |
-| Publicador | Harley Quinn | Rojo y negro, coletas bicolor, rombos, antifaz |
+| Jefe | Batman | Traje **gris azulado claro**, capucha negra con orejas, capa, cinturón y emblema amarillos |
+| Director | El Acertijo | Torso verde con «?» negro grande, cinturón morado, bombín verde, antifaz morado |
+| Guionista | El Joker | Traje morado, pajarita verde, flor en la solapa, pelo verde, cara blanca, sonrisa roja |
+| Recursos | Catwoman | Traje negro con líneas moradas, cremallera gris, cinturón dorado, capucha con orejas de gata |
+| Voz | Bane | Máscara de luchador con ojos rojos y mangueras verdes, torso desnudo con arneses |
+| Editor | Nightwing | Torso negro con V azul, brazos azules, antifaz, pelo negro de pinchos |
+| Sonido | El Pingüino | Chistera, monóculo, chaqué con chaleco naranja y pajarita morada, paraguas |
+| Revisor | Dos Caras | Cara con mitad quemada, pelo partido, traje partido naranja y morado |
+| Publicador | Harley Quinn | Bicolor rojo y negro, antifaz arlequín, coletas alternas, torso y piernas estampados |
+
+Cada figura lleva estampado en **cara** (cejas, pupilas con brillo, sombras), **torso**, **espalda** y **piernas**.
 
 ## Animaciones (`pose.ts`, iguales para los nueve)
 El estado sale **solo** del estado real del agente; no hay movimiento inventado.
@@ -60,8 +62,8 @@ Construida a la **misma escala** que las figuras (el taco de la placa base mide 
   ladrillos; al fallar, chispas; al pedir tu decisión, un «!» de ladrillos flota sobre la cabeza.
 El anillo de la placa mantiene el color del **estado** real (en espera / ejecución / esperando / error).
 
-## Interfaz LEGO
-Todo el programa usa el tema: placa base de tacos como fondo, paneles y botones **como ladrillos** (relieve, fila de
+## Interfaz LEGO (solo en la sala)
+En la **sala 3D** (el resto de pantallas conserva el diseño oscuro anterior) se usa el tema: placa base de tacos como fondo, paneles y botones **como ladrillos** (relieve, fila de
 tacos, se hunden al pulsar), barras de progreso de ladrillos con tacos, tipografía redondeada **Lilita One + Nunito**
 (libres, SIL OFL, empaquetadas) y la paleta oficial de LEGO. Con `YTAUTO_THEME=classic` vuelve el diseño anterior.
 

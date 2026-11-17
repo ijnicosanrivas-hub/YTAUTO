@@ -51,6 +51,11 @@ export const PLASTIC = {
   nougat: "#D09168", // piel oscura
   lightNougat: "#F6D7B3",
   blond: "#E4CD9E",
+  reddishBrown: "#582A12",
+  darkBrown: "#352100",
+  lavender: "#A06EB9",
+  darkOrange: "#A95500",
+  pink: "#DC8FA5",
 } as const;
 
 /** Plástico ABS moldeado: brillante pero no espejo (el mismo material para figuras y ladrillos). */

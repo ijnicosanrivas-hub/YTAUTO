@@ -39,7 +39,36 @@ La investigación sobre TT Games solo aportó rasgos generales: la Batcueva como
 distintas épocas, ladrillos que reaccionan a la luz y humor visual. **No hay documentación pública de su
 técnica de sombreado de tacos y plástico**; el aspecto de la sala es una interpretación propia, no una réplica.
 
+## Diseños oficiales en los que se basan las nueve figuras
+**No existe un ranking público de unidades vendidas por figura.** Como aproximación se usó la popularidad entre
+coleccionistas (BrickEconomy: figuras sueltas más poseídas del tema Batman 2005-08, donde Batman ocupa los puestos 1, 2 y 5,
+el Joker el 4, el Pingüino el 6, Dos Caras el 7 y Catwoman el 8; Nightwing figura en el 5.º puesto de la subtemática
+DC Batman) y las descripciones de cada diseño en Brickipedia/BrickLink/Brickset/BrickOwl. Estas páginas se consultaron a
+través de resultados de búsqueda (las páginas completas no se pudieron abrir): el detalle de cada estampado es una
+**reconstrucción propia** a partir de esas descripciones, no una copia de las figuras.
+
+| Agente | Figura oficial elegida | Rasgos documentados que se reproducen | Confianza |
+|---|---|---|---|
+| Batman | Batman, traje gris azulado claro con máscara negra (2006) | Traje gris, capucha negra con orejas, capa negra, cinturón y emblema amarillos | Media: el nombre del diseño es el de la lista de popularidad; los estampados son de memoria de la figura |
+| El Acertijo | The Riddler (2006) | Torso verde con «?» negro grande en el pecho, cinturón morado, bombín verde, antifaz morado | Alta (Brickipedia) |
+| El Joker | The Joker (2006) | Traje morado, pajarita verde, flor en la solapa, pelo verde, cara blanca con sonrisa roja | Alta (Brickipedia) |
+| Catwoman | Catwoman (2006) | Torso negro con líneas curvas moradas, cremallera gris, cinturón dorado, orejas de gata | Alta (Brickipedia) |
+| Bane | Bane, bat021 (2007) | Máscara de luchador con **ojos rojos grandes y mangueras verdes** (nombre de la pieza en BrickLink) | Media: no se encontró descripción del torso; torso desnudo con arneses es inferido |
+| Nightwing | Nightwing (2014/2016) | Torso negro con símbolo azul en V, brazos azules, piernas negras lisas, antifaz y pelo negro de pinchos | Media: las fuentes discrepan en los colores de la versión 2014 |
+| El Pingüino | The Penguin (2012) | Chistera negra, cabeza clara con monóculo, cejas grandes y sonrisa amplia, chaqué negro con chaleco naranja y pajarita morada, manos blancas | Alta (Brickipedia/ToyPro) |
+| Dos Caras | Two-Face (2006 + 2012) | Pelo partido (negro peinado / blanco de punta), mitad de la cara quemada, traje partido naranja y morado | Media: mezcla dos versiones documentadas |
+| Harley Quinn | Harley Quinn, sh0838 (2022) | Traje bicolor rojo y negro, coletas altas alternas, torso y piernas estampados, antifaz arlequín negro | Media: el antifaz arlequín procede de otra variante |
+
+Dos decisiones a tener en cuenta:
+- **Batman** pasa a ser **gris** (como la figura más poseída) y no negro, que era la descripción que dabas al principio.
+  Cambiarlo a traje negro es una edición de colores en `frontend/src/minifig/variants.ts`.
+- Los modelos son procedurales: reproducen colores y estampados, no el molde exacto de cada pieza (por ejemplo, el
+  pelo del Joker o el sombrero del Pingüino son aproximaciones de las piezas reales).
+
 ## Lo que NO se pudo confirmar
+- Ventas reales (no son públicas) y el detalle exacto de varios estampados (ver columna «Confianza»).
+- BrickEconomy, Brickset, BrickLink y Rebrickable no se pudieron leer como páginas completas desde el entorno de
+  desarrollo (red restringida); se usaron resultados de búsqueda.
 - Diámetro exacto de la cabeza: LDraw usa radio 13 en la primitiva exterior y 12 en el cuerpo; se usó **12 LDU**
   (≈ 9,6 mm). Un contraste con piezas físicas podría ajustarlo ±1 LDU.
 - La altura total resulta 90 LDU (36 mm con taco; sin pelo ni sombrero) y las referencias de BrickArchitect hablan de
