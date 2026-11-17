@@ -32,6 +32,7 @@ se omiten los dos.
 | Compatibilidad con Windows (rutas con espacios/`:`/tildes, fuentes, codificación, `.env` con BOM) | `test_windows_compat.py` |
 | Instalador y scripts de Windows (revisión estática) | `test_installer.py` |
 | API REST y WebSocket | `test_api.py` |
+| Acceso desde el móvil (código de acceso, enlaces, servidor real en modo `--lan`) | `test_lan.py`, `frontend/src/logic.test.ts` |
 | Tema de personajes (validez, API, prompts de rol coherentes) | `test_theme.py` |
 | Interfaz (lógica) | `frontend/src/logic.test.ts` |
 | Ladrillos a escala real (taco, placas, muro, mosaico) y efectos | `frontend/src/minifig/bricks.test.ts` |

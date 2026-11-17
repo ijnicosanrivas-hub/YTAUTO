@@ -58,7 +58,7 @@ def test_dry_run_changes_nothing(monkeypatch, capsys):
 
 
 # ---------------------------------------------------------------- scripts de Windows (revisión estática)
-BATS = ["INSTALAR_WINDOWS.bat", "INICIAR_WINDOWS.bat", "INICIAR_WINDOWS_SIN_CLAUDE.bat", "DIAGNOSTICO_WINDOWS.bat"]
+BATS = ["INSTALAR_WINDOWS.bat", "INICIAR_WINDOWS.bat", "INICIAR_WINDOWS_SIN_CLAUDE.bat", "INICIAR_WINDOWS_MOVIL.bat", "DIAGNOSTICO_WINDOWS.bat"]
 
 
 @pytest.mark.parametrize("name", BATS)
@@ -81,7 +81,8 @@ def test_powershell_installer_is_crlf_utf8_with_bom_and_uses_the_verified_comman
 
 def test_start_scripts_run_the_doctor_first_and_force_utf8():
     for name, flags in (("INICIAR_WINDOWS.bat", ("doctor", "ytauto.api.server --open")),
-                        ("INICIAR_WINDOWS_SIN_CLAUDE.bat", ("doctor --no-claude", "--offline --open"))):
+                        ("INICIAR_WINDOWS_SIN_CLAUDE.bat", ("doctor --no-claude", "--offline --open")),
+                        ("INICIAR_WINDOWS_MOVIL.bat", ("doctor", "ytauto.api.server --lan --open"))):
         text = (ROOT / name).read_text(encoding="ascii")
         assert "set PYTHONUTF8=1" in text and r".venv\Scripts\python.exe" in text and "cd /d" in text
         assert all(f in text for f in flags)

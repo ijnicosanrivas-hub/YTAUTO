@@ -538,6 +538,7 @@ def main() -> None:  # pragma: no cover - punto de entrada
     ap.add_argument("--offline", action="store_true", help="Sin Claude (borradores locales)")
     ap.add_argument("--no-worker", action="store_true")
     ap.add_argument("--open", action="store_true", help="Abre el navegador al arrancar")
+    ap.add_argument("--lan", action="store_true", help="Accesible desde otros dispositivos de tu red (iPhone) con código de acceso")
     args = ap.parse_args()
     from ..core.settings import force_utf8_console
     force_utf8_console()
@@ -546,13 +547,30 @@ def main() -> None:  # pragma: no cover - punto de entrada
         settings.llm_provider = "local_draft"
     setup_logging(settings.logs_dir)
     app = build_app(settings)
+    lan_token = None
+    if args.lan:
+        from .lan import LINK_FILE, ensure_lan_token, local_addresses, lan_urls
+        args.host = "0.0.0.0"
+        lan_token = os.environ.get("YTAUTO_API_TOKEN") or ensure_lan_token(settings.data_dir)
+        os.environ["YTAUTO_API_TOKEN"] = lan_token
     if args.host not in ("127.0.0.1", "localhost") and not os.environ.get("YTAUTO_API_TOKEN"):
-        raise SystemExit("Para escuchar fuera de localhost define YTAUTO_API_TOKEN")
+        raise SystemExit("Para escuchar fuera de localhost define YTAUTO_API_TOKEN (o usa --lan)")
     from ..doctor import find_free_port
     port = find_free_port(args.port, host="127.0.0.1")  # si el 8000 está ocupado, usa el siguiente libre
     shown = "127.0.0.1" if args.host in ("0.0.0.0", "::") else args.host
-    url = f"http://{shown}:{port}"
-    print(f"\n  YTAUTO funcionando en {url}\n  (no cierres esta ventana mientras lo uses; para parar, pulsa Ctrl+C)\n")
+    url = f"http://{shown}:{port}" + (f"/?token={lan_token}" if lan_token else "")
+    print(f"\n  YTAUTO funcionando en http://{shown}:{port}\n  (no cierres esta ventana mientras lo uses; para parar, pulsa Ctrl+C)\n")
+    if lan_token:
+        links = lan_urls(local_addresses(), port, lan_token)
+        print("  ACCESO DESDE EL IPHONE (mismo Wi-Fi que este PC): abre en Safari uno de estos enlaces:")
+        for link in links or ["  (no se detectó la red local: ejecuta ipconfig y usa http://<tu IPv4>:%d/?token=%s)" % (port, lan_token)]:
+            print(f"    {link}")
+        print("  El enlace lleva tu código de acceso: no lo compartas fuera de tu casa.\n")
+        try:
+            (settings.data_dir / LINK_FILE).write_text("\n".join(links) + "\n", encoding="utf-8")
+            print(f"  (también guardado en {settings.data_dir / LINK_FILE} para copiarlo y enviártelo)\n")
+        except OSError:
+            pass
     if args.open:
         import threading
         import webbrowser

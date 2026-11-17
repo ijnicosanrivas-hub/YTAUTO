@@ -68,6 +68,9 @@ líneas en **[OK]**. Si alguna dice **[FALLO]**, debajo te dice **cómo arreglar
 > (ver `docs/integrations.md`); para empezar, descarga los vídeos y súbelos tú. En cada exportación hay también una
 > carpeta `manual` con el vídeo y los textos listos para copiar.
 
+### Usarlo desde el iPhone
+Abre **`INICIAR_WINDOWS_MOVIL.bat`** en lugar de `INICIAR_WINDOWS.bat` y sigue `docs/MOVIL.md`.
+
 ### Probar sin gastar nada de Claude
 Haz doble clic en **`INICIAR_WINDOWS_SIN_CLAUDE.bat`**. Funciona igual pero con guiones de ejemplo muy simples; sirve
 para comprobar que el PC produce vídeos.

@@ -97,6 +97,7 @@ están **desactivados** y exigen credenciales, presupuesto y autorización: ver 
 | | |
 |---|---|
 | `docs/WINDOWS.md` | **Instalación en Windows paso a paso** |
+| `docs/MOVIL.md` | **Usarlo desde el iPhone** (mismo Wi-Fi, con `INICIAR_WINDOWS_MOVIL.bat`) |
 | `docs/architecture.md` | Arquitectura, capas y flujo de 18 fases |
 | `docs/providers.md` | Proveedores intercambiables: escribir un adaptador, sustituir uno, fallback y presupuesto |
 | `docs/local_engine.md` | Motor local, biblioteca con licencias, calidad de vídeo corto |

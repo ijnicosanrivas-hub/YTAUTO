@@ -106,3 +106,15 @@ describe("tema de personajes", () => {
     expect(quoteFor(CLASSIC_THEME, base)).toBeUndefined();
   });
 });
+
+import { tokenFromSearch } from "./api";
+
+describe("acceso desde el móvil", () => {
+  it("lee el código de acceso del enlace", () => {
+    expect(tokenFromSearch("?token=abc123")).toBe("abc123");
+    expect(tokenFromSearch("?x=1&token=Zq-9_x")).toBe("Zq-9_x");
+    expect(tokenFromSearch("?token=%20")).toBeNull();
+    expect(tokenFromSearch("")).toBeNull();
+    expect(tokenFromSearch("?otro=1")).toBeNull();
+  });
+});

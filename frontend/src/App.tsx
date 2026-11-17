@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { UNAUTHORIZED_EVENT, setToken } from "./api";
 import { useApi } from "./components/ui";
 import { useLive } from "./store";
 import type { Theme } from "./types";
@@ -28,6 +29,36 @@ const NAV: { page: string; label: string }[] = [
   { page: "exports", label: "Exportaciones" },
   { page: "history", label: "Historial" },
 ];
+
+/** Pide el código de acceso cuando el servidor lo exige (acceso desde el móvil) y falta o es incorrecto. */
+function TokenGate() {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState("");
+  useEffect(() => {
+    const on = () => setOpen(true);
+    window.addEventListener(UNAUTHORIZED_EVENT, on);
+    return () => window.removeEventListener(UNAUTHORIZED_EVENT, on);
+  }, []);
+  if (!open) return null;
+  return (
+    <div className="gate" role="dialog" aria-modal="true" aria-label="Código de acceso">
+      <form
+        className="panel gate-card"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!value.trim()) return;
+          setToken(value.trim());
+          location.reload();
+        }}
+      >
+        <h2>Código de acceso</h2>
+        <p className="muted">Este programa pide un código. Está en la ventana negra del PC (o en el enlace de acceso desde el móvil).</p>
+        <input autoFocus value={value} onChange={(e) => setValue(e.target.value)} placeholder="Código de acceso" autoCapitalize="off" autoCorrect="off" spellCheck={false} />
+        <button className="btn primary" type="submit" style={{ marginTop: 10 }}>Entrar</button>
+      </form>
+    </div>
+  );
+}
 
 export default function App() {
   const route = useLive((s) => s.route);
@@ -108,6 +139,7 @@ export default function App() {
         </div>
       </nav>
       <main className="main">{page}</main>
+      <TokenGate />
     </div>
   );
 }
