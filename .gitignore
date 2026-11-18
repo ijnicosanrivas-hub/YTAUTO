@@ -18,7 +18,8 @@ backups/
 secrets/
 # Frontend
 frontend/node_modules/
-frontend/dist/
+# frontend/dist/ SI se versiona: el paquete para Windows ya trae la interfaz compilada (nadie necesita Node)
+/tools/
 # Medios generados
 *.mp4
 *.wav

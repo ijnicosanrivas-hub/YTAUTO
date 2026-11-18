@@ -38,8 +38,7 @@ def run_checks(offline: bool = False, settings: Settings | None = None) -> list[
     from .providers.rendering.ffmpeg import FFmpegRenderingProvider
     h = FFmpegRenderingProvider().health_check()
     checks.append(Check("FFmpeg", h.ok, h.message.split("Copyright")[0].strip() or h.message,
-                        _fix("Ejecuta INSTALAR_WINDOWS.bat de nuevo, o instala FFmpeg con: winget install Gyan.FFmpeg "
-                             "(después cierra y abre esta ventana)", "Instala FFmpeg 6+ con libass")))
+                        _fix("Ejecuta INSTALAR_WINDOWS.bat de nuevo (descarga FFmpeg dentro del programa)", "Instala FFmpeg 6+ con libass")))
 
     # Voz: espeak-ng o al menos un modelo Piper
     from .providers.voice.espeak import find_binary
@@ -48,7 +47,7 @@ def run_checks(offline: bool = False, settings: Settings | None = None) -> list[
     piper = PiperTTSProvider().health_check()
     checks.append(Check("Voz", bool(espeak) or piper.ok,
                         "espeak-ng" if espeak else (f"Piper ({piper.message})" if piper.ok else "ninguna instalada"),
-                        _fix("winget install eSpeak-NG.eSpeak-NG (o ejecuta INSTALAR_WINDOWS.bat de nuevo)",
+                        _fix("Ejecuta INSTALAR_WINDOWS.bat de nuevo (instala la voz)",
                              "sudo apt install espeak-ng")))
 
     # Claude Code: solo si no se trabaja sin conexión
@@ -62,10 +61,16 @@ def run_checks(offline: bool = False, settings: Settings | None = None) -> list[
             pass
     checks.append(Check("Claude Code", bool(claude) or offline,
                         (version or claude or "no instalado") + (" (modo sin Claude)" if offline and not claude else ""),
-                        _fix('Abre PowerShell y ejecuta: irm https://claude.ai/install.ps1 | iex   '
-                             '(luego escribe «claude» una vez para iniciar sesión)',
+                        _fix('Ejecuta INSTALAR_WINDOWS.bat de nuevo (instala Claude Code); luego escribe «claude» una vez para iniciar sesión',
                              "curl -fsSL https://claude.ai/install.sh | bash   y luego «claude» para iniciar sesión"),
                         critical=not offline))
+
+    if WINDOWS:  # Claude Code usa Git Bash en Windows
+        from .core.tools import find_git_bash
+        bash = find_git_bash()
+        checks.append(Check("Git Bash", bool(bash), str(bash) if bash else "no encontrado",
+                            "Ejecuta INSTALAR_WINDOWS.bat de nuevo (instala Git, que Claude Code necesita en Windows)",
+                            critical=False))
 
     dist = REPO_ROOT / "frontend" / "dist" / "index.html"
     checks.append(Check("Interfaz compilada", dist.exists(), "lista" if dist.exists() else "sin compilar",

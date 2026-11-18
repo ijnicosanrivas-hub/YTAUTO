@@ -34,6 +34,11 @@ def test_plan_uses_the_windows_virtualenv_layout_and_the_right_steps(tmp_path):
     assert steps[-1][1] == [str(py), "-m", "ytauto", "doctor"]
 
 
+def test_plan_skips_the_ui_steps_when_the_package_already_ships_it(tmp_path):
+    steps = inst.plan(tmp_path, platform="win32", npm=r"C:\nodejs\npm.CMD", ui_built=True)
+    assert [s[0] for s in steps] == ["Crear el entorno de Python (.venv)", "Instalar las dependencias de Python", "Comprobar la instalacion"]
+
+
 def test_plan_on_linux_uses_bin_python_and_can_skip_the_ui_and_claude(tmp_path):
     steps = inst.plan(tmp_path, platform="linux", skip_ui=True, npm="/usr/bin/npm", no_claude=True)
     assert steps[1][1][0] == str(tmp_path / ".venv" / "bin" / "python")
@@ -68,15 +73,56 @@ def test_bat_files_are_crlf_and_pure_ascii(name):
     raw.decode("ascii")  # sin tildes: cmd.exe las corrompe según la página de códigos
 
 
-def test_powershell_installer_is_crlf_utf8_with_bom_and_uses_the_verified_commands():
-    raw = (ROOT / "scripts" / "instalar_windows.ps1").read_bytes()
-    assert raw.startswith(b"\xef\xbb\xbf") and b"\r\n" in raw  # BOM: Windows PowerShell 5.1 lee si no ANSI
-    text = raw.decode("utf-8-sig")
-    for wanted in ("Python.Python.3.12", "Gyan.FFmpeg", "OpenJS.NodeJS.LTS", "eSpeak-NG.eSpeak-NG",
-                   "https://claude.ai/install.ps1", "scripts\\instalar.py", "--accept-package-agreements"):
-        assert wanted in text, wanted
-    assert "&&" not in text  # sintaxis de bash: no existe en PowerShell 5.1
-    assert text.count("{") == text.count("}") and text.count("(") == text.count(")")  # llaves y paréntesis equilibrados
+def _bat(name="INSTALAR_WINDOWS.bat") -> str:
+    return (ROOT / name).read_text(encoding="ascii")
+
+
+def test_installer_is_pure_batch_without_powershell():
+    """El usuario no quiere PowerShell: ni un .ps1 en el proyecto ni una llamada a él desde ningún .bat."""
+    assert not list(ROOT.rglob("*.ps1"))
+    for name in BATS:
+        text = _bat(name).lower()
+        assert "powershell" not in text and ".ps1" not in text and "irm " not in text and "invoke-" not in text, name
+
+
+def test_installer_installs_everything_by_itself():
+    text = _bat()
+    for needle in (
+        "python.org/ftp/python/3.12", "start /wait", "InstallAllUsers=0",  # Python sin administrador
+        "Git-2.47.1-64-bit.exe", "/CURRENTUSER", "CLAUDE_CODE_GIT_BASH_PATH",  # Git (lo necesita Claude Code)
+        "ffmpeg-release-essentials.zip", "tar -xf", "tools",  # FFmpeg portátil dentro del programa
+        "espeak-ng", "msiexec /a",  # voz sin administrador (extracción administrativa del MSI)
+        "claude.ai/install.cmd",  # Claude Code por el instalador oficial de cmd
+        'scripts\\instalar.py', "YTAUTO.bat",  # prepara el entorno y crea el acceso del Escritorio
+    ):
+        assert needle in text, needle
+    # Los instaladores gráficos (Python, Git, MSI) NO bloquean cmd: sin «start /wait» el .bat seguiría sin esperar
+    for marker in ("ytauto-python.exe\" /quiet", "ytauto-git.exe\" /VERYSILENT", "msiexec /a"):
+        line = next(ln for ln in text.splitlines() if marker in ln)
+        assert line.startswith("start /wait"), line
+    assert text.count("winget install") >= 4  # alternativa si falla la descarga directa
+    assert "node" not in text.lower().replace("nodejs", "")  # Node no hace falta: la interfaz ya viene compilada
+
+
+def test_installer_has_no_dangling_jumps_and_no_multiline_blocks():
+    text = _bat()
+    labels = set(re.findall(r"^:(\w+)", text, re.M))
+    targets = set(re.findall(r"(?:goto|call) :?(\w+)", text, re.I)) - {"claude"}
+    assert targets <= labels | {"EOF"}, targets - labels
+    # Una carpeta con paréntesis (p. ej. «ytauto (1)») rompería cualquier bloque ( ... ) que expanda su ruta
+    assert not re.search(r"\($", text, re.M), "bloques multilínea: usa subrutinas"
+    assert "%~dp0pyproject.toml" in text and "sin_extraer" in text  # avisa si se ejecuta desde dentro del ZIP
+    for url in re.findall(r"https?://[^\s\"]+", text):
+        assert url.startswith("https://"), url
+
+
+def test_installer_fails_loudly_and_can_be_rerun():
+    text = _bat()
+    assert text.rstrip().endswith("exit /b 0")
+    assert "fallo_final" in text and "exit /b 1" in text
+    assert "retoma lo que falte" in text  # idempotente: cada herramienta se busca antes de instalarla
+    for finder in (":buscar_python", ":buscar_git", ":buscar_ffmpeg", ":buscar_espeak", ":buscar_claude"):
+        assert finder in text
 
 
 def test_start_scripts_run_the_doctor_first_and_force_utf8():
@@ -93,7 +139,7 @@ def test_start_scripts_run_the_doctor_first_and_force_utf8():
 
 def test_gitattributes_keeps_windows_line_endings():
     text = (ROOT / ".gitattributes").read_text(encoding="utf-8")
-    assert "*.bat text eol=crlf" in text and "*.ps1 text eol=crlf" in text
+    assert "*.bat text eol=crlf" in text and "ps1" not in text
 
 
 # ---------------------------------------------------------------- servidor y diagnóstico
@@ -112,8 +158,10 @@ def test_doctor_reports_every_check_with_a_fix_and_fails_on_critical_problems(mo
     monkeypatch.setattr(doctor, "WINDOWS", True)
     checks = doctor.run_checks()
     by = {c.name: c for c in checks}
-    assert not by["Claude Code"].ok and "install.ps1" in by["Claude Code"].fix
-    assert "winget" in by["FFmpeg"].fix and "INSTALAR_WINDOWS.bat" in by["FFmpeg"].fix
+    assert not by["Claude Code"].ok and "INSTALAR_WINDOWS.bat" in by["Claude Code"].fix
+    assert "INSTALAR_WINDOWS.bat" in by["FFmpeg"].fix and "INSTALAR_WINDOWS.bat" in by["Voz"].fix
+    assert "Git Bash" in by and not by["Git Bash"].ok and not by["Git Bash"].critical  # en Windows Claude Code lo usa
+    assert all("powershell" not in c.fix.lower() for c in checks)
     report = doctor.format_report(checks)
     assert "FALLO" in report and "Como arreglarlo" in report and "Faltan" in report
     offline = {c.name: c for c in doctor.run_checks(offline=True)}
@@ -133,3 +181,11 @@ def test_the_server_module_accepts_open_flag():
     out = subprocess.run([sys.executable, "-m", "ytauto.api.server", "--help"], capture_output=True,
                          encoding="utf-8", errors="replace", cwd=ROOT / "backend", timeout=60)
     assert "--open" in out.stdout and out.returncode == 0
+
+
+def test_the_package_ships_the_compiled_ui_so_nobody_needs_node():
+    dist = ROOT / "frontend" / "dist"
+    index = (dist / "index.html").read_text(encoding="utf-8")
+    assets = re.findall(r'(?:src|href)="/(assets/[^"]+)"', index)
+    assert assets and all((dist / a).is_file() for a in assets)  # nada de enlaces rotos
+    assert (dist / "assets").is_dir() and any(p.suffix == ".woff2" for p in (dist / "assets").iterdir())  # fuentes empaquetadas

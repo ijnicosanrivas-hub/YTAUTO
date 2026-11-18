@@ -23,13 +23,18 @@ def load_dotenv(path: Path | None = None) -> None:
 
 
 def force_utf8_console() -> None:
-    """La consola de Windows usa cp1252 y fallaría al imprimir tildes, «¿» o flechas."""
+    """La consola de Windows usa cp1252 y fallaría al imprimir tildes, «¿» o flechas.
+
+    También prepara el entorno de las herramientas instaladas dentro del programa (FFmpeg, voz, Claude Code, Git Bash):
+    todos los puntos de entrada (servidor, CLI, diagnóstico) pasan por aquí."""
     import sys
     for stream in (sys.stdout, sys.stderr):
         try:
             stream.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
         except (AttributeError, ValueError):
             pass
+    from .tools import prepare_environment
+    prepare_environment()
 
 
 class Settings(BaseModel):

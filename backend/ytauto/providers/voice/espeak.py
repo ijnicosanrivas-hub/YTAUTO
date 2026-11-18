@@ -22,6 +22,10 @@ def find_binary(name: str) -> str | None:
     found = shutil.which(name)
     if found:
         return found
+    from ...core.tools import find_espeak_dir  # instalada por INSTALAR_WINDOWS.bat dentro de tools/
+    local = find_espeak_dir()
+    if local and (local / "espeak-ng.exe").is_file():
+        return str(local / "espeak-ng.exe")
     return next((p for p in WINDOWS_PATHS if Path(p).exists()), None)
 
 

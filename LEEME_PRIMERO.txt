@@ -1,0 +1,28 @@
+YTAUTO - Fabrica de videos cortos (Windows)
+============================================
+
+PARA INSTALARLO (se hace una sola vez, 10-30 minutos):
+
+ 1. Haz clic derecho en el archivo ZIP y elige "Extraer todo".
+    (Importante: NO abras el instalador desde dentro del ZIP.)
+ 2. Abre la carpeta extraida y haz doble clic en  INSTALAR_WINDOWS.bat
+ 3. Si Windows dice "Windows protegio su PC":
+    pulsa "Mas informacion" y despues "Ejecutar de todos modos".
+ 4. Espera. Se instala todo solo (Python, Git, FFmpeg, voz y Claude Code).
+    No cierres la ventana negra.
+ 5. Al final te pide iniciar sesion en Claude con TU cuenta de Claude Pro.
+    Se abre el navegador; al terminar, escribe  /exit  en la ventana.
+
+PARA USARLO (cada vez):
+
+ - Haz doble clic en el icono YTAUTO del Escritorio
+   (o en INICIAR_WINDOWS.bat dentro de la carpeta).
+ - Se abre el navegador con la fabrica. No cierres la ventana negra mientras la uses.
+
+REQUISITOS: Windows 10 (version 1803 o posterior) o Windows 11, conexion a Internet,
+10 GB libres y tu propia cuenta de Claude Pro (cada persona usa la suya).
+
+SI ALGO FALLA: abre DIAGNOSTICO_WINDOWS.bat. Te dice que falta y como arreglarlo.
+Tambien puedes volver a abrir INSTALAR_WINDOWS.bat: retoma lo que falte.
+
+Guia completa: docs\WINDOWS.md

@@ -30,7 +30,8 @@ se omiten los dos.
 | Exportación vertical y adaptación a plataformas | `test_platforms.py` |
 | Autorización de publicación | `test_orchestrator.py`, `test_integrations.py`, `test_api.py` |
 | Compatibilidad con Windows (rutas con espacios/`:`/tildes, fuentes, codificación, `.env` con BOM) | `test_windows_compat.py` |
-| Instalador y scripts de Windows (revisión estática) | `test_installer.py` |
+| Instalador y scripts de Windows (revisión estática: sin PowerShell, esperas, saltos, interfaz incluida) | `test_installer.py` |
+| Herramientas locales (`tools/`, Git Bash, PATH) | `test_tools.py` |
 | API REST y WebSocket | `test_api.py` |
 | Uso en la nube sin instalar (configuración de Codespaces, arranque idempotente) | `test_codespaces.py` |
 | Acceso desde el móvil (código de acceso, enlaces, servidor real en modo `--lan`) | `test_lan.py`, `frontend/src/logic.test.ts` |
@@ -51,7 +52,7 @@ Dos pruebas que pasaban sin detectar nada se reescribieron por este motivo.
 - **Servicios externos reales**: YouTube, Instagram, TikTok, ElevenLabs y OpenAI se prueban solo contra
   servidores HTTP simulados (`test_integrations.py`). Ninguno contra una cuenta real.
 - **Voz Piper real**: no hay modelo descargado en este entorno; se prueba con una voz simulada que respeta su API.
-- **Windows real**: lo anterior solo reproduce en Linux lo que suele fallar en Windows. Los `.bat` y el script de
-  PowerShell no se han ejecutado nunca en un Windows.
+- **Windows real**: lo anterior solo reproduce en Linux lo que suele fallar en Windows. Los `.bat` no se han
+  ejecutado nunca en un Windows (las descargas y el instalador de Claude Code tampoco).
 - **Navegadores distintos de Chromium** y dispositivos móviles reales (solo una ventana de 390 px).
 - **Rendimiento con muchos proyectos simultáneos** y bases de datos grandes.

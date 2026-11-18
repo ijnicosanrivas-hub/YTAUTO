@@ -1,7 +1,7 @@
 """Instalador de YTAUTO (Windows, macOS y Linux).
 
 Crea el entorno virtual, instala las dependencias, compila la interfaz, prepara `.env` y ejecuta el diagnóstico.
-En Windows lo llama INSTALAR_WINDOWS.bat tras instalar con winget Python, FFmpeg, Node.js y espeak-ng.
+En Windows lo llama INSTALAR_WINDOWS.bat tras instalar Python, Git, FFmpeg, la voz y Claude Code.
 
 Uso:  python scripts/instalar.py [--skip-ui] [--no-claude] [--dry-run]
 """
@@ -22,14 +22,14 @@ def venv_python(root: Path = ROOT, platform: str = sys.platform) -> Path:
 
 
 def plan(root: Path = ROOT, platform: str = sys.platform, skip_ui: bool = False, npm: str | None = None,
-         no_claude: bool = False) -> list[tuple[str, list[str], Path | None]]:
+         no_claude: bool = False, ui_built: bool = False) -> list[tuple[str, list[str], Path | None]]:
     """Pasos (descripción, orden, carpeta de trabajo). Función pura: se puede comprobar sin ejecutar nada."""
     py = str(venv_python(root, platform))
     steps: list[tuple[str, list[str], Path | None]] = [
         ("Crear el entorno de Python (.venv)", [sys.executable, "-m", "venv", str(root / ".venv")], None),
         ("Instalar las dependencias de Python", [py, "-m", "pip", "install", "--disable-pip-version-check", "-e", "."], root),
     ]
-    if not skip_ui and npm:
+    if not skip_ui and not ui_built and npm:
         steps += [("Instalar las dependencias de la interfaz", [npm, "install", "--no-audit", "--no-fund"], root / "frontend"),
                   ("Compilar la interfaz", [npm, "run", "build"], root / "frontend")]
     doctor = [py, "-m", "ytauto", "doctor"] + (["--no-claude"] if no_claude else [])
@@ -61,10 +61,11 @@ def main(argv: list[str] | None = None) -> int:
     if sys.version_info < MIN_PYTHON:
         print(f"Se necesita Python {MIN_PYTHON[0]}.{MIN_PYTHON[1]} o superior (tienes {sys.version.split()[0]}).")
         return 1
+    ui_built = (ROOT / "frontend" / "dist" / "index.html").is_file()  # el paquete ya incluye la interfaz compilada
     npm = shutil.which("npm")
-    if npm is None and not args.skip_ui:
-        print("AVISO: no se encuentra Node.js (npm): la interfaz no se podra compilar. Instalalo desde https://nodejs.org")
-    steps = plan(skip_ui=args.skip_ui, npm=npm, no_claude=args.no_claude)
+    if not ui_built and npm is None and not args.skip_ui:
+        print("AVISO: la interfaz no esta compilada y no se encuentra Node.js (npm). Descarga el programa completo de nuevo.")
+    steps = plan(skip_ui=args.skip_ui, npm=npm, no_claude=args.no_claude, ui_built=ui_built)
     venv_exists = (ROOT / ".venv").exists()
     for i, (title, cmd, cwd) in enumerate(steps, 1):
         print(f"\n[{i}/{len(steps)}] {title}")

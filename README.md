@@ -27,8 +27,9 @@ Los agentes son personajes de Gotham (Batman es el jefe; el Joker, el guionista�
 Es solo presentación: no cambia el contenido de los vídeos. Detalles y cómo volver al estilo clásico en `docs/theme.md`.
 
 ## ¿Usas Windows y no sabes de informática?
-Sigue la **[guía paso a paso para Windows](docs/WINDOWS.md)**: descargas el ZIP, haces doble clic en
-`INSTALAR_WINDOWS.bat`, inicias sesión en Claude una vez y abres `INICIAR_WINDOWS.bat`. `DIAGNOSTICO_WINDOWS.bat`
+Sigue la **[guía para Windows](docs/WINDOWS.md)**: extraes el ZIP, haces doble clic en `INSTALAR_WINDOWS.bat`
+(instala **todo** solo: Python, Git, FFmpeg, voz y Claude Code), inicias sesión en Claude una vez y abres el icono YTAUTO.
+Para pasárselo a otras personas: **[docs/COMPARTIR.md](docs/COMPARTIR.md)**. `DIAGNOSTICO_WINDOWS.bat`
 (o `python -m ytauto doctor`) dice qué falta y cómo arreglarlo.
 
 ## Requisitos
@@ -96,7 +97,8 @@ están **desactivados** y exigen credenciales, presupuesto y autorización: ver 
 ## Documentación
 | | |
 |---|---|
-| `docs/WINDOWS.md` | **Instalación en Windows paso a paso** |
+| `docs/WINDOWS.md` | **Instalación en Windows con un solo archivo** (`INSTALAR_WINDOWS.bat`, sin PowerShell) |
+| `docs/COMPARTIR.md` | **Pasar el programa a otras personas** (enlace, mensaje y avisos) |
 | `docs/NUBE.md` | **Usarlo sin instalar nada en tu PC** (GitHub Codespaces; enlace de un toque) |
 | `docs/MOVIL.md` | **Usarlo desde el iPhone** (mismo Wi-Fi, con `INICIAR_WINDOWS_MOVIL.bat`) |
 | `docs/architecture.md` | Arquitectura, capas y flujo de 18 fases |
