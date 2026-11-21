@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import { statusLabel } from "../format";
 import { useLive } from "../store";
@@ -32,17 +32,24 @@ export function useApi<T>(path: string | null, opts: { live?: boolean; pollMs?: 
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
   const revision = useLive((s) => (opts.live ? s.revision : 0));
+  const seq = useRef(0);
   const load = useCallback(async () => {
     if (!path) return;
+    const mine = ++seq.current; // una respuesta antigua nunca pisa a una más reciente
     try {
-      setData(await api.get<T>(path));
+      const d = await api.get<T>(path);
+      if (mine !== seq.current) return;
+      setData(d);
       setError(null);
     } catch (e) {
-      setError((e as Error).message);
+      if (mine === seq.current) setError((e as Error).message);
     }
   }, [path]);
   useEffect(() => {
-    void load();
+    // los eventos llegan en ráfagas: se agrupan en una sola recarga (la primera carga es inmediata)
+    if (revision === 0) { void load(); return; }
+    const t = setTimeout(() => void load(), 250);
+    return () => clearTimeout(t);
   }, [load, revision]);
   useEffect(() => {
     if (!opts.pollMs) return;
