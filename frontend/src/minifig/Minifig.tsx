@@ -382,7 +382,7 @@ export interface AnimSource {
   (): { state: AnimationState; sinceFinish: number };
 }
 
-export function Minifig({ variant: v, getAnim, seed = 0 }: { variant: Variant; getAnim: AnimSource; seed?: number }) {
+export function Minifig({ variant: v, getAnim, seed = 0, yaw = 0, turnToWork = false }: { variant: Variant; getAnim: AnimSource; seed?: number; yaw?: number; turnToWork?: boolean }) {
   const root = useRef<THREE.Group>(null);
   const upper = useRef<THREE.Group>(null);
   const head = useRef<THREE.Group>(null);
@@ -391,6 +391,7 @@ export function Minifig({ variant: v, getAnim, seed = 0 }: { variant: Variant; g
   const legL = useRef<THREE.Group>(null);
   const legR = useRef<THREE.Group>(null);
   const cur = useRef<Pose | null>(null);
+  const yawRef = useRef(yaw);
   const capeSpec = v.accessories.find((a): a is Extract<Accessory, { t: "cape" }> => a.t === "cape");
   const fur = v.accessories.find((a): a is Extract<Accessory, { t: "furCollar" }> => a.t === "furCollar");
   const held = v.accessories.filter((a): a is Extract<Accessory, { t: "held" }> => a.t === "held");
@@ -410,7 +411,10 @@ export function Minifig({ variant: v, getAnim, seed = 0 }: { variant: Variant; g
     };
     cur.current = n;
     const tilt = BODY.arm.tilt;
-    if (root.current) { root.current.position.y = n.bodyY * POSE_Y; root.current.rotation.y = n.bodyYaw; }
+    // En reposo mira hacia donde indica `yaw` (Batman); al trabajar se gira hacia su instalación (media vuelta)
+    const targetYaw = yaw + (turnToWork && state === "work" ? Math.PI : 0);
+    yawRef.current += (targetYaw - yawRef.current) * (1 - Math.exp(-dt * 4));
+    if (root.current) { root.current.position.y = n.bodyY * POSE_Y; root.current.rotation.y = yawRef.current + n.bodyYaw; }
     if (upper.current) upper.current.rotation.x = n.lean;
     if (head.current) { head.current.rotation.y = n.headYaw; head.current.rotation.x = n.headPitch; }
     if (armL.current) { armL.current.rotation.x = n.armL.x; armL.current.rotation.z = -(tilt + n.armL.spread); }

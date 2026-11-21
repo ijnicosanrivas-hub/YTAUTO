@@ -22,7 +22,7 @@ Seguridad: escucha solo en `127.0.0.1`. Para exponerlo en red es obligatorio def
 | Dashboard | KPIs, decisiones pendientes, estado de los 9 agentes, actividad en directo |
 | Proyectos | Lista con avance real; formulario de creación (automático / personalizado) |
 | Proyecto | Fases y reintentos, **panel de aprobación** (guion, final, publicación por plataforma, gasto), guion, plan, visor de vídeo, rehacer escenas, revisión con puntuación, exportaciones, actividad y memoria |
-| Sala de producción | Escena 3D (React Three Fiber): jefe en el centro, 8 agentes en anillo, conexiones de control y de entrega. Con el tema Gotham: interfaz de ladrillos LEGO, Batcueva a escala real y minifiguras animadas según el estado real (`docs/style_bible.md`); con `YTAUTO_THEME=classic`, nodos geométricos |
+| Sala de producción (clic en un agente: zoom y expediente) | Escena 3D (React Three Fiber): jefe en el centro, 8 agentes en anillo, conexiones de control y de entrega. Con el tema Gotham: interfaz de ladrillos LEGO, Batcueva a escala real y minifiguras animadas según el estado real (`docs/style_bible.md`); con `YTAUTO_THEME=classic`, nodos geométricos |
 | Agentes | Fases de cada agente, ejecuciones, errores, llamadas a Claude, último resultado |
 | Biblioteca | Recursos de todas las producciones con proveedor y licencia |
 | Proveedores | Añadir, credenciales (nunca se muestran completas), parámetros, probar conexión, principal/alternativo, activar/desactivar |

@@ -38,6 +38,7 @@ se omiten los dos.
 | Tema de personajes (validez, API, prompts de rol coherentes) | `test_theme.py` |
 | Interfaz (lógica) | `frontend/src/logic.test.ts` |
 | Ladrillos a escala real (taco, placas, muro, mosaico) y efectos | `frontend/src/minifig/bricks.test.ts` |
+| Hub de la Batcueva (instalaciones, cámara de zoom, últimas acciones) y expediente del agente | `frontend/src/minifig/hub.test.ts`, `frontend/src/components/AgentPanel.test.tsx` |
 | Minifiguras: una plantilla para los nueve, rasgos conservados, animaciones por estado real | `frontend/src/minifig/minifig.test.ts` |
 | Producción real completa (MP4 45–75 s, 1080×1920, H.264/AAC, sincronizado) | `test_media.py::test_full_local_production…` y `test_platforms.py::test_real_production…` (`-m slow`) |
 | Integración con el binario de Claude Code | `test_claude_cli.py` (simulado) y `test_real_claude_smoke` (`-m claude`) |

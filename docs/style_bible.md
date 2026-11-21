@@ -53,16 +53,28 @@ El estado sale **solo** del estado real del agente; no hay movimiento inventado.
 | Finalización | Acaba de terminar (3,5 s) | Salto de victoria que se apaga |
 | Error | Falló | Cabizbajo y temblando |
 
-## Batcueva (`Batcave.tsx`, `bricks.ts`)
-Reconstruida a partir de la imagen de referencia del último videojuego LEGO Batman:
-- **Cueva de roca oscura** con estalactitas y luces azuladas y ámbar.
-- **Dos túneles** con arcos de acero, nervios y tira de luz blanca encima (el de la derecha con brillo ámbar).
-- **Centro de mando** al fondo: gran pantalla con el emblema del murciélago, seis monitores, dos pilares con luces, barandilla,
-  rejilla metálica y dos mesas con monitores.
-- **Suelo metálico** con paneles y remaches, y en el centro una **plataforma de exposición** de tacos LEGO.
-- Cada agente sobre una **base negra redonda** con anillo de su color y **placa de nombre** delante; los paquetes de datos
-  viajan como ladrillos amarillos y al terminar sale confeti de ladrillos.
-El anillo de estado sigue mostrando el color del estado real (en espera / ejecución / esperando / error).
+## Batcueva: el hub de la fábrica (`Hub.tsx`, `hub.ts`, `Batcave.tsx`)
+Inspirado en el hub del videojuego (Batcomputer, mesa de trabajo, bóveda de trajes, tablero de desafíos, zona de
+entrenamiento, tienda Bat-Mite y garaje de Batmóviles): **cada agente trabaja en su propia instalación y todos reportan a Batman**.
+| Agente | Instalación | Qué se anima con su estado real |
+|---|---|---|
+| Batman | Batcomputer (centro de mando) | El holograma del murciélago y los anillos giran más rápido al trabajar; se gira hacia la pantalla |
+| El Acertijo | Tablero de desafíos | Las casillas «?» brillan con pulso |
+| El Joker | Muro de casos (hilo rojo) | Los hilos se iluminan |
+| Harley Quinn | Garaje del Batmóvil | La plataforma gira más rápido y se encienden los faros |
+| Bane | Zona de entrenamiento | El saco se balancea con fuerza |
+| Catwoman | Bóveda de trajes | Las vitrinas giran y brillan |
+| El Pingüino | Tienda Bat-Mite | El ecualizador y los altavoces bailan |
+| Nightwing | Mesa de trabajo | El brazo robótico trabaja y saltan chispas |
+| Dos Caras | Mesa de pruebas | El escáner barre y la moneda gira |
+En reposo cada personaje **mira a Batman**; al trabajar **se gira hacia su instalación**. Ambiente: cueva de roca con estalactitas,
+túneles con arcos de acero, pantalla gigante del murciélago, murciélagos que vuelan, luces propias de cada instalación.
+
+### Clic en un agente
+Al pulsar un personaje la **cámara vuela hasta él** (plano sobre el hombro) y se abre su **expediente**: estado real, instalación,
+tarea y fase actual con barra de progreso y tiempo, estadísticas (ejecuciones, errores, llamadas a Claude, última duración), fases
+que gestiona y **últimas acciones** (eventos reales). `Esc`, el fondo, ✕ o «Vista general» devuelven la cámara. También se puede
+abrir directamente con `#/room?agente=editor`.
 
 ## Interfaz LEGO (solo en la sala)
 En la **sala 3D** (el resto de pantallas conserva el diseño oscuro anterior) se usa el tema: placa base de tacos como fondo, paneles y botones **como ladrillos** (relieve, fila de
@@ -74,6 +86,9 @@ Botón «Calidad» en la sala: *alta* (brillo, antialiasing, sombras) o *baja* (
 los fotogramas caen; se puede forzar con `#/room?calidad=alta|baja`.
 
 ## Límites
+- **No son los modelos oficiales del videojuego.** Los modelos 3D de LEGO Batman: Legacy of the Dark Knight son activos propietarios
+  que no están disponibles aquí: las figuras, las instalaciones y la Batcueva son una **recreación propia** procedural, hecha a partir de las
+  descripciones públicas del juego y de la imagen de referencia proporcionada.
 - Los modelos son **procedurales** (geometría generada en código con Three.js), no mallas importadas de un
   editor 3D: sin ficheros que descargar y siempre idénticos. Son una interpretación fiel de las medidas reales, no
   réplicas oficiales; faltan detalles de molde como los huecos internos de las piernas o las inscripciones de los tacos.

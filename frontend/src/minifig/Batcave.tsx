@@ -7,7 +7,7 @@ import { Lightformer, Sparkles } from "@react-three/drei";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
-import { BRICK_H, ellipseStuds, PITCH, PLATE_H, rnd } from "./bricks";
+import { BRICK_H, PITCH, PLATE_H, rnd } from "./bricks";
 import { plastic } from "./Minifig";
 import { BAT_POLY, drawOps, type Op } from "./ops";
 import { LDU, STUD } from "./styleBible";
@@ -16,8 +16,6 @@ export const FLOOR_Y = -1.6;
 export { PLATE_H };
 /** Radio de la base negra de cada personaje: 4×4 tacos; la del jefe, 6×6. */
 export const plateRadius = (big: boolean) => (big ? 3 : 2) * PITCH;
-
-const PLATFORM = { a: 8.6, b: 7.6, h: 0.3 }; // semiejes y grosor de la plataforma de exposición
 
 // --- taco compartido -------------------------------------------------------------------------
 let studGeo: THREE.LatheGeometry | null = null;
@@ -31,7 +29,7 @@ function stud(): THREE.LatheGeometry {
 
 interface StudItem { x: number; y: number; z: number; color: string }
 
-function StudInstances({ items }: { items: StudItem[] }) {
+export function StudInstances({ items }: { items: StudItem[] }) {
   const ref = useRef<THREE.InstancedMesh>(null);
   useLayoutEffect(() => {
     const m = ref.current;
@@ -74,7 +72,7 @@ export function Brick({ w, d, h = 1, color, pos, rot = 0 }: { w: number; d: numb
 }
 
 // --- texturas procedurales --------------------------------------------------------------------
-function canvasTex(w: number, h: number, draw: (c: CanvasRenderingContext2D) => void, srgb = true): THREE.CanvasTexture {
+export function canvasTex(w: number, h: number, draw: (c: CanvasRenderingContext2D) => void, srgb = true): THREE.CanvasTexture {
   const cv = document.createElement("canvas");
   cv.width = w;
   cv.height = h;
@@ -153,6 +151,7 @@ function Rocks() {
       for (let i = 0; n < N && i < N * 2; i++) {
         const a = (i / (N * 2)) * Math.PI * 2 + rnd(i) * 0.05;
         if (Math.abs(Math.sin(a)) < 0.26) continue; // se deja libre la roca detrás de los túneles (ángulos 0 y π)
+        if (Math.sin(a) > 0.2) continue; // y la del lado de la cámara (delante de la sala): la cueva se ve desde dentro
         const r = 23 + rnd(i + 31) * 6;
         const sx = 3.6 + rnd(i + 7) * 3.8, sy = 3 + rnd(i + 13) * 7.5;
         d.position.set(Math.cos(a) * r, FLOOR_Y + sy * 0.55 + rnd(i + 3) * 2, Math.sin(a) * r);
@@ -228,22 +227,6 @@ function Monitor({ x, y, w, h, tex, tilt = 0 }: { x: number; y: number; w: numbe
   );
 }
 
-function Desk({ position, rotY, seed }: { position: [number, number, number]; rotY: number; seed: number }) {
-  const tex = useMemo(() => screenTexture(seed, seed % 2 ? "#4ade80" : "#22d3ee", "SISTEMA"), [seed]);
-  useEffect(() => () => tex.dispose(), [tex]);
-  return (
-    <group position={position} rotation={[0, rotY, 0]}>
-      <mesh position={[0, 0.55, 0]} castShadow receiveShadow material={plastic("#232b33")}><boxGeometry args={[5.6, 1.1, 1.7]} /></mesh>
-      <mesh position={[0, 1.12, 0.1]} material={plastic("#11161b")}><boxGeometry args={[5.2, 0.08, 1.3]} /></mesh>
-      {[-1.7, 0, 1.7].map((x) => <mesh key={x} position={[x, 1.2, 0.5]} rotation={[-0.4, 0, 0]} material={plastic("#2e3944")}><boxGeometry args={[1.3, 0.06, 0.5]} /></mesh>)}
-      <group position={[0, 1.9, -0.55]}>
-        <Monitor x={-1.5} y={0} w={2} h={1.25} tex={tex} tilt={-0.15} />
-        <Monitor x={1.5} y={0} w={2} h={1.25} tex={tex} tilt={-0.15} />
-      </group>
-    </group>
-  );
-}
-
 function CommandCenter({ accent }: { accent: string }) {
   const main = useMemo(() => mainScreenTexture(accent), [accent]);
   const small = useMemo(() => [screenTexture(1, "#22d3ee", "ALERTA"), screenTexture(2, "#4ade80", "RED"), screenTexture(3, "#22d3ee", "ANÁLISIS"), screenTexture(4, "#4ade80", "ARCHIVO")], []);
@@ -271,32 +254,7 @@ function CommandCenter({ accent }: { accent: string }) {
           {[2, 3.4, 4.8, 6.2, 7.6].map((y) => <mesh key={y} position={[0, y, 0.78]}><boxGeometry args={[0.9, 0.16, 0.04]} /><meshBasicMaterial color={new THREE.Color(0.5, 1.6, 2.2)} toneMapped={false} /></mesh>)}
         </group>
       ))}
-      <Desk position={[-4.4, 0.44, 0.4]} rotY={0.3} seed={1} />
-      <Desk position={[4.4, 0.44, 0.4]} rotY={-0.3} seed={2} />
     </group>
-  );
-}
-
-// --- plataforma de exposición con tacos --------------------------------------------------------
-function Platform() {
-  const { a, b, h } = PLATFORM;
-  const geo = useMemo(() => {
-    const sh = new THREE.Shape();
-    sh.absellipse(0, 0, a, b, 0, Math.PI * 2, false, 0);
-    const g = new THREE.ExtrudeGeometry(sh, { depth: h, bevelEnabled: true, bevelThickness: 0.05, bevelSize: 0.05, bevelSegments: 2, curveSegments: 48 });
-    g.rotateX(-Math.PI / 2);
-    return g;
-  }, [a, b, h]);
-  const items = useMemo(() => ellipseStuds(a, b).map(([x, z]) => ({ x, y: FLOOR_Y, z, color: rnd(x * 7 + z * 13) > 0.9 ? "#4c525a" : "#5b6168" })), [a, b]);
-  useEffect(() => () => geo.dispose(), [geo]);
-  return (
-    <>
-      <mesh geometry={geo} position={[0, FLOOR_Y - h, 0]} receiveShadow castShadow material={plastic("#383d44")} />
-      <mesh position={[0, FLOOR_Y - h - 0.12, 0]} scale={[1.05, 1, 1.05]} receiveShadow material={plastic("#0b0e12")}>
-        <cylinderGeometry args={[a * 1.0, a * 1.0, 0.24, 64]} />
-      </mesh>
-      <StudInstances items={items} />
-    </>
   );
 }
 
@@ -343,7 +301,7 @@ export function Batcave({ accent }: { accent: string }) {
   useEffect(() => () => floor.dispose(), [floor]);
   return (
     <>
-      <fog attach="fog" args={["#05090d", 16, 46]} />
+      <fog attach="fog" args={["#05090d", 38, 120]} />
       <pointLight position={[-14, 7, -4]} color="#3fc6e0" intensity={70} distance={28} />
       <pointLight position={[14, 6, -3]} color="#f0a53a" intensity={34} distance={22} />
       <pointLight position={[0, 9, -10]} color="#7fdcf0" intensity={40} distance={22} />
@@ -355,7 +313,6 @@ export function Batcave({ accent }: { accent: string }) {
       <Tunnel side={-1} />
       <Tunnel side={1} />
       <CommandCenter accent={accent} />
-      <Platform />
       <Sparkles count={60} scale={[16, 8, 14]} position={[0, 3, -2]} size={2.2} speed={0.2} opacity={0.4} color="#8fdcf0" />
     </>
   );

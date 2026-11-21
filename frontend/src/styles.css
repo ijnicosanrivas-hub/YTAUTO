@@ -337,3 +337,34 @@ html.lego ::-webkit-scrollbar-thumb { background: #3a444d; border: 3px solid #0a
   table { display: block; overflow-x: auto; }
   input, select, textarea { font-size: 16px; } /* evita el zoom automático de Safari en iPhone */
 }
+
+/* expediente del agente seleccionado (sala 3D) */
+.agent-panel {
+  position: absolute; top: 14px; right: 14px; bottom: 58px; width: min(370px, calc(100% - 28px)); overflow-y: auto; z-index: 6;
+  padding: 14px 16px 12px; border-radius: 12px; background: rgba(10, 14, 18, 0.93); color: var(--text);
+  border: 3px solid #0a0d0f; border-top: 7px solid var(--accent); box-shadow: 0 10px 34px rgba(0, 0, 0, 0.6);
+  animation: panel-in 0.28s ease-out both;
+}
+@keyframes panel-in { from { opacity: 0; transform: translateX(26px); } to { opacity: 1; transform: none; } }
+.agent-panel header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.agent-panel .glyph { font-size: 30px; line-height: 1; }
+.agent-panel .who { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.agent-panel .who b { font-family: var(--display); font-weight: 400; font-size: 22px; letter-spacing: 0.03em; }
+.agent-panel .close { background: #2b343c; color: var(--text); border: 2px solid #0a0d0f; border-bottom-width: 4px; border-radius: 8px; width: 34px; height: 34px; cursor: pointer; font-size: 15px; }
+.agent-panel .close:hover { background: #36414a; }
+.agent-panel section { margin-top: 12px; padding-top: 10px; border-top: 2px solid rgba(255, 255, 255, 0.07); }
+.agent-panel h3 { margin: 0 0 6px; font-family: var(--display); font-weight: 400; font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.agent-panel p { margin: 4px 0; }
+.agent-panel .note { color: #cfd5da; margin: 8px 0 0; }
+.agent-panel .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 6px; }
+.agent-panel .stats div { background: #151a1f; border: 2px solid #0a0d0f; border-radius: 8px; padding: 6px 10px; display: flex; flex-direction: column; }
+.agent-panel .stats b { font-family: var(--display); font-weight: 400; font-size: 24px; }
+.agent-panel .stats span { font-size: 11px; color: var(--muted); }
+.agent-panel ul { list-style: none; margin: 0; padding: 0; }
+.agent-panel .phases li, .agent-panel .actions li { padding: 4px 0; border-bottom: 1px dashed rgba(255, 255, 255, 0.08); font-size: 13px; }
+.agent-panel .actions .mono { color: var(--accent); margin-right: 6px; }
+.agent-panel .errline { color: #ff8a7a; }
+.agent-panel footer { margin-top: 14px; position: sticky; bottom: 0; padding-top: 8px; background: linear-gradient(transparent, rgba(10, 14, 18, 0.96) 30%); }
+html.lego .node-card.selected { border-bottom-color: #fff; box-shadow: 0 0 0 2px var(--accent); }
+@media (max-width: 760px) { .agent-panel { top: auto; left: 10px; right: 10px; bottom: 54px; width: auto; max-height: 62%; } }
+@media (prefers-reduced-motion: reduce) { .agent-panel { animation: none; } }
