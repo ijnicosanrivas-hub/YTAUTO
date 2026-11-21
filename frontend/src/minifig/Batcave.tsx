@@ -152,7 +152,7 @@ function Rocks() {
         const a = (i / (N * 2)) * Math.PI * 2 + rnd(i) * 0.05;
         if (Math.abs(Math.sin(a)) < 0.26) continue; // se deja libre la roca detrás de los túneles (ángulos 0 y π)
         if (Math.sin(a) > 0.2) continue; // y la del lado de la cámara (delante de la sala): la cueva se ve desde dentro
-        const r = 23 + rnd(i + 31) * 6;
+        const r = 31 + rnd(i + 31) * 7;
         const sx = 3.6 + rnd(i + 7) * 3.8, sy = 3 + rnd(i + 13) * 7.5;
         d.position.set(Math.cos(a) * r, FLOOR_Y + sy * 0.55 + rnd(i + 3) * 2, Math.sin(a) * r);
         d.rotation.set(rnd(i + 21) * 3, rnd(i + 22) * 3, rnd(i + 23) * 3);
