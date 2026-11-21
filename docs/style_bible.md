@@ -102,5 +102,5 @@ Uso personal, no distribuible. No se incluyen logotipos ni activos de terceros.
 Si existe `assets/personajes/` (PNG con transparencia + `meta.json`), la sala dibuja esos recortes como carteles que miran a la cámara
 (`SpriteFigure`, animados con el estado real del agente: respiran, marchan, trabajan con brillo, saludan, saltan al terminar, tiemblan en error).
 Si no existen, se usan las figuras de ladrillos. Se generan con `scripts/extraer_figuras.py render.jpg --modelo isnet-general-use.onnx`.
-`assets/personajes/` está en `.gitignore`: son recortes de material de terceros. Limitación: son imágenes 2D de ≈200 px de alto,
+`assets/personajes/` se versiona a petición del usuario (recortes de su propio render; ojo si el repositorio es público). Limitación: son imágenes 2D de ≈200 px de alto,
 no modelos 3D; vistos de cerca se ven suaves y siempre muestran la cara frontal del render.
