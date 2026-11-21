@@ -179,6 +179,19 @@ function HeadAccessory({ a }: { a: Accessory }) {
         </group>
       );
     }
+    case "jester":
+      return (
+        <>
+          <HairCap color={a.a} phiStart={Math.PI} phiLength={Math.PI - 0.75} topStart={Math.PI} topLength={Math.PI} />
+          <HairCap color={a.b} phiStart={0.75} phiLength={Math.PI - 0.75} topStart={0} topLength={Math.PI} />
+          {[-1, 1].map((sd) => (
+            <group key={sd}>
+              <Cone r={4.4} h={17} color={sd < 0 ? a.a : a.b} pos={[sd * 9.5, H + 10, -1]} rot={[0, Math.PI / 4, -sd * 0.95]} seg={8} />
+              <mesh position={[sd * 17, H + 16.5, -1]} castShadow material={plastic(PLASTIC.white)}><sphereGeometry args={[3, 14, 10]} /></mesh>
+            </group>
+          ))}
+        </>
+      );
     case "monocle":
       return <mesh position={[4.6, H * 0.58, R + 0.2]} material={plastic("#C9A227")}><torusGeometry args={[3, 0.45, 8, 24]} /></mesh>;
     case "baneMask":
@@ -191,9 +204,10 @@ function HeadAccessory({ a }: { a: Accessory }) {
 /** Máscara de luchador de Bane: placa respiradora y mangueras verdes que rodean la cabeza hasta la nuca. */
 function BaneMask({ mask, hose }: { mask: string; hose: string }) {
   const R = BODY.head.r;
-  const tubes = useMemo(() => [-1, 1].map((s) => new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
-    new THREE.Vector3(s * 7.2, 5.5, R + 1.4), new THREE.Vector3(s * 11.2, 8, R - 2.5), new THREE.Vector3(s * 13.3, 13, 2), new THREE.Vector3(s * 9.5, 17.5, -R + 1), new THREE.Vector3(s * 3, 14, -R - 1.6),
-  ]), 24, 1.35, 8)), [R]);
+  const tubes = useMemo(() => [-1, 1].map((sd) => new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
+    new THREE.Vector3(sd * 7.2, 5.5, R + 1.4), new THREE.Vector3(sd * 12.6, 8.5, R - 3), new THREE.Vector3(sd * 16.5, 16, -2),
+    new THREE.Vector3(sd * 16, 27, -8), new THREE.Vector3(sd * 10, 35, -6), new THREE.Vector3(sd * 5, 30, -2),
+  ]), 36, 1.5, 8)), [R]);
   return (
     <group>
       <Block w={15} h={9} d={5} color={PLASTIC.grey} pos={[0, 5.2, R + 0.9]} bevel={1.2} />
@@ -202,6 +216,79 @@ function BaneMask({ mask, hose }: { mask: string; hose: string }) {
       {tubes.map((g, i) => <mesh key={i} geometry={g} castShadow material={plastic(hose)} />)}
     </group>
   );
+}
+
+/** Objetos que sostienen las figuras en la mano (origen = centro de la pinza; eje vertical). */
+const HELD_SCALE = { mallet: 1.55, cane: 1.4, whip: 1.45, coin: 1.35, teeth: 1.35, batarang: 1.6, escrima: 1.3, umbrella: 1.15 } as const;
+
+function HeldItem({ item }: { item: keyof typeof HELD_SCALE }) {
+  return <group scale={HELD_SCALE[item]}><HeldItemShape item={item} /></group>;
+}
+
+function HeldItemShape({ item }: { item: keyof typeof HELD_SCALE }) {
+  const whip = useMemo(() => new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0, -6, 0), new THREE.Vector3(0, 12, 1), new THREE.Vector3(3, 26, 6), new THREE.Vector3(9, 38, 8), new THREE.Vector3(14, 50, 3), new THREE.Vector3(9, 60, -5),
+  ]), 40, 1.1, 8), []);
+  const bat = useMemo(() => {
+    const sh = new THREE.Shape();
+    [[-11, 2], [-6, 7], [-2, 4], [0, 8], [2, 4], [6, 7], [11, 2], [7, 0], [3, -3], [0, -9], [-3, -3], [-7, 0]].forEach(([x, y], i) => (i ? sh.lineTo(x, y) : sh.moveTo(x, y)));
+    sh.closePath();
+    return new THREE.ExtrudeGeometry(sh, { depth: 1.4, bevelEnabled: false });
+  }, []);
+  useEffect(() => () => { whip.dispose(); bat.dispose(); }, [whip, bat]);
+  switch (item) {
+    case "mallet":
+      return (
+        <group>
+          <Cyl r={1.5} h={56} color="#6b4a2a" pos={[0, 12, 0]} seg={10} />
+          <Cyl r={7.6} h={26} color="#8a4b2a" pos={[0, 42, 0]} rot={[0, 0, Math.PI / 2]} seg={24} />
+          {[-11.5, 11.5].map((x) => <Cyl key={x} r={8} h={3} color={PLASTIC.red} pos={[x, 42, 0]} rot={[0, 0, Math.PI / 2]} seg={24} />)}
+        </group>
+      );
+    case "cane":
+      return (
+        <group>
+          <Cyl r={1.2} h={50} color="#D4A017" pos={[0, 8, 0]} seg={10} />
+          <mesh position={[0, 41, 0]} rotation={[0, 0, -0.6]} castShadow material={plastic("#D4A017")}><torusGeometry args={[5.6, 1.3, 8, 22, Math.PI * 1.55]} /></mesh>
+          <mesh position={[0, 27, 0]} castShadow material={plastic("#D4A017")}><sphereGeometry args={[2.1, 12, 10]} /></mesh>
+        </group>
+      );
+    case "whip":
+      return <mesh geometry={whip} castShadow material={plastic(PLASTIC.black)} />;
+    case "coin":
+      return (
+        <mesh position={[0, 3, 7]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+          <cylinderGeometry args={[6.4, 6.4, 1.4, 36]} />
+          <meshStandardMaterial color="#d7dbe0" metalness={0.85} roughness={0.28} />
+        </mesh>
+      );
+    case "teeth":
+      return (
+        <group position={[0, 8, 5]}>
+          <Block w={15} h={4} d={8} color={PLASTIC.red} pos={[0, 5, 0]} bevel={1.4} />
+          <Block w={15} h={4} d={8} color={PLASTIC.red} pos={[0, -2, 0]} bevel={1.4} />
+          {[-5.5, -2.8, 0, 2.8, 5.5].map((x) => <Block key={x} w={2.2} h={3.2} d={2} color={PLASTIC.white} pos={[x, 2.4, 3.6]} bevel={0.5} />)}
+          {[-5.5, -2.8, 0, 2.8, 5.5].map((x) => <Block key={`b${x}`} w={2.2} h={3.2} d={2} color={PLASTIC.white} pos={[x, 0.6, 3.6]} bevel={0.5} />)}
+        </group>
+      );
+    case "batarang":
+      return <mesh geometry={bat} position={[0, 8, 2]} rotation={[-0.35, 0, 0]} castShadow material={plastic(PLASTIC.black)} />;
+    case "escrima":
+      return (
+        <group rotation={[0.55, 0, 0]}>
+          <Cyl r={1.4} h={30} color={PLASTIC.black} pos={[0, 10, 0]} seg={10} />
+          <Cyl r={1.7} h={10} color={PLASTIC.blue} pos={[0, -3, 0]} seg={10} />
+        </group>
+      );
+    case "umbrella":
+      return (
+        <group position={[0, -2, 1]}>
+          <Cyl r={0.9} h={56} color={PLASTIC.darkGrey} pos={[0, -2, 0]} seg={8} />
+          <mesh position={[0, 24, 0]} rotation={[Math.PI, 0, 0]} castShadow material={plastic(PLASTIC.black)}><coneGeometry args={[5, 28, 14]} /></mesh>
+          <mesh position={[2.8, 38, 0]} rotation={[0, 0, Math.PI]} material={plastic(PLASTIC.darkGrey)}><torusGeometry args={[2.8, 0.7, 8, 16, Math.PI]} /></mesh>
+        </group>
+      );
+  }
 }
 
 /** Estampado fino (transparente) sobre una cara plana: piernas, espalda… */
@@ -305,7 +392,8 @@ export function Minifig({ variant: v, getAnim, seed = 0 }: { variant: Variant; g
   const legR = useRef<THREE.Group>(null);
   const cur = useRef<Pose | null>(null);
   const capeSpec = v.accessories.find((a): a is Extract<Accessory, { t: "cape" }> => a.t === "cape");
-  const umbrella = v.accessories.find((a): a is Extract<Accessory, { t: "umbrella" }> => a.t === "umbrella");
+  const fur = v.accessories.find((a): a is Extract<Accessory, { t: "furCollar" }> => a.t === "furCollar");
+  const held = v.accessories.filter((a): a is Extract<Accessory, { t: "held" }> => a.t === "held");
   const flower = v.accessories.find((a): a is Extract<Accessory, { t: "flower" }> => a.t === "flower");
 
   useFrame((s, dt) => {
@@ -339,18 +427,14 @@ export function Minifig({ variant: v, getAnim, seed = 0 }: { variant: Variant; g
       <mesh position={[0, 0, 0]} castShadow material={plastic(color)}><sphereGeometry args={[A.r, 20, 14]} /></mesh>
       <Cyl r={A.r} h={A.below} color={color} pos={[0, -A.below / 2, 0]} seg={24} />
       <Hand color={v.hands} />
-      {side === 1 && umbrella && (
-        <group position={[0, -A.below - 8, 1]}>
-          <Cyl r={0.9} h={52} color={PLASTIC.darkGrey} pos={[0, -8, 0]} seg={8} />
-          <mesh position={[0, 20, 0]} rotation={[Math.PI, 0, 0]} castShadow material={plastic(umbrella.color)}><coneGeometry args={[5, 26, 14]} /></mesh>
-          <mesh position={[2.8, 34, 0]} rotation={[0, 0, Math.PI]} material={plastic(PLASTIC.darkGrey)}><torusGeometry args={[2.8, 0.7, 8, 16, Math.PI]} /></mesh>
-        </group>
-      )}
+      {held.filter((h) => h.hand === (side === -1 ? "l" : "r")).map((h) => (
+        <group key={h.item} position={[0, -A.below - BODY.hand.wrist - BODY.hand.tube, 0]}><HeldItem item={h.item} /></group>
+      ))}
     </group>
   );
 
   return (
-    <group scale={LDU}>
+    <group scale={LDU * (v.scale ?? 1)}>
       <group ref={root}>
         <group ref={legL} position={[-L.x, LEG_TOP_Y, 0]}>
           <Block w={L.w} h={L.h} d={L.d} color={v.legs.l} pos={[0, -L.h / 2, 0]} bevel={L.bevel} />
@@ -367,6 +451,7 @@ export function Minifig({ variant: v, getAnim, seed = 0 }: { variant: Variant; g
           {arm(-1, armL, v.arms.l)}
           {arm(1, armR, v.arms.r)}
           <Head v={v} headRef={head} />
+          {fur && <mesh position={[0, BODY.torso.h - 1.2, 0]} rotation={[Math.PI / 2, 0, 0]} scale={[1.05, 0.88, 0.7]} castShadow material={plastic(fur.color)}><torusGeometry args={[11.2, 3.8, 10, 28]} /></mesh>}
           {flower && <mesh position={[8, BODY.torso.h - 14, BODY.torso.d / 2 + 1.2]} material={plastic(flower.color)}><sphereGeometry args={[2.4, 14, 10]} /></mesh>}
           {capeSpec && <Cape outer={capeSpec.outer} inner={capeSpec.inner} poseRef={cur} />}
         </group>

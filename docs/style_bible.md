@@ -24,20 +24,22 @@ La **robustez de Bane** y el resto de rasgos se expresan con estampado y accesor
 Solo **colores**, **estampados** (datos de dibujo sobre un lienzo 100×100) y **accesorios** (orejas, capa, pelo,
 sombrero, paraguas, monóculo, máscara de Bane, flor). Una prueba comprueba que no hay ninguna otra clave.
 
-## Los nueve (diseños oficiales más populares, ver `docs/lego_research.md`)
-| Agente | Personaje | Diseño y rasgos |
+## Los nueve (versión del último videojuego LEGO Batman, según la imagen de referencia)
+| Agente | Personaje | Diseño y objeto en la mano |
 |---|---|---|
-| Jefe | Batman | Traje **gris azulado claro**, capucha negra con orejas, capa, cinturón y emblema amarillos |
-| Director | El Acertijo | Torso verde con «?» negro grande, cinturón morado, bombín verde, antifaz morado |
-| Guionista | El Joker | Traje morado, pajarita verde, flor en la solapa, pelo verde, cara blanca, sonrisa roja |
-| Recursos | Catwoman | Traje negro con líneas moradas, cremallera gris, cinturón dorado, capucha con orejas de gata |
-| Voz | Bane | Máscara de luchador con ojos rojos y mangueras verdes, torso desnudo con arneses |
-| Editor | Nightwing | Torso negro con V azul, brazos azules, antifaz, pelo negro de pinchos |
-| Sonido | El Pingüino | Chistera, monóculo, chaqué con chaleco naranja y pajarita morada, paraguas |
-| Revisor | Dos Caras | Cara con mitad quemada, pelo partido, traje partido naranja y morado |
-| Publicador | Harley Quinn | Bicolor rojo y negro, antifaz arlequín, coletas alternas, torso y piernas estampados |
+| Jefe | Batman | Traje gris con óvalo amarillo, capucha negra con orejas, capa larga; **batarang** |
+| Director | El Acertijo | Traje verde con «?», corbata morada, antifaz y bombín; **bastón dorado en forma de «?»** |
+| Guionista | El Joker | Traje morado, chaleco naranja, pajarita verde, flor, pelo verde; **dentadura de cuerda** |
+| Recursos | Catwoman | Capucha con orejas y gafas grandes, líneas moradas, cinturón morado; **látigo** |
+| Voz | Bane | **Figura grande** (×1,32): máscara con ojos rojos, **mangueras verdes que suben sobre la cabeza**, arneses |
+| Editor | Nightwing | Traje negro y azul, guantes azules, antifaz y pelo de pinchos; **dos bastones de escrima** |
+| Sonido | El Pingüino | Chistera, monóculo, **collar de piel**, chaleco gris; **paraguas** |
+| Revisor | Dos Caras | Traje blanco a un lado y negro al otro, cara con mitad quemada; **moneda** |
+| Publicador | Harley Quinn | **Capucha de bufón** roja y negra con cuernos y bolas, golilla blanca; **gran mazo** |
 
-Cada figura lleva estampado en **cara** (cejas, pupilas con brillo, sombras), **torso**, **espalda** y **piernas**.
+Todas comparten plantilla, proporciones, material y animaciones; solo Bane tiene un factor de tamaño. Cada figura lleva
+estampado en cara, torso, espalda y piernas. Los objetos son geometría procedural (mazo, bastón, látigo, moneda,
+dentadura, batarang, escrima, paraguas) y se mueven con la mano del personaje.
 
 ## Animaciones (`pose.ts`, iguales para los nueve)
 El estado sale **solo** del estado real del agente; no hay movimiento inventado.
@@ -52,15 +54,15 @@ El estado sale **solo** del estado real del agente; no hay movimiento inventado.
 | Error | Falló | Cabizbajo y temblando |
 
 ## Batcueva (`Batcave.tsx`, `bricks.ts`)
-Construida a la **misma escala** que las figuras (el taco de la placa base mide lo que el de su pie):
-- Placa base de 64×64 tacos con un **mosaico** del murciélago (tacos amarillos sobre óvalo gris).
-- Muro circular de **ladrillos 2×4 en aparejo a soga**, de altura irregular, con tacos en la última hilera.
-- Ordenadores y pantalla de mando de ladrillos, Batmóvil, montones de piezas, moneda gigante y el proyector de la señal.
-- Cada agente sobre una placa redonda 4×4 de su color (la del jefe, 6×6) y con su propio **atril de trabajo**, cuya
-  pantalla solo se enciende mientras el agente está en ejecución.
-- Los paquetes de datos entre agentes viajan como **ladrillos amarillos** que giran; al terminar sale confeti de
-  ladrillos; al fallar, chispas; al pedir tu decisión, un «!» de ladrillos flota sobre la cabeza.
-El anillo de la placa mantiene el color del **estado** real (en espera / ejecución / esperando / error).
+Reconstruida a partir de la imagen de referencia del último videojuego LEGO Batman:
+- **Cueva de roca oscura** con estalactitas y luces azuladas y ámbar.
+- **Dos túneles** con arcos de acero, nervios y tira de luz blanca encima (el de la derecha con brillo ámbar).
+- **Centro de mando** al fondo: gran pantalla con el emblema del murciélago, seis monitores, dos pilares con luces, barandilla,
+  rejilla metálica y dos mesas con monitores.
+- **Suelo metálico** con paneles y remaches, y en el centro una **plataforma de exposición** de tacos LEGO.
+- Cada agente sobre una **base negra redonda** con anillo de su color y **placa de nombre** delante; los paquetes de datos
+  viajan como ladrillos amarillos y al terminar sale confeti de ladrillos.
+El anillo de estado sigue mostrando el color del estado real (en espera / ejecución / esperando / error).
 
 ## Interfaz LEGO (solo en la sala)
 En la **sala 3D** (el resto de pantallas conserva el diseño oscuro anterior) se usa el tema: placa base de tacos como fondo, paneles y botones **como ladrillos** (relieve, fila de

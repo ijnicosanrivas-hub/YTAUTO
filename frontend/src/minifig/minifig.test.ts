@@ -8,8 +8,9 @@ const NINE: Record<string, string> = {
   chief: "Batman", director: "El Acertijo", scriptwriter: "El Joker", resources: "Catwoman", voice: "Bane",
   editor: "Nightwing", sound: "El Pingüino", reviewer: "Dos Caras", publisher: "Harley Quinn",
 };
-const ALLOWED_KEYS = ["accessories", "agent", "arms", "character", "design", "face", "hands", "head", "hips", "legs", "legsPrint", "torso", "torsoBack", "torsoColor"];
-const ACCESSORIES = ["ears", "cape", "hair", "hat", "umbrella", "monocle", "baneMask", "flower"];
+const ALLOWED_KEYS = ["accessories", "agent", "arms", "character", "design", "face", "hands", "head", "hips", "legs", "legsPrint", "scale", "torso", "torsoBack", "torsoColor"];
+const OPTIONAL_KEYS = ["legsPrint", "torsoBack", "scale"];
+const ACCESSORIES = ["ears", "cape", "hair", "hat", "umbrella", "monocle", "baneMask", "flower", "held", "jester", "furCollar", "ball", "armband"];
 const COLOR = /^(#[0-9a-fA-F]{6}|rgba\(\d+,\d+,\d+,[\d.]+\))$/;
 
 describe("Style Bible: una única minifigura para los nueve", () => {
@@ -20,7 +21,7 @@ describe("Style Bible: una única minifigura para los nueve", () => {
 
   it("las variantes solo aportan colores, estampados y accesorios: ninguna dimensión", () => {
     for (const v of Object.values(VARIANTS)) {
-      expect(Object.keys(v).filter((k) => !["legsPrint", "torsoBack"].includes(k)).sort()).toEqual(ALLOWED_KEYS.filter((k) => !["legsPrint", "torsoBack"].includes(k)));
+      expect(Object.keys(v).filter((k) => !OPTIONAL_KEYS.includes(k)).sort()).toEqual(ALLOWED_KEYS.filter((k) => !OPTIONAL_KEYS.includes(k)));
       expect(v.design.length).toBeGreaterThan(10); // cada figura cita el diseño oficial en que se basa
       for (const a of v.accessories) expect(ACCESSORIES).toContain(a.t);
       for (const c of [v.head, v.torsoColor, v.hips, v.legs.l, v.legs.r, v.arms.l, v.arms.r, v.hands]) expect(c).toMatch(COLOR);
@@ -63,52 +64,58 @@ describe("Style Bible: una única minifigura para los nueve", () => {
     }
   });
 
-  it("cada figura reproduce los rasgos del diseño oficial investigado (docs/lego_research.md)", () => {
+  it("cada figura reproduce el diseño de la referencia (último videojuego LEGO Batman)", () => {
     const has = (agent: string, t: string) => VARIANTS[agent].accessories.some((a) => a.t === t);
+    const held = (agent: string, item: string, hand?: string) => VARIANTS[agent].accessories.some((a) => a.t === "held" && a.item === item && (!hand || a.hand === hand));
     const polyColors = (ops: { k: string; c: string }[]) => ops.filter((o) => o.k === "poly").map((o) => o.c);
-    // Batman (2006): traje gris azulado claro, capucha negra con orejas y capa, cinturón y emblema amarillos
+    // Batman: traje gris, capucha negra con orejas, capa, cinturón y óvalo amarillos, batarang en la mano
     expect(VARIANTS.chief.torsoColor).toBe(PLASTIC.grey);
     expect(VARIANTS.chief.head).toBe(PLASTIC.black);
-    expect(has("chief", "cape") && has("chief", "ears")).toBe(true);
-    expect(VARIANTS.chief.torso.some((o) => o.k === "rect" && o.c === PLASTIC.yellow)).toBe(true); // cinturón
-    expect(VARIANTS.chief.torso.some((o) => o.k === "ellipse" && o.c === PLASTIC.yellow)).toBe(true); // óvalo del emblema
-    // El Acertijo (2006): «?» negro grande, cinturón morado, bombín verde
-    expect(VARIANTS.director.torso.filter((o) => o.k === "text" && o.s === "?" && o.size >= 60)).toHaveLength(1);
-    expect(VARIANTS.director.torso.some((o) => o.k === "rect" && o.c === PLASTIC.darkPurple)).toBe(true);
+    expect(has("chief", "cape") && has("chief", "ears") && held("chief", "batarang")).toBe(true);
+    expect(VARIANTS.chief.torso.some((o) => o.k === "ellipse" && o.c === PLASTIC.yellow)).toBe(true);
+    // El Acertijo: traje verde con «?», corbata morada, bombín y bastón dorado
+    expect(VARIANTS.director.torso.filter((o) => o.k === "text" && o.s === "?").length).toBeGreaterThanOrEqual(5);
+    expect(polyColors(VARIANTS.director.torso)).toContain(PLASTIC.purple);
     expect(VARIANTS.director.accessories).toContainEqual({ t: "hat", style: "bowler", color: PLASTIC.darkGreen, band: PLASTIC.darkPurple });
-    // El Joker (2006): traje morado, pajarita verde, flor en la solapa, pelo verde, cara blanca con sonrisa roja
-    expect(VARIANTS.scriptwriter.torsoColor).toBe(PLASTIC.darkPurple);
+    expect(held("director", "cane")).toBe(true);
+    // El Joker: traje morado, chaleco naranja, pajarita verde, pelo verde, cara blanca, dentadura de cuerda
+    expect(VARIANTS.scriptwriter.torsoColor).toBe(PLASTIC.purple);
     expect(VARIANTS.scriptwriter.head).toBe(PLASTIC.white);
+    expect(polyColors(VARIANTS.scriptwriter.torso)).toEqual(expect.arrayContaining([PLASTIC.orange, PLASTIC.green]));
     expect(VARIANTS.scriptwriter.accessories).toContainEqual({ t: "hair", style: "joker", a: PLASTIC.green });
-    expect(polyColors(VARIANTS.scriptwriter.face)).toContain(PLASTIC.red);
-    expect(polyColors(VARIANTS.scriptwriter.torso)).toContain(PLASTIC.green); // pajarita
-    // Catwoman (2006): traje negro, líneas curvas moradas, cremallera gris, cinturón dorado, orejas de gata
-    expect(VARIANTS.resources.torsoColor).toBe(PLASTIC.black);
-    expect(VARIANTS.resources.torso.some((o) => o.k === "line" && o.c === PLASTIC.purple)).toBe(true);
-    expect(VARIANTS.resources.torso.some((o) => o.k === "line" && o.c === PLASTIC.grey)).toBe(true);
+    expect(held("scriptwriter", "teeth")).toBe(true);
+    // Catwoman: orejas, gafas grandes, líneas moradas, látigo
     expect(VARIANTS.resources.accessories).toContainEqual({ t: "ears", kind: "cat", color: PLASTIC.black });
-    // Bane (2007): máscara de luchador con ojos rojos grandes y mangueras verdes, torso desnudo con arneses
+    expect(VARIANTS.resources.face.filter((o) => o.k === "ellipse" && o.c === "#d7ecf2")).toHaveLength(2); // lentes
+    expect(VARIANTS.resources.torso.some((o) => o.k === "line" && o.c === PLASTIC.purple)).toBe(true);
+    expect(held("resources", "whip")).toBe(true);
+    // Bane: figura grande, máscara con ojos rojos y mangueras verdes, arneses
+    expect(VARIANTS.voice.scale).toBeGreaterThan(1.2);
     expect(VARIANTS.voice.accessories).toContainEqual({ t: "baneMask", mask: PLASTIC.reddishBrown, hose: PLASTIC.green });
     expect(VARIANTS.voice.face.some((o) => o.k === "ellipse" && o.c === PLASTIC.red)).toBe(true);
     expect(VARIANTS.voice.torsoColor).toBe(PLASTIC.nougat);
-    // Nightwing (2014/16): torso negro con V azul, brazos azules, pelo negro de pinchos
+    // Nightwing: negro y azul, guantes azules y dos bastones de escrima (uno en cada mano)
     expect(VARIANTS.editor.torsoColor).toBe(PLASTIC.black);
     expect(VARIANTS.editor.arms.l).toBe(PLASTIC.blue);
-    expect(polyColors(VARIANTS.editor.torso)).toContain(PLASTIC.blue);
-    expect(VARIANTS.editor.accessories).toContainEqual({ t: "hair", style: "nightwing", a: PLASTIC.black });
-    // El Pingüino (2012): chistera, monóculo, paraguas, chaleco naranja y pajarita morada
-    expect(has("sound", "hat") && has("sound", "umbrella") && has("sound", "monocle")).toBe(true);
-    expect(polyColors(VARIANTS.sound.torso)).toEqual(expect.arrayContaining([PLASTIC.orange, PLASTIC.purple]));
-    // Dos Caras: cara con mitad quemada, pelo partido y traje partido naranja / morado
+    expect(VARIANTS.editor.hands).toBe(PLASTIC.blue);
+    expect(held("editor", "escrima", "l") && held("editor", "escrima", "r")).toBe(true);
+    // El Pingüino: chistera, monóculo, collar de piel, chaleco gris y paraguas
+    expect(has("sound", "hat") && has("sound", "monocle") && has("sound", "furCollar") && held("sound", "umbrella")).toBe(true);
+    expect(polyColors(VARIANTS.sound.torso)).toContain(PLASTIC.grey);
+    // Dos Caras: traje blanco a un lado y negro al otro, cara con mitad quemada, moneda
+    expect(VARIANTS.reviewer.torso.filter((o) => o.k === "rect").map((o) => o.c).slice(0, 2)).toEqual([PLASTIC.white, PLASTIC.black]);
+    expect(new Set([VARIANTS.reviewer.legs.l, VARIANTS.reviewer.legs.r])).toEqual(new Set([PLASTIC.white, PLASTIC.black]));
     expect(VARIANTS.reviewer.face.some((o) => o.k === "rect" && o.c === PLASTIC.pink)).toBe(true);
-    expect(VARIANTS.reviewer.accessories).toContainEqual({ t: "hair", style: "split", a: PLASTIC.black, b: PLASTIC.white });
-    expect(new Set([VARIANTS.reviewer.legs.l, VARIANTS.reviewer.legs.r])).toEqual(new Set([PLASTIC.darkPurple, PLASTIC.orange]));
-    expect(VARIANTS.reviewer.arms.l).not.toBe(VARIANTS.reviewer.arms.r);
-    // Harley Quinn (2022): bicolor rojo y negro, coletas alternas, torso y piernas estampados, antifaz negro
-    expect(VARIANTS.publisher.accessories).toContainEqual({ t: "hair", style: "pigtails", a: PLASTIC.red, b: PLASTIC.black });
+    expect(held("reviewer", "coin")).toBe(true);
+    // Harley Quinn: capucha de bufón roja y negra, traje bicolor con golilla blanca, mazo
+    expect(VARIANTS.publisher.accessories).toContainEqual({ t: "jester", a: PLASTIC.red, b: PLASTIC.black });
+    expect(polyColors(VARIANTS.publisher.torso)).toContain(PLASTIC.white);
     expect(new Set([VARIANTS.publisher.legs.l, VARIANTS.publisher.legs.r])).toEqual(new Set([PLASTIC.red, PLASTIC.black]));
-    expect(VARIANTS.publisher.legsPrint?.l?.length).toBeGreaterThan(0);
-    expect(polyColors(VARIANTS.publisher.face)).toContain(PLASTIC.black); // antifaz
+    expect(held("publisher", "mallet")).toBe(true);
+  });
+
+  it("solo Bane es una figura grande; el resto comparte exactamente la misma escala", () => {
+    for (const v of Object.values(VARIANTS)) expect(v.scale ?? 1, v.agent).toBe(v.agent === "voice" ? 1.32 : 1);
   });
 
   it("las figuras llevan más detalle que un dibujo plano: estampados de piernas y espalda, caras con pupilas y cejas", () => {

@@ -65,6 +65,11 @@ Dos decisiones a tener en cuenta:
 - Los modelos son procedurales: reproducen colores y estampados, no el molde exacto de cada pieza (por ejemplo, el
   pelo del Joker o el sombrero del Pingüino son aproximaciones de las piezas reales).
 
+## Actualización: imagen de referencia del último videojuego
+Más tarde se proporcionó una imagen del último videojuego de Batman en estilo LEGO que prevalece sobre los diseños
+anteriores: figuras con objetos en la mano, Bane grande y la Batcueva con túneles y centro de mando. La interpretación de
+esa imagen está en `docs/style_bible.md` (es una recreación propia, no los modelos del juego).
+
 ## Lo que NO se pudo confirmar
 - Ventas reales (no son públicas) y el detalle exacto de varios estampados (ver columna «Confianza»).
 - BrickEconomy, Brickset, BrickLink y Rebrickable no se pudieron leer como páginas completas desde el entorno de

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { BRICK_H, PITCH, PLATE_H, batMosaic, roundPlateStuds, rnd, wallBricks, wallCourses } from "./bricks";
+import { BRICK_H, PITCH, PLATE_H, ellipseStuds, roundPlateStuds, rnd } from "./bricks";
 import { BURST_COUNT, burstPosition, seedFrom } from "./fx";
-import { LDU, PLASTIC } from "./styleBible";
+import { LDU } from "./styleBible";
 
 describe("ladrillos a escala real", () => {
   it("el taco, el ladrillo y la placa guardan las proporciones LEGO", () => {
@@ -25,42 +25,24 @@ describe("ladrillos a escala real", () => {
     }
   });
 
-  it("el muro se construye en aparejo a soga con ladrillos 2×4 tangentes", () => {
-    const wall = wallBricks(15, -1.6);
-    expect(wall.length).toBeGreaterThan(300);
-    for (const b of wall) {
-      expect(b.len / PITCH).toBeCloseTo(4 * 0.992, 6);
-      expect(b.thick / PITCH).toBeCloseTo(2, 9);
-      expect(b.y).toBeGreaterThan(-1.6); // nunca por debajo del suelo
-      expect(Math.hypot(b.x, b.z)).toBeCloseTo(15, 6); // todos sobre el círculo del muro
+  it("la plataforma elíptica solo lleva tacos dentro de la elipse y es simétrica", () => {
+    const a = 8.6, b = 7.6;
+    const studs = ellipseStuds(a, b);
+    expect(studs.length).toBeGreaterThan(300);
+    for (const [x, z] of studs) expect((x / a) ** 2 + (z / b) ** 2).toBeLessThanOrEqual(1);
+    expect(Math.abs(studs.reduce((s, [x]) => s + x, 0))).toBeLessThan(1e-6);
+    expect(Math.abs(studs.reduce((s, [, z]) => s + z, 0))).toBeLessThan(1e-6);
+    for (const [x, z] of studs) {
+      expect(Math.abs(Math.abs((x / PITCH) % 1) - 0.5)).toBeLessThan(1e-9); // centrados en cada taco de la rejilla
+      expect(Math.abs(Math.abs((z / PITCH) % 1) - 0.5)).toBeLessThan(1e-9);
     }
-    // cada hilera está desplazada media pieza respecto a la anterior: hileras alternas con ángulos distintos
-    const row = (c: number) => wall.filter((b) => Math.abs(b.y - (-1.6 + c * BRICK_H + BRICK_H / 2)) < 1e-6).map((b) => Math.atan2(b.z, b.x));
-    expect(Math.abs(row(0)[0] - row(1)[0])).toBeGreaterThan(1e-3);
-    // los tacos solo están en el ladrillo más alto de cada columna
-    const tops = wall.filter((b) => b.top).length;
-    expect(tops).toBeGreaterThan(30);
-    expect(tops).toBeLessThan(wall.length / 5);
+    expect(new Set(studs.map(([x, z]) => `${x.toFixed(4)}:${z.toFixed(4)}`)).size).toBe(studs.length); // sin tacos repetidos
+    expect(ellipseStuds(2, 2).length).toBeLessThan(studs.length);
   });
 
-  it("el muro es determinista y de altura irregular dentro de límites", () => {
-    expect(wallBricks(15, 0).map((b) => b.color)).toEqual(wallBricks(15, 0).map((b) => b.color));
-    const hs = Array.from({ length: 64 }, (_, i) => wallCourses((i / 64) * Math.PI * 2));
-    expect(Math.min(...hs)).toBeGreaterThanOrEqual(9);
-    expect(Math.max(...hs)).toBeLessThanOrEqual(19);
-    expect(new Set(hs).size).toBeGreaterThan(4);
+  it("el pseudoaleatorio es determinista (la sala es idéntica en cada carga)", () => {
     expect(rnd(5)).toBe(rnd(5));
-  });
-
-  it("el mosaico del suelo dibuja el murciélago amarillo sobre un óvalo gris", () => {
-    const m = batMosaic();
-    const yellow = m.filter((s) => s.color === PLASTIC.yellow).length;
-    const grey = m.filter((s) => s.color === PLASTIC.darkGrey).length;
-    expect(yellow).toBeGreaterThan(60);
-    expect(grey).toBeGreaterThan(yellow); // el fondo ocupa más que el emblema
-    expect(m.length).toBeLessThan(40 * 24); // las esquinas del óvalo quedan fuera
-    // alineado a la rejilla de tacos
-    for (const s of m) expect(Math.abs(((s.x / PITCH + 20) % 1) - 0.5)).toBeLessThan(1e-9);
+    expect(rnd(5)).not.toBe(rnd(6));
   });
 });
 

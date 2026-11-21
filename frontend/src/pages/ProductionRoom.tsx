@@ -7,7 +7,7 @@ import { PageHead, useApi } from "../components/ui";
 import { AGENT_COLOR, elapsed, statusLabel } from "../format";
 import { useLive } from "../store";
 import { bodyColor, displayName, personaFor, quoteFor } from "../theme";
-import { Batcave, FLOOR_Y, PLATE_H, Plate, StudioLights, plateRadius } from "../minifig/Batcave";
+import { Base, Batcave, FLOOR_Y, PLATE_H, StudioLights, plateRadius } from "../minifig/Batcave";
 import { FigureFx, Workstation } from "../minifig/Extras";
 import { Minifig } from "../minifig/Minifig";
 import { animationState } from "../minifig/pose";
@@ -87,7 +87,7 @@ function Node({ agent, position, central, overlay, theme, figure, receiving, see
             <Workstation active={agent.status === "running"} tint={color} seed={seed} />
             <FigureFx getAnim={getAnim} finishedAt={agent.finished_at} seed={seed} />
           </group>
-          <Plate position={[0, FLOOR_Y - position[1], 0]} color={color} big={central} />
+          <Base position={[0, FLOOR_Y - position[1], 0]} color={color} big={central} label={persona?.character ?? agent.title} />
           {/* Anillo de ESTADO en el borde de la placa; el color del personaje va en la figura y la placa */}
           <mesh position={[0, FEET_Y - position[1] + 0.04, 0]} rotation={[Math.PI / 2, 0, 0]}>
             <torusGeometry args={[plateRadius(central) + 0.07, 0.035, 8, 64]} />
@@ -112,7 +112,7 @@ function Node({ agent, position, central, overlay, theme, figure, receiving, see
       </>
       )}
       {/* Las etiquetas van a una capa propia (portal): evita que React y drei compitan por los mismos nodos DOM al salir */}
-      <Html position={[0, variant ? FEET_Y - position[1] + FIGURE_HEIGHT * LDU + 0.95 : size + 0.35, 0]} center distanceFactor={variant ? 8.5 : 11} zIndexRange={[10, 0]} portal={overlay as React.RefObject<HTMLElement>}>
+      <Html position={[0, variant ? FEET_Y - position[1] + FIGURE_HEIGHT * LDU * (variant?.scale ?? 1) + 0.95 : size + 0.35, 0]} center distanceFactor={variant ? 8.5 : 11} zIndexRange={[10, 0]} portal={overlay as React.RefObject<HTMLElement>}>
         <div className={`node-card${variant && agent.status === "idle" ? " compact" : ""}`}>
           {persona && <span>{persona.glyph} </span>}<b style={persona ? { color } : undefined}>{displayName(theme, agent)}</b>{persona && <span className="muted"> · {agent.title}</span>} <span style={{ color: statusColor }}>● {statusLabel(agent.status)}</span>
           {quote && <div className="quote">«{quote}»</div>}
@@ -209,7 +209,7 @@ function Scene({ agents, links, overlay, theme, quality }: { agents: Record<stri
         <Node key={name} agent={agents[name]} position={p} central={name === "chief"} overlay={overlay} theme={theme}
           figure={figure} receiving={receiving(name)} seed={i * 1.7} />
       ))}
-      <OrbitControls enablePan={false} minDistance={4} maxDistance={24} maxPolarAngle={Math.PI / 2.1} />
+      <OrbitControls enablePan={false} target={[0, 1.2, -3]} minDistance={4} maxDistance={32} maxPolarAngle={Math.PI / 2.1} />
     </>
   );
 }
@@ -239,7 +239,7 @@ export default function ProductionRoom() {
         )}
       </PageHead>
       <div className="panel room">
-        <Canvas shadows={quality === "high"} dpr={quality === "high" ? [1, 2] : 1} camera={{ position: [0, 8.6, 13.4], fov: 46 }}>
+        <Canvas shadows={quality === "high"} dpr={quality === "high" ? [1, 2] : 1} camera={{ position: [0, 6.6, 19.5], fov: 44 }}>
           {!initial.locked && theme.id !== "classic" && <PerformanceMonitor onDecline={() => setQuality("low")} />}
           <color attach="background" args={[theme.id === "classic" ? "#05070f" : theme.palette.background]} />
           <Scene agents={agents} links={data?.links ?? []} overlay={overlay} theme={theme} quality={quality} />
