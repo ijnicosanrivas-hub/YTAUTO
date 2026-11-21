@@ -28,3 +28,6 @@ frontend/node_modules/
 demo_output/
 .coverage
 htmlcov/
+
+# Recortes de personajes generados desde un render propio (no se versionan)
+assets/personajes/

@@ -133,3 +133,24 @@ def test_every_real_role_prompt_round_trips():
         plain = apply_to_prompt(text, None)
         assert "tema:inicio" not in plain and plain.startswith("---\n")
         assert apply_to_prompt(plain, t.persona(name)) == text
+
+
+def test_figuras_recortadas_sirven_solo_las_existentes(client, tmp_path, monkeypatch):
+    import json
+
+    from ytauto.api import server
+
+    fig = tmp_path / "fig"; fig.mkdir(); (fig / "chief.png").write_bytes(b"\x89PNG\r\n"); (fig / "meta.json").write_text(json.dumps({"chief": {"anchor_x": 0.5, "w": 10, "h": 20}, "joker": {"anchor_x": 0.5, "w": 1, "h": 1}}), encoding="utf-8")
+    monkeypatch.setattr(server, "FIGURES_DIR", fig)
+    c = client(load_theme("gotham"))
+    assert c.get("/api/figures").json() == {"chief": {"anchor_x": 0.5, "w": 10, "h": 20}}
+    assert c.get("/api/figures/chief.png").status_code == 200
+    assert c.get("/api/figures/joker.png").status_code == 404
+    assert c.get("/api/figures/..%2Fx.png").status_code == 404
+
+
+def test_sin_recortes_la_lista_esta_vacia(client, tmp_path, monkeypatch):
+    from ytauto.api import server
+
+    monkeypatch.setattr(server, "FIGURES_DIR", tmp_path / "nada")
+    assert client(load_theme("gotham")).get("/api/figures").json() == {}

@@ -97,3 +97,10 @@ los fotogramas caen; se puede forzar con `#/room?calidad=alta|baja`.
 - Estampados de cara y torso con formas simples; no hay textura de detalle fino.
 
 Uso personal, no distribuible. No se incluyen logotipos ni activos de terceros.
+
+## Figuras desde un render propio (opcional)
+Si existe `assets/personajes/` (PNG con transparencia + `meta.json`), la sala dibuja esos recortes como carteles que miran a la cámara
+(`SpriteFigure`, animados con el estado real del agente: respiran, marchan, trabajan con brillo, saludan, saltan al terminar, tiemblan en error).
+Si no existen, se usan las figuras de ladrillos. Se generan con `scripts/extraer_figuras.py render.jpg --modelo isnet-general-use.onnx`.
+`assets/personajes/` está en `.gitignore`: son recortes de material de terceros. Limitación: son imágenes 2D de ≈200 px de alto,
+no modelos 3D; vistos de cerca se ven suaves y siempre muestran la cara frontal del render.

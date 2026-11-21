@@ -35,6 +35,7 @@ from .board import Board, rebuild
 log = logging.getLogger("ytauto.api")
 MODEL_RE = re.compile(r"^(sonnet|opus|haiku|claude-[a-z0-9\-\.]+)$")
 FRONTEND_DIST = REPO_ROOT / "frontend" / "dist"
+FIGURES_DIR = REPO_ROOT / "assets" / "personajes"
 _NO_UI_PAGE = """<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>YTAUTO · falta la interfaz</title><style>body{font-family:system-ui,sans-serif;background:#0b1020;color:#e6ecff;margin:0;padding:24px;line-height:1.5}
 code{background:#1b2440;padding:2px 6px;border-radius:6px}main{max-width:560px;margin:40px auto}</style></head><body><main>
@@ -326,6 +327,26 @@ def create_api(app: App, start_worker: bool = False, token: str | None = None,
     @api.get("/api/theme", dependencies=A)
     def get_theme() -> dict[str, Any]:
         return theme.model_dump()
+
+    @api.get("/api/figures", dependencies=A)
+    def figures() -> dict[str, Any]:
+        """Recortes de personajes (assets/personajes, fuera de git). Vacío si no se han generado: la sala usa figuras de ladrillos."""
+        meta = FIGURES_DIR / "meta.json"
+        if not meta.exists():
+            return {}
+        try:
+            data = json.loads(meta.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return {}
+        return {k: {"anchor_x": v["anchor_x"], "w": v["w"], "h": v["h"]}
+                for k, v in data.items() if re.fullmatch(r"[a-z_]+", k) and (FIGURES_DIR / f"{k}.png").is_file()}
+
+    @api.get("/api/figures/{agent}.png", dependencies=A)
+    def figure_png(agent: str) -> FileResponse:
+        path = FIGURES_DIR / f"{agent}.png"
+        if not re.fullmatch(r"[a-z_]+", agent) or not path.is_file():
+            raise HTTPException(404, "Figura no disponible")
+        return FileResponse(path, media_type="image/png")
 
     @api.get("/api/events", dependencies=A)
     def events(limit: int = Query(200, le=2000)) -> list[dict[str, Any]]:

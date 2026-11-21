@@ -13,6 +13,8 @@ import { BatSwarm, Facilities, FloorPads } from "../minifig/Hub";
 import { HUB, HUB_SCALE, OVERVIEW, facingYaw, focusShot, recentActions } from "../minifig/hub";
 import { FigureFx, Workstation } from "../minifig/Extras";
 import { Minifig } from "../minifig/Minifig";
+import { SpriteFigure, useFigureTexture } from "../minifig/SpriteFigure";
+import { spriteSize, type FigureMeta } from "../minifig/sprites";
 import { animationState } from "../minifig/pose";
 import { FIGURE_HEIGHT, LDU } from "../minifig/styleBible";
 import { VARIANTS } from "../minifig/variants";
@@ -159,7 +161,7 @@ function hubChest(name: string): [number, number, number] {
 }
 
 /** Personaje del hub: minifigura mirando a Batman (o a su instalación al trabajar), clicable. */
-function HubNode({ agent, theme, overlay, selected, onSelect, receiving, seed }: { agent: AgentState; theme: Theme; overlay: Overlay; selected: boolean; onSelect: (n: string) => void; receiving: boolean; seed: number }) {
+function HubNode({ agent, theme, overlay, selected, onSelect, receiving, seed, figure }: { figure?: FigureMeta; agent: AgentState; theme: Theme; overlay: Overlay; selected: boolean; onSelect: (n: string) => void; receiving: boolean; seed: number }) {
   const s = HUB[agent.name];
   const variant = VARIANTS[agent.name];
   const central = agent.name === "chief";
@@ -174,15 +176,18 @@ function HubNode({ agent, theme, overlay, selected, onSelect, receiving, seed }:
     return animationState({ status: a.status, finishedAt: a.finished_at, now: Date.now(), receiving: r });
   }).current;
   useEffect(() => () => { document.body.style.cursor = ""; }, []);
+  const sprite = useFigureTexture(agent.name, !!figure);
   if (!s || !variant) return null;
-  const top = PLATE_H + FIGURE_HEIGHT * LDU * (variant.scale ?? 1) + 0.5;
+  const top = PLATE_H + (sprite && figure ? spriteSize(figure).height * (variant.scale ?? 1) : FIGURE_HEIGHT * LDU * (variant.scale ?? 1)) + 0.5;
   return (
     <group position={[s.x, FLOOR_Y, s.z]} scale={HUB_SCALE}
       onClick={(e) => { e.stopPropagation(); onSelect(agent.name); }}
       onPointerOver={(e) => { e.stopPropagation(); setHover(true); document.body.style.cursor = "pointer"; }}
       onPointerOut={() => { setHover(false); document.body.style.cursor = ""; }}>
       <group position={[0, PLATE_H, 0]}>
-        <Minifig variant={variant} getAnim={getAnim} seed={seed} yaw={facingYaw(agent.name)} turnToWork />
+        {sprite && figure
+          ? <SpriteFigure texture={sprite} meta={figure} scale={variant.scale ?? 1} getAnim={getAnim} seed={seed} glowColor={statusColor} />
+          : <Minifig variant={variant} getAnim={getAnim} seed={seed} yaw={facingYaw(agent.name)} turnToWork />}
         <FigureFx getAnim={getAnim} finishedAt={agent.finished_at} seed={seed} />
       </group>
       <Base position={[0, 0, 0]} color={color} big={central} label={persona?.character ?? agent.title} />
@@ -233,6 +238,7 @@ function HubScene({ agents, links, overlay, theme, quality, selected, onSelect, 
     return () => clearInterval(t);
   }, []);
   const receiving = (name: string) => links.some((l) => l.kind === "flow" && l.target === name && now - (last[l.source] ?? 0) < ACTIVE_MS);
+  const { data: figures } = useApi<Record<string, FigureMeta>>("/api/figures");
   const colors = useMemo(() => Object.fromEntries(Object.keys(HUB).map((n) => [n, personaFor(theme, n)?.color ?? "#ffffff"])), [theme]);
   return (
     <>
@@ -264,7 +270,7 @@ function HubScene({ agents, links, overlay, theme, quality, selected, onSelect, 
         );
       })}
       {Object.keys(HUB).map((name, i) => agents[name] && (
-        <HubNode key={name} agent={agents[name]} theme={theme} overlay={overlay} selected={selected === name} onSelect={onSelect} receiving={receiving(name)} seed={i * 1.7} />
+        <HubNode key={name} agent={agents[name]} theme={theme} overlay={overlay} selected={selected === name} onSelect={onSelect} receiving={receiving(name)} seed={i * 1.7} figure={figures?.[name]} />
       ))}
       <OrbitControls makeDefault enablePan={false} target={OVERVIEW.target} minDistance={2.5} maxDistance={40} maxPolarAngle={Math.PI / 2.05}
         onStart={() => { manual.current = true; }} />
