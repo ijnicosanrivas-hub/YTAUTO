@@ -115,7 +115,8 @@ def register(api: FastAPI, app: App, deps: list, boards: ChannelBoards, schedule
             th = load_theme(c.theme)
             out.append({**c.model_dump(), "accent": th.palette.accent, "room_title": th.room_title,
                         "director": persona(c.theme, "director"), "chief": persona(c.theme, "chief"),
-                        "has_director_image": "director" in read_figures(c.theme)})
+                        "has_director_image": "director" in read_figures(c.theme),
+                        "has_chief_image": "chief" in read_figures(c.theme)})
         return out
 
     @api.get("/api/overview", dependencies=A)
@@ -139,7 +140,7 @@ def register(api: FastAPI, app: App, deps: list, boards: ChannelBoards, schedule
             lics = [x for x in lic_all if x.channel_id == c.id]
             out.append({
                 "channel": c.model_dump(), "accent": load_theme(c.theme).palette.accent,
-                "director": persona(c.theme, "director"),
+                "director": persona(c.theme, "director"), "chief": persona(c.theme, "chief"),
                 "projects": {"total": len(mine), "by_status": by_status},
                 "current": {"id": current.id, "name": current.spec.name} if current else None,
                 "running_agents": [{"name": a.name, "task": a.task, "progress": a.progress} for a in running],

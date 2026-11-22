@@ -70,9 +70,11 @@ function overview() {
       const board = Object.values(s.boards[c.id] ?? {});
       const t = THEMES[c.theme] as { palette: { accent: string }; agents: Record<string, { character: string; glyph: string; color: string }> };
       const d = t.agents.director;
+      const j = t.agents.chief;
       const ps = projects(c.id);
       return {
         channel: c, accent: t.palette.accent, director: { character: d.character, glyph: d.glyph, color: d.color },
+        chief: { character: j.character, glyph: j.glyph, color: j.color },
         projects: { total: ps.length, by_status: { active: 1, ...(ps.length > 1 ? { completed: ps.length - 1 } : {}) } },
         current: { id: ps[0].id, name: ps[0].name },
         running_agents: board.filter((a) => a.status === "running").map((a) => ({ name: a.name, task: a.task, progress: a.progress })),

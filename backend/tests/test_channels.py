@@ -54,6 +54,10 @@ def test_channels_api_and_theme_per_channel(env):
     _, c = env
     chs = c.get("/api/channels").json()
     assert len(chs) == 4 and all(x["director"] and x["director"]["character"] for x in chs)
+    # la cara de cada canal es su jefe (el del centro de la sala): Batman en General
+    assert {x["id"]: x["chief"]["character"] for x in chs}["general"] == "Batman"
+    assert all("has_chief_image" in x for x in chs)
+    assert all(o["chief"]["character"] for o in c.get("/api/overview").json()["channels"])
     assert c.get("/api/theme?channel=gta6").json()["id"] == "gta6"
     assert c.get("/api/theme?channel=nope").status_code == 404
 

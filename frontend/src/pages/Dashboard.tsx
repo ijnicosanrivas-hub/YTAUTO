@@ -34,10 +34,10 @@ function ChannelsOverview({ current, overview, channels }: { current: string; ov
             onClick={() => setChannel(o.channel.id)} aria-pressed={o.channel.id === current}>
             <div className="ch-card-art"><ChannelArt profile={o.channel.theme} /></div>
             <div className="ch-card-head">
-              <Face theme={o.channel.theme} agent="director" persona={o.director} size={52} image={c?.has_director_image} ring={o.accent} />
+              <Face theme={o.channel.theme} agent="chief" persona={o.chief ?? c?.chief} size={52} image={c?.has_chief_image} ring={o.accent} />
               <div>
                 <b>{o.channel.name}</b>
-                <small>{o.director?.character ?? "Director"}</small>
+                <small>{(o.chief ?? c?.chief)?.character ?? "Jefe"}</small>
               </div>
               <span className={`pulse ${o.running_agents.length ? "on" : ""}`} title={o.running_agents.length ? "Produciendo" : "En espera"} />
             </div>
@@ -116,8 +116,8 @@ export default function Dashboard() {
           </div>
           <div className="row">
             <div className="hero-director">
-              <Face theme={profile} agent="director" persona={ch?.director} size={56} image={ch?.has_director_image} ring={ch?.accent} />
-              <div><small>Dirige</small><b>{ch?.director?.character ?? "Director"}</b></div>
+              <Face theme={profile} agent="chief" persona={ch?.chief} size={56} image={ch?.has_chief_image} ring={ch?.accent} />
+              <div><small>Al mando</small><b>{ch?.chief?.character ?? "Jefe"}</b></div>
             </div>
             <a className="btn primary big" href="#/room"><Icon name="room" size={18} />Entrar en {theme.room_title}</a>
           </div>

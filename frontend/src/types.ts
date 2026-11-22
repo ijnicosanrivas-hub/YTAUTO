@@ -204,12 +204,15 @@ export interface Channel {
   director: PersonaRef | null;
   chief: PersonaRef | null;
   has_director_image: boolean;
+  /** El jefe (centro de la sala) es la cara del canal en el selector y las miniaturas. */
+  has_chief_image: boolean;
 }
 
 export interface ChannelOverview {
   channel: { id: string; name: string; theme: string; tagline: string };
   accent: string;
   director: PersonaRef | null;
+  chief: PersonaRef | null;
   projects: { total: number; by_status: Record<string, number> };
   current: { id: string; name: string } | null;
   running_agents: { name: string; task: string | null; progress: number | null }[];

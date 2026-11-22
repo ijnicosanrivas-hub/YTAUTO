@@ -5,7 +5,7 @@ import { ChannelArt } from "./ChannelArt";
 import { Face } from "./Face";
 import { Icon } from "./Icon";
 
-/** Arriba a la izquierda: la cara del director del canal activo. Al pulsar se despliegan los demás canales. */
+/** Arriba a la izquierda: la cara del jefe del canal activo (el del centro de su sala). Al pulsar se despliegan los demás canales. */
 export function ChannelSwitcher({ channels, overview }: { channels: Channel[]; overview: ChannelOverview[] }) {
   const channel = useLive((s) => s.channel);
   const setChannel = useLive((s) => s.setChannel);
@@ -31,10 +31,10 @@ export function ChannelSwitcher({ channels, overview }: { channels: Channel[]; o
     <div className="ch-switch" ref={box}>
       <button className="ch-current" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-haspopup="menu"
         title="Cambiar de canal" style={{ ["--ch" as string]: current.accent }}>
-        <Face theme={current.theme} agent="director" persona={current.director} size={64} image={current.has_director_image} ring={current.accent} />
+        <Face theme={current.theme} agent="chief" persona={current.chief} size={64} image={current.has_chief_image} ring={current.accent} />
         <span className="ch-text">
           <b>{current.name}</b>
-          <small>{current.director?.character ?? "Director"} · dirige</small>
+          <small>{current.chief?.character ?? "Jefe"} · al mando</small>
         </span>
         <span className="ch-caret" aria-hidden><Icon name="chevron" size={16} /></span>
         {busy(current.id) > 0 && <span className="ch-live" title="Agentes trabajando">{busy(current.id)}</span>}
@@ -46,10 +46,10 @@ export function ChannelSwitcher({ channels, overview }: { channels: Channel[]; o
             <button key={c.id} role="menuitem" className={`ch-option${c.id === channel ? " active" : ""}`} onClick={() => pick(c.id)}
               style={{ ["--ch" as string]: c.accent }}>
               <ChannelArt profile={c.theme} />
-              <Face theme={c.theme} agent="director" persona={c.director} size={56} image={c.has_director_image} ring={c.accent} />
+              <Face theme={c.theme} agent="chief" persona={c.chief} size={56} image={c.has_chief_image} ring={c.accent} />
               <span className="ch-text">
                 <b>{c.name}</b>
-                <small>{c.director?.character}</small>
+                <small>{c.chief?.character}</small>
               </span>
               {busy(c.id) > 0 ? <span className="ch-live">{busy(c.id)} trabajando</span> : <span className="ch-idle">en espera</span>}
             </button>
