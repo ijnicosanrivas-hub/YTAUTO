@@ -18,7 +18,7 @@ export function withChannel(path: string, channel: string): string {
 
 /** URL de la imagen de un personaje del perfil (si existe). */
 export function figureImage(theme: string, agent: string, token: string | null): string {
-  if (import.meta.env.VITE_DEMO === "1") return `/personajes/${agent}.png`; // versión estática (Netlify)
+  if (import.meta.env.VITE_DEMO === "1") return theme === "gotham" ? `/personajes/${agent}.png` : `/personajes/sin-imagen-${theme}.png`; // versión estática (Netlify): solo Gotham trae imágenes
   return `/api/profiles/${theme}/figures/${agent}.png${token ? `?token=${encodeURIComponent(token)}` : ""}`;
 }
 
