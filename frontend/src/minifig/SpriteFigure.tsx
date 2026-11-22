@@ -2,6 +2,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { getToken } from "../api";
+import { DEMO } from "../demo/demo";
 import { billboardYaw, figureUrl, spriteMotion, spriteSize, type FigureMeta } from "./sprites";
 import type { animationState } from "./pose";
 
@@ -13,7 +14,7 @@ export function useFigureTexture(agent: string, enabled: boolean): THREE.Texture
   useEffect(() => {
     if (!enabled) return;
     let dead = false;
-    new THREE.TextureLoader().load(figureUrl(agent, getToken() || null), (t) => {
+    new THREE.TextureLoader().load(DEMO ? `/personajes/${agent}.png` : figureUrl(agent, getToken() || null), (t) => {
       t.colorSpace = THREE.SRGBColorSpace;
       t.anisotropy = 8;
       t.generateMipmaps = true;

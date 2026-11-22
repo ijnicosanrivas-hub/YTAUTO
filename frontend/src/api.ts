@@ -1,3 +1,4 @@
+import { DEMO, DemoError, demoGet } from "./demo/demo";
 // Cliente de la API. El token (si el servidor lo exige) se guarda solo en este navegador.
 const TOKEN_KEY = "ytauto.token";
 
@@ -46,6 +47,10 @@ export class ApiError extends Error {
 }
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  if (DEMO) {
+    if (method === "GET") return (await demoGet(path)) as T;
+    throw new DemoError("Modo demostración: las acciones necesitan el servidor de YTAUTO.");
+  }
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   const token = getToken();
   if (token) headers.Authorization = `Bearer ${token}`;

@@ -1,3 +1,4 @@
+import { DEMO } from "./demo/demo";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { UNAUTHORIZED_EVENT, setToken } from "./api";
 import { useApi } from "./components/ui";
@@ -134,7 +135,7 @@ export default function App() {
         ))}
         <div className="sidebar-foot">
           <span className={`badge ${connected ? "s-completed" : "s-error"}`}>
-            {connected ? "En directo" : "Sin conexión"}
+            {DEMO ? "Demostración" : connected ? "En directo" : "Sin conexión"}
           </span>
         </div>
       </nav>
