@@ -4,8 +4,11 @@ Para una voz más natural sin coste usa el adaptador `piper` con un modelo desca
 """
 from __future__ import annotations
 
+import os
 import shutil
+import struct
 import subprocess
+import sys
 import wave
 from pathlib import Path
 
@@ -27,6 +30,50 @@ def find_binary(name: str) -> str | None:
     if local and (local / "espeak-ng.exe").is_file():
         return str(local / "espeak-ng.exe")
     return next((p for p in WINDOWS_PATHS if Path(p).exists()), None)
+
+
+def find_data_parent(binary: str) -> Path | None:
+    """Carpeta que contiene `espeak-ng-data`. Hace falta cuando eSpeak se extrajo del MSI sin instalarlo
+    (lo que hace INSTALAR_WINDOWS.bat): entonces no hay clave de registro y el programa no encuentra sus voces."""
+    exe = Path(binary)
+    for folder in [exe.parent, *list(exe.parents)[1:4]]:
+        if (folder / "espeak-ng-data").is_dir():
+            return folder
+        for sub in folder.glob("*/espeak-ng-data"):
+            if sub.is_dir():
+                return sub.parent
+    return None
+
+
+def short_path(path: Path | str) -> str:
+    """En Windows, la ruta corta 8.3 (sin tildes ni «ñ»): eSpeak abre los ficheros con la API antigua y falla con ellas."""
+    p = str(path)
+    if sys.platform != "win32":
+        return p
+    try:
+        import ctypes
+
+        buf = ctypes.create_unicode_buffer(32768)
+        n = ctypes.windll.kernel32.GetShortPathNameW(p, buf, len(buf))  # type: ignore[attr-defined]
+        return buf.value if 0 < n < len(buf) else p
+    except (OSError, AttributeError):
+        return p
+
+
+def fix_wav_header(data: bytes) -> bytes:
+    """Con `--stdout`, eSpeak no puede volver atrás a escribir los tamaños del WAV y deja valores de relleno."""
+    if len(data) < 44 or data[:4] != b"RIFF":
+        return data
+    out = bytearray(data)
+    struct.pack_into("<I", out, 4, len(data) - 8)
+    pos = 12
+    while pos + 8 <= len(out):  # busca el bloque «data» (normalmente en el byte 36)
+        tag, size = bytes(out[pos:pos + 4]), struct.unpack_from("<I", out, pos + 4)[0]
+        if tag == b"data":
+            struct.pack_into("<I", out, pos + 4, len(out) - pos - 8)
+            break
+        pos += 8 + size
+    return bytes(out)
 
 
 class EspeakTTSProvider(TextToSpeechProvider):
@@ -73,23 +120,34 @@ class EspeakTTSProvider(TextToSpeechProvider):
         binary = find_binary(self.params["binary"])
         if not binary:
             raise ProviderError(self.name, "espeak-ng no está instalado", transient=False)
-        # El texto va en un fichero UTF-8, no como argumento: en Windows los argumentos con tildes o «¿» se corrompen.
-        textfile = request.out_path.with_suffix(".txt")
-        textfile.write_text(request.text, encoding="utf-8")
+        # Texto por la entrada estándar (UTF-8) y audio por la salida estándar: sin rutas de fichero, así no le
+        # afectan las tildes o espacios de la carpeta del usuario en Windows.
+        cmd = [binary, "-v", voice, "-s", str(wpm), "-p", str(self.params["pitch"]), "-b", "1", "--stdin", "--stdout"]
+        data_parent = find_data_parent(binary)
+        env = dict(os.environ)
+        if data_parent:
+            cmd.insert(1, f"--path={short_path(data_parent)}")
+            env["ESPEAK_DATA_PATH"] = short_path(data_parent)
         try:
-            proc = subprocess.run([binary, "-v", voice, "-s", str(wpm), "-p", str(self.params["pitch"]),
-                                   "-w", str(raw), "-f", str(textfile)], capture_output=True, encoding="utf-8",
-                                  errors="replace", timeout=120)
-        finally:
-            textfile.unlink(missing_ok=True)
-        if proc.returncode != 0 or not raw.exists():
-            raise ProviderError(self.name, f"espeak-ng falló: {proc.stderr[-300:]}", transient=False)
+            proc = subprocess.run(cmd, input=request.text.encode("utf-8"), capture_output=True, timeout=120, env=env)
+        except (OSError, subprocess.TimeoutExpired) as e:
+            raise ProviderError(self.name, f"espeak-ng no se pudo ejecutar ({binary}): {e}", transient=False) from e
+        audio = proc.stdout or b""
+        if proc.returncode != 0 or len(audio) < 100 or audio[:4] != b"RIFF":
+            detail = (proc.stderr or b"").decode("utf-8", "replace").strip() or "sin mensaje de error"
+            hint = "" if data_parent else " · no se encuentra la carpeta espeak-ng-data junto al programa"
+            raise ProviderError(self.name, f"espeak-ng falló (código {proc.returncode}, voz «{voice}»): {detail[-300:]}"
+                                           f"{hint} · programa: {binary}", transient=False)
+        raw.write_bytes(fix_wav_header(audio))
         # Normaliza a 48 kHz mono y recorta silencios de los extremos.
         if shutil.which("ffmpeg"):
-            subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(raw), "-af",
-                            "silenceremove=start_periods=1:start_threshold=-50dB,areverse,"
-                            "silenceremove=start_periods=1:start_threshold=-50dB,areverse",
-                            "-ar", "48000", "-ac", "1", str(request.out_path)], check=True)
+            norm = subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(raw), "-af",
+                                   "silenceremove=start_periods=1:start_threshold=-50dB,areverse,"
+                                   "silenceremove=start_periods=1:start_threshold=-50dB,areverse",
+                                   "-ar", "48000", "-ac", "1", str(request.out_path)], capture_output=True)
+            if norm.returncode != 0:
+                raise ProviderError(self.name, f"FFmpeg no pudo preparar la voz: {norm.stderr.decode('utf-8', 'replace')[-300:]}",
+                                    transient=False)
             raw.unlink(missing_ok=True)
         else:
             raw.replace(request.out_path)

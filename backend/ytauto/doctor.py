@@ -45,8 +45,9 @@ def run_checks(offline: bool = False, settings: Settings | None = None) -> list[
     from .providers.voice.piper import PiperTTSProvider
     espeak = find_binary("espeak-ng")
     piper = PiperTTSProvider().health_check()
-    checks.append(Check("Voz", bool(espeak) or piper.ok,
-                        "espeak-ng" if espeak else (f"Piper ({piper.message})" if piper.ok else "ninguna instalada"),
+    espeak_ok, espeak_msg = (_try_espeak() if espeak else (False, "no instalado"))
+    checks.append(Check("Voz", espeak_ok or piper.ok,
+                        f"espeak-ng: {espeak_msg}" if espeak else (f"Piper ({piper.message})" if piper.ok else "ninguna instalada"),
                         _fix("Ejecuta INSTALAR_WINDOWS.bat de nuevo (instala la voz)",
                              "sudo apt install espeak-ng")))
 
@@ -127,4 +128,21 @@ def find_free_port(preferred: int = 8000, tries: int = 20, host: str = "127.0.0.
     raise RuntimeError(f"No hay puertos libres entre {preferred} y {preferred + tries - 1}")
 
 
+def _try_espeak() -> tuple[bool, str]:
+    """Genera de verdad una frase corta con eSpeak (encontrar el programa no basta: puede faltarle su carpeta de voces)."""
+    import tempfile
+    from pathlib import Path
 
+    from .core.errors import ProviderError
+    from .providers.interfaces import TTSRequest
+    from .providers.voice.espeak import EspeakTTSProvider
+
+    with tempfile.TemporaryDirectory() as tmp:
+        try:
+            asset = EspeakTTSProvider().synthesize(TTSRequest(text="Prueba de voz: ¿se oye bien?", language="es",
+                                                              out_path=Path(tmp) / "prueba.wav"))
+            return True, f"funciona ({asset.duration_s:.1f} s de prueba)"
+        except ProviderError as e:
+            return False, str(e)[:300]
+        except Exception as e:  # noqa: BLE001 - el diagnóstico nunca debe romperse
+            return False, f"error inesperado: {e}"[:300]
