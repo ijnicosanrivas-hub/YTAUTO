@@ -30,7 +30,9 @@ from ..core.workspace import Workspace
 from ..orchestrator.pipeline import PHASES, PIPELINE
 from ..providers.interfaces import ProviderCategory
 from ..providers.registry import RegistryError
-from .board import Board, rebuild
+from . import channels_api
+from ..core.channels import channel_ids, channels
+from .board import ChannelBoards, rebuild
 
 log = logging.getLogger("ytauto.api")
 MODEL_RE = re.compile(r"^(sonnet|opus|haiku|claude-[a-z0-9\-\.]+)$")
@@ -134,14 +136,22 @@ def create_api(app: App, start_worker: bool = False, token: str | None = None,
                allowed_origins: list[str] | None = None, theme: Theme | None = None) -> FastAPI:
     theme = theme or load_theme()
     token = token if token is not None else os.environ.get("YTAUTO_API_TOKEN") or None
-    board = Board()
-    rebuild(board, app.store.events(limit=2000))
+    def _channel_of(pid: str) -> str | None:
+        try:
+            return app.store.get_project(pid).spec.channel
+        except KeyError:
+            return None
+
+    boards = ChannelBoards([c.id for c in channels()], _channel_of)
+    board = boards.board(None)  # canal por defecto (compatibilidad)
+    rebuild(boards, app.store.events(limit=4000))
     clients: set[tuple[asyncio.Queue, asyncio.AbstractEventLoop]] = set()
     clients_lock = threading.Lock()
 
     def on_event(e: Event) -> None:
-        state = board.apply(e)
-        msg = {"event": e.model_dump(mode="json"), "agent": state.model_dump(mode="json") if state else None}
+        state = boards.apply(e)
+        msg = {"event": e.model_dump(mode="json"), "agent": state.model_dump(mode="json") if state else None,
+               "channel": boards.channel_of(e.project_id)}
         with clients_lock:
             targets = list(clients)
         for q, loop in targets:
@@ -193,12 +203,13 @@ def create_api(app: App, start_worker: bool = False, token: str | None = None,
                 "worker": bool(worker_thread and worker_thread.is_alive())}
 
     @api.get("/api/dashboard", dependencies=A)
-    def dashboard() -> dict[str, Any]:
-        projects = app.store.list_projects()
+    def dashboard(channel: str | None = Query(None)) -> dict[str, Any]:
+        projects = [p for p in app.store.list_projects() if not channel or p.spec.channel == channel]
         by_status: dict[str, int] = {}
         for p in projects:
             by_status[p.status.value] = by_status.get(p.status.value, 0) + 1
-        usage = app.store.llm_usage()
+        ids = {p.id for p in projects}
+        usage = [u for u in app.store.llm_usage() if not channel or u["project_id"] in ids]
         waiting = []
         for p in projects[:50]:
             v = _project_view(app, p.id)
@@ -210,22 +221,35 @@ def create_api(app: App, start_worker: bool = False, token: str | None = None,
                 "claude": {"calls": len(usage), "seconds": round(sum(u.get("duration_s") or 0 for u in usage), 1),
                            "lanes": {k: v.model_dump() for k, v in app.queue.lanes().items()}},
                 "queue": app.queue.stats(), "budget": budget,
-                "agents": [a.model_dump() for a in board.snapshot()]}
+                "agents": [a.model_dump() for a in boards.board(channel).snapshot()]}
 
     # ------------------------------------------------------------ proyectos
     @api.get("/api/projects", dependencies=A)
-    def list_projects() -> list[dict[str, Any]]:
+    def list_projects(channel: str | None = Query(None)) -> list[dict[str, Any]]:
         out = []
         for p in app.store.list_projects():
+            if channel and p.spec.channel != channel:
+                continue
             v = _project_view(app, p.id)
             out.append({"id": p.id, "name": p.spec.name, "topic": p.spec.topic, "status": p.status.value,
                         "duration_s": p.spec.duration_s, "progress": v["progress"], "next_phase": v["next_phase"],
                         "waiting_approval": v["waiting_approval"], "created_at": p.created_at,
-                        "blocked_reason": p.blocked_reason})
+                        "blocked_reason": p.blocked_reason, "channel": p.spec.channel})
         return out
 
     @api.post("/api/projects", dependencies=A, status_code=201)
     def create_project(spec: ProjectSpec) -> dict[str, Any]:
+        if spec.channel not in channel_ids():
+            raise HTTPException(400, f"Canal desconocido: {spec.channel}")
+        unknown = set(spec.license_map) - set(board.agents)
+        if unknown:
+            raise HTTPException(400, f"Agentes desconocidos en la asignación de licencias: {sorted(unknown)}")
+        if app.licenses:
+            for lid in spec.license_map.values():
+                try:
+                    app.licenses.get(lid)
+                except KeyError as e:
+                    raise HTTPException(400, f"Licencia inexistente: {lid}") from e
         pid = app.orchestrator.create_project(spec)
         schedule(pid)
         return _project_view(app, pid)
@@ -318,15 +342,22 @@ def create_api(app: App, start_worker: bool = False, token: str | None = None,
 
     # ------------------------------------------------------------ agentes y sala
     @api.get("/api/agents", dependencies=A)
-    def agents() -> dict[str, Any]:
-        return {"agents": [a.model_dump() for a in board.snapshot()],
+    def agents(channel: str | None = Query(None)) -> dict[str, Any]:
+        return {"agents": [a.model_dump() for a in boards.board(channel).snapshot()],
                 "links": [link.model_dump() for link in board.links()],
                 "pipeline": [{"id": p.id, "number": p.number, "title": p.title, "agent": p.agent, "kind": p.kind}
                              for p in PIPELINE]}
 
     @api.get("/api/theme", dependencies=A)
-    def get_theme() -> dict[str, Any]:
+    def get_theme(channel: str | None = Query(None)) -> dict[str, Any]:
+        if channel:
+            ch = next((c for c in channels() if c.id == channel), None)
+            if ch is None:
+                raise HTTPException(404, f"Canal inexistente: {channel}")
+            return load_theme(ch.theme).model_dump()
         return theme.model_dump()
+
+    channels_api.register(api, app, A, boards, schedule)
 
     @api.get("/api/figures", dependencies=A)
     def figures() -> dict[str, Any]:
@@ -349,8 +380,12 @@ def create_api(app: App, start_worker: bool = False, token: str | None = None,
         return FileResponse(path, media_type="image/png")
 
     @api.get("/api/events", dependencies=A)
-    def events(limit: int = Query(200, le=2000)) -> list[dict[str, Any]]:
-        return app.store.events(limit=limit)
+    def events(limit: int = Query(200, le=2000), channel: str | None = Query(None)) -> list[dict[str, Any]]:
+        if not channel:
+            return app.store.events(limit=limit)
+        # Del canal pedido: se lee más historial y se filtra por los proyectos de ese canal.
+        rows = app.store.events(limit=min(limit * 4, 8000))
+        return [r | {"channel": channel} for r in rows if boards.channel_of(r.get("project_id")) == channel][-limit:]
 
     @api.get("/api/platforms", dependencies=A)
     def platforms() -> list[dict[str, Any]]:
@@ -501,7 +536,11 @@ def create_api(app: App, start_worker: bool = False, token: str | None = None,
 
     @api.put("/api/queue/concurrency", dependencies=A)
     def set_concurrency(body: ConcurrencyIn):
-        n = app.queue.set_concurrency(body.lane, body.concurrency)
+        wanted = body.concurrency
+        if body.lane == "claude":  # nunca más llamadas simultáneas que cuentas (licencias) disponibles
+            n_lic = len([x for x in app.licenses.list() if x.enabled]) if app.licenses else 0
+            wanted = min(wanted, max(app.models.max_concurrency, n_lic))
+        n = app.queue.set_concurrency(body.lane, wanted)
         return {"lane": body.lane, "concurrency": n, "note": "Se aplica en el próximo reinicio del worker"}
 
     @api.post("/api/queue/claude/resume", dependencies=A)
@@ -527,7 +566,8 @@ def create_api(app: App, start_worker: bool = False, token: str | None = None,
 
         sender: asyncio.Task | None = None
         try:
-            await websocket.send_json({"type": "hello", "agents": [a.model_dump() for a in board.snapshot()]})
+            await websocket.send_json({"type": "hello", "agents": [a.model_dump() for a in board.snapshot()],
+                                       "boards": {c: [a.model_dump() for a in st] for c, st in boards.snapshot().items()}})
             sender = asyncio.create_task(pump())
             # Se escucha al cliente para detectar la desconexión (si no, la conexión quedaría
             # colgada y bloquearía el apagado ordenado del servidor).

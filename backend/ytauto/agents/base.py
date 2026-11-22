@@ -138,7 +138,7 @@ class Agent(ABC):
         for attempt in range(1, max_attempts + 1):
             request = LLMRequest(
                 agent=self.name, model=model, task=task, context=full_context,
-                output_schema=schema, feedback=feedback,
+                output_schema=schema, feedback=feedback, project_id=ctx.project_id,
             )
             ctx.events.emit(
                 "llm.call", project_id=ctx.project_id, agent=self.name, phase=phase,

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import threading
 from datetime import datetime
-from typing import Any
+from typing import Any, Callable
 
 from pydantic import BaseModel
 
@@ -19,6 +19,7 @@ from ..orchestrator.pipeline import PIPELINE
 
 class AgentState(BaseModel):
     name: str
+    channel: str | None = None
     title: str
     uses_claude: bool
     phases: list[str]
@@ -44,10 +45,11 @@ class Link(BaseModel):
 
 
 class Board:
-    def __init__(self) -> None:
+    def __init__(self, channel: str | None = None) -> None:
         self._lock = threading.Lock()
+        self.channel = channel
         self.agents: dict[str, AgentState] = {
-            cls.name: AgentState(name=cls.name, title=cls.title, uses_claude=cls.uses_claude,
+            cls.name: AgentState(name=cls.name, channel=channel, title=cls.title, uses_claude=cls.uses_claude,
                                  phases=sorted(cls.phases, key=[p.id for p in PIPELINE].index))
             for cls in AGENT_CLASSES
         }
@@ -110,11 +112,40 @@ def _elapsed(start: str | None, end: str) -> float | None:
         return None
 
 
-def rebuild(board: Board, events: list[dict[str, Any]]) -> None:
+class ChannelBoards:
+    """Un tablero por canal: los nueve agentes de cada canal trabajan en paralelo sin pisarse."""
+
+    def __init__(self, channel_ids: list[str], channel_of: Callable[[str], str | None]):
+        self.boards = {c: Board(c) for c in channel_ids}
+        self.default = channel_ids[0]
+        self._channel_of = channel_of
+        self._cache: dict[str, str | None] = {}
+
+    def board(self, channel: str | None) -> Board:
+        return self.boards.get(channel or self.default) or self.boards[self.default]
+
+    def channel_of(self, project_id: str | None) -> str | None:
+        if not project_id:
+            return None
+        if project_id not in self._cache:
+            ch = self._channel_of(project_id)
+            self._cache[project_id] = ch if ch in self.boards else (self.default if ch else None)
+        return self._cache[project_id]
+
+    def apply(self, e: Event) -> AgentState | None:
+        ch = self.channel_of(e.project_id)
+        return self.boards[ch].apply(e) if ch else None
+
+    def snapshot(self) -> dict[str, list[AgentState]]:
+        return {c: b.snapshot() for c, b in self.boards.items()}
+
+
+def rebuild(board: Board | ChannelBoards, events: list[dict[str, Any]]) -> None:
     for row in events:
         board.apply(Event(type=row["type"], project_id=row.get("project_id"), agent=row.get("agent"),
                           phase=row.get("phase"), data=row.get("data") or {}, at=row["at"]))
     # Tras un reinicio nada está realmente en ejecución
-    for a in board.agents.values():
-        if a.status == "running":
-            a.status, a.task = "idle", "Interrumpido (reinicio)"
+    for b in (board.boards.values() if isinstance(board, ChannelBoards) else [board]):
+        for a in b.agents.values():
+            if a.status == "running":
+                a.status, a.task = "idle", "Interrumpido (reinicio)"

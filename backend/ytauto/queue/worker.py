@@ -7,6 +7,7 @@ import socket
 import threading
 import uuid
 from concurrent.futures import Future, ThreadPoolExecutor
+from typing import Callable
 
 from ..core.models import PhaseStatus, ProjectStatus
 from ..orchestrator.orchestrator import Orchestrator
@@ -26,8 +27,12 @@ def parse_resume_at(resets_at: str | None) -> float | None:
 
 class ProductionWorker:
     def __init__(self, orchestrator: Orchestrator, queue: TaskQueue, owner: str | None = None,
-                 backoff_s: tuple[float, ...] = DEFAULT_BACKOFF_S, max_retries: int = 3):
+                 backoff_s: tuple[float, ...] = DEFAULT_BACKOFF_S, max_retries: int = 3,
+                 license_blocked: Callable[[str], bool] | None = None, pool_size: int = 12):
         self.orch = orchestrator
+        # ¿Sigue agotada la licencia que bloqueó este proyecto? (None = sin licencias por canal)
+        self.license_blocked = license_blocked
+        self.pool_size = pool_size
         self.queue = queue
         # Identificador único por proceso: los leases distinguen qué proceso tiene cada tarea.
         self.owner = owner or f"{socket.gethostname()}-{os.getpid()}-{uuid.uuid4().hex[:6]}"
@@ -84,6 +89,8 @@ class ProductionWorker:
             if p.status is ProjectStatus.BLOCKED:
                 phases = self.orch.store.list_phases(p.id)
                 if any(ph.blocked_code == "usage_limit" for ph in phases):
+                    if self.license_blocked and self.license_blocked(p.id):
+                        continue  # su licencia sigue agotada: los demás canales siguen trabajando
                     self.orch.resume(p.id)
                     self.schedule(p.id)
 
@@ -112,6 +119,9 @@ class ProductionWorker:
                 self.orch.step(pid)  # marca el proyecto como completado
             else:
                 self.schedule(pid)
+        elif outcome == "usage_limit" and result.license_id:
+            # Solo se agota ESA licencia: el carril sigue abierto para los demás canales y proyectos.
+            self.queue.complete(task.id, outcome, result.message)
         elif outcome == "usage_limit":
             resume_at = parse_resume_at(result.resets_at)
             self.queue.pause_lane("claude", f"Límite de uso de Claude: {result.message[:200]}", resume_at)
@@ -175,7 +185,8 @@ class ProductionWorker:
     def run_forever(self, poll_s: float = 1.0) -> None:
         """Bucle con hilos: respeta la concurrencia de cada carril (claude=1 por defecto)."""
         lanes = self.queue.lanes()
-        workers = sum(lanes[lane].concurrency for lane in LANES)
+        # Holgura para que la concurrencia del carril de Claude pueda crecer al añadir licencias sin reiniciar.
+        workers = max(sum(lanes[lane].concurrency for lane in LANES), self.pool_size)
         self.recover_on_startup()
         running: list[Future] = []
         with ThreadPoolExecutor(max_workers=max(1, workers), thread_name_prefix="ytauto") as pool:

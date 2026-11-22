@@ -54,6 +54,8 @@ TASK = """Eres el director de producción de una fábrica de vídeos cortos vert
 Reels, Shorts y TikTok. Diseña el plan creativo del vídeo a partir de la idea del usuario.
 
 Requisitos:
+- Si `user_request.brief` tiene preguntas y respuestas, son lo que el usuario te contestó antes de empezar:
+  respétalas (duración, calidad, tono, público, ideas obligatorias o prohibidas) por encima de tus preferencias.
 - Prioriza claridad, atractivo visual y retención desde el primer segundo, sin sacrificar calidad.
 - Usa como referencia el reparto de secciones `section_slots` (puedes ajustarlo si la historia lo
   pide, manteniendo el orden hook→context→development→climax→closing).
@@ -82,7 +84,7 @@ class DirectorAgent(Agent):
         context = {
             "user_request": spec.model_dump(mode="json", include={
                 "name", "topic", "idea", "visual_style", "narration_type", "language",
-                "voice_type", "music", "intensity", "mode",
+                "voice_type", "music", "intensity", "mode", "brief",
             }),
             "target_duration_s": spec.duration_s,
             "section_slots": [s.model_dump(mode="json") | {"duration_s": s.duration_s} for s in slots],

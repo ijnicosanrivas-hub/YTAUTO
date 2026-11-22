@@ -20,8 +20,9 @@ class UsageLimitError(LLMError):
 
     transient = False
 
-    def __init__(self, message: str, resets_at: str | None = None):
+    def __init__(self, message: str, resets_at: str | None = None, license_id: str | None = None):
         self.resets_at = resets_at
+        self.license_id = license_id  # licencia agotada (None = la sesión única por defecto)
         super().__init__(message)
 
 
@@ -44,6 +45,7 @@ class LLMRequest(BaseModel):
     context: dict[str, Any] = Field(default_factory=dict)  # datos estructurados de entrada
     output_schema: dict[str, Any]  # JSON Schema de la salida esperada
     feedback: list[str] = Field(default_factory=list)  # fallos del intento anterior
+    project_id: str | None = None  # para elegir la licencia asignada (no se envía a Claude)
 
 
 class LLMUsage(BaseModel):
@@ -53,6 +55,9 @@ class LLMUsage(BaseModel):
     output_tokens: int | None = None
     cost_usd_equivalent: float | None = None  # indicador informativo, NO factura
     num_turns: int | None = None
+    cache_read_tokens: int | None = None
+    cache_creation_tokens: int | None = None
+    license_id: str | None = None  # licencia que atendió la llamada
 
 
 class LLMResponse(BaseModel):

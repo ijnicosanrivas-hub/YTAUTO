@@ -2,6 +2,7 @@ export type AgentStatus = "idle" | "running" | "waiting" | "error";
 
 export interface AgentState {
   name: string;
+  channel?: string | null;
   title: string;
   uses_claude: boolean;
   phases: string[];
@@ -27,6 +28,7 @@ export interface Link {
 }
 
 export interface YtEvent {
+  channel?: string | null;
   type: string;
   project_id: string | null;
   agent: string | null;
@@ -70,6 +72,9 @@ export interface ProjectSpec {
   fps?: number;
   require_script_approval: boolean;
   subtitle_mode?: "karaoke" | "word_pop" | "line" | null;
+  channel?: string;
+  brief?: { question: string; answer: string }[];
+  license_map?: Record<string, string>;
 }
 
 export interface ProjectSummary {
@@ -180,4 +185,94 @@ export interface Theme {
   room_subtitle: string;
   palette: { accent: string; background: string; panel: string };
   agents: Record<string, Persona>;
+}
+
+// ------------------------------------------------------------------ canales y licencias
+export interface PersonaRef {
+  character: string;
+  glyph: string;
+  color: string;
+}
+
+export interface Channel {
+  id: string;
+  name: string;
+  theme: string;
+  tagline: string;
+  accent: string;
+  room_title: string;
+  director: PersonaRef | null;
+  chief: PersonaRef | null;
+  has_director_image: boolean;
+}
+
+export interface ChannelOverview {
+  channel: { id: string; name: string; theme: string; tagline: string };
+  accent: string;
+  director: PersonaRef | null;
+  projects: { total: number; by_status: Record<string, number> };
+  current: { id: string; name: string } | null;
+  running_agents: { name: string; task: string | null; progress: number | null }[];
+  waiting_agents: number;
+  error_agents: number;
+  tokens_total: number;
+  licenses: { total: number; limited: number; enabled: number };
+}
+
+export interface UsageBlock {
+  tokens: { today: number; d7: number; d30: number; month: number };
+  calls: { today: number; month: number; total: number };
+  input_tokens: number;
+  output_tokens: number;
+  cache_read_tokens: number;
+  cost_usd_eq: number;
+  seconds: number;
+  by_agent: Record<string, number>;
+  by_channel: Record<string, number>;
+  daily: { day: string; tokens: number }[];
+  last_call_at: string | null;
+}
+
+export interface License extends UsageBlock {
+  id: string;
+  name: string;
+  channel_id: string;
+  kind: "claude_session" | "api_key";
+  plan: string;
+  config_dir: string | null;
+  secret_hint: string | null;
+  monthly_token_limit: number | null;
+  enabled: boolean;
+  is_limited: boolean;
+  limited_until: number | null;
+  limited_reason: string | null;
+  limited_now: boolean;
+  status: "ok" | "limited" | "disabled";
+  usage_pct: number | null;
+  last_used_at: string | null;
+  notes: string | null;
+}
+
+export interface LicensesView {
+  licenses: License[];
+  default: UsageBlock | null;
+  totals: { tokens_month: number; calls_month: number };
+  days: string[];
+  channels: { id: string; name: string; theme: string }[];
+  claude_slots: number;
+}
+
+export interface BriefQuestion {
+  id: string;
+  question: string;
+  kind: "choice" | "text";
+  options: string[];
+  why: string;
+}
+
+export interface BriefQuestions {
+  reading: string;
+  questions: BriefQuestion[];
+  source: "claude" | "base";
+  director: PersonaRef | null;
 }

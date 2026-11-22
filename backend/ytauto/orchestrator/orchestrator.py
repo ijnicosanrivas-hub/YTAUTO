@@ -38,6 +38,7 @@ class StepResult:
     phase: str | None = None
     message: str = ""
     resets_at: str | None = None
+    license_id: str | None = None
 
 
 @dataclass
@@ -296,9 +297,12 @@ class Orchestrator:
         try:
             result = agent.run(phase.id, self._context(project, record))
         except UsageLimitError as e:
-            self._set_phase(record, PhaseStatus.BLOCKED, error=f"Límite de uso de Claude: {e}", blocked_code="usage_limit")
-            self._set_project_status(pid, ProjectStatus.BLOCKED, f"Límite de uso de Claude (reinicio: {e.resets_at or '?'})")
-            return StepResult("usage_limit", phase.id, str(e), resets_at=e.resets_at)
+            who = f" de la licencia {e.license_id}" if e.license_id else ""
+            self._set_phase(record, PhaseStatus.BLOCKED, error=f"Límite de uso de Claude{who}: {e}", blocked_code="usage_limit")
+            self._set_project_status(pid, ProjectStatus.BLOCKED,
+                                     f"Límite de uso de Claude{who} (reinicio: {e.resets_at or '?'}). "
+                                     "Puedes asignar otra licencia a este agente y reanudar.")
+            return StepResult("usage_limit", phase.id, str(e), resets_at=e.resets_at, license_id=e.license_id)
         except AuthenticationError as e:
             self._set_phase(record, PhaseStatus.BLOCKED, error=f"Autenticación: {e}", blocked_code="auth")
             self._set_project_status(pid, ProjectStatus.BLOCKED, "Claude Code no autenticado: ejecuta `claude /login`")

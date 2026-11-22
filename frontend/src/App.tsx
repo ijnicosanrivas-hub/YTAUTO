@@ -2,13 +2,17 @@ import { DEMO } from "./demo/demo";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { UNAUTHORIZED_EVENT, setToken } from "./api";
 import { useApi } from "./components/ui";
+import { ChannelSwitcher } from "./components/ChannelSwitcher";
+import { withChannel } from "./channels";
 import { useLive } from "./store";
-import type { Theme } from "./types";
+import type { Channel, ChannelOverview, Theme } from "./types";
 import Agents from "./pages/Agents";
 import Budget from "./pages/Budget";
 import Dashboard from "./pages/Dashboard";
 import Exports from "./pages/Exports";
 import History from "./pages/History";
+import Licenses from "./pages/Licenses";
+import NewProject from "./pages/NewProject";
 import Library from "./pages/Library";
 import Models from "./pages/Models";
 import ProjectDetail from "./pages/ProjectDetail";
@@ -18,17 +22,19 @@ import Providers from "./pages/Providers";
 // La sala 3D carga Three.js: se descarga solo al abrirla.
 const ProductionRoom = lazy(() => import("./pages/ProductionRoom"));
 
-const NAV: { page: string; label: string }[] = [
-  { page: "dashboard", label: "Dashboard" },
-  { page: "projects", label: "Proyectos" },
-  { page: "room", label: "Sala de producción" },
-  { page: "agents", label: "Agentes" },
-  { page: "library", label: "Biblioteca" },
-  { page: "providers", label: "Proveedores" },
-  { page: "budget", label: "Presupuesto" },
-  { page: "models", label: "Modelos Claude" },
-  { page: "exports", label: "Exportaciones" },
-  { page: "history", label: "Historial" },
+const NAV: { page: string; label: string; icon: string }[] = [
+  { page: "dashboard", label: "Panel", icon: "▦" },
+  { page: "new", label: "Nuevo vídeo", icon: "＋" },
+  { page: "projects", label: "Proyectos", icon: "▤" },
+  { page: "room", label: "Sala de agentes", icon: "◉" },
+  { page: "agents", label: "Agentes", icon: "◎" },
+  { page: "licenses", label: "Licencias", icon: "⚿" },
+  { page: "library", label: "Biblioteca", icon: "▧" },
+  { page: "providers", label: "Proveedores", icon: "⚙" },
+  { page: "budget", label: "Presupuesto", icon: "€" },
+  { page: "models", label: "Modelos Claude", icon: "✦" },
+  { page: "exports", label: "Exportaciones", icon: "⇩" },
+  { page: "history", label: "Historial", icon: "☰" },
 ];
 
 /** Pide el código de acceso cuando el servidor lo exige (acceso desde el móvil) y falta o es incorrecto. */
@@ -64,25 +70,31 @@ function TokenGate() {
 export default function App() {
   const route = useLive((s) => s.route);
   const connected = useLive((s) => s.connected);
-  const { data: dash } = useApi<{ waiting_approval: unknown[] }>("/api/dashboard", { live: true });
+  const channel = useLive((s) => s.channel);
+  const setChannel = useLive((s) => s.setChannel);
+  const { data: dash } = useApi<{ waiting_approval: unknown[] }>(withChannel("/api/dashboard", channel), { live: true });
   const pending = dash?.waiting_approval.length ?? 0;
+  const { data: channels } = useApi<Channel[]>("/api/channels");
+  const { data: overview } = useApi<{ channels: ChannelOverview[] }>("/api/overview", { live: true });
   const theme = useLive((s) => s.theme);
   const setTheme = useLive((s) => s.setTheme);
-  const { data: themeData } = useApi<Theme>("/api/theme");
+  const { data: themeData } = useApi<Theme>(withChannel("/api/theme", channel));
   useEffect(() => {
     if (themeData) setTheme(themeData);
   }, [themeData, setTheme]);
-  const lego = theme.id !== "classic" && route.page === "room";
   useEffect(() => {
+    // canal guardado que ya no existe → el primero
+    if (channels?.length && !channels.some((c) => c.id === channel)) setChannel(channels[0].id);
+  }, [channels, channel, setChannel]);
+  const current = channels?.find((c) => c.id === channel);
+  useEffect(() => {
+    // Estética general neutra para todas las pantallas; el perfil del canal solo aporta su color de acento.
     const root = document.documentElement;
-    const gotham = theme.id !== "classic";
-    root.classList.toggle("lego", lego); // estilo de ladrillos LEGO: solo en la sala 3D; el resto de pantallas conserva el diseño anterior
-    if (gotham) root.dataset.theme = "dark"; // los personajes se ven en oscuro: fuerza el modo oscuro
-    else delete root.dataset.theme;
-    if (gotham) root.style.setProperty("--accent", theme.palette.accent);
-    else root.style.removeProperty("--accent");
-    document.title = gotham ? `${theme.brand} · ${theme.room_title}` : "YTAUTO · Sala de producción";
-  }, [theme, lego]);
+    root.dataset.theme = "dark";
+    root.dataset.profile = theme.id;
+    root.style.setProperty("--accent", current?.accent ?? theme.palette.accent);
+    document.title = `${current?.name ?? "YTAUTO"} · YTAUTO`;
+  }, [theme, current]);
 
   let page: React.ReactNode;
   switch (route.page) {
@@ -98,6 +110,12 @@ export default function App() {
       break;
     case "agents":
       page = <Agents />;
+      break;
+    case "new":
+      page = <NewProject />;
+      break;
+    case "licenses":
+      page = <Licenses />;
       break;
     case "library":
       page = <Library />;
@@ -124,12 +142,11 @@ export default function App() {
   return (
     <div className="layout">
       <nav className="sidebar" aria-label="Secciones">
-        <div className="brand">
-          <span className="brand-dot" /> {theme.id === "classic" ? "YTAUTO" : lego ? <>BATMAN<small>YTAUTO · Baticueva</small></> : `🦇 ${theme.brand}`}
-        </div>
+        {channels?.length ? <ChannelSwitcher channels={channels} overview={overview?.channels ?? []} /> : <div className="brand">YTAUTO</div>}
         {NAV.map((n) => (
           <a key={n.page} href={`#/${n.page}`} className={`nav-item ${route.page === n.page ? "active" : ""}`}>
-            {n.page === "room" ? theme.room_title : n.label}
+            <span className="nav-icon" aria-hidden>{n.icon}</span>
+            <span className="nav-label">{n.page === "room" ? theme.room_title : n.label}</span>
             {n.page === "projects" && pending > 0 && <span className="nav-count">{pending}</span>}
           </a>
         ))}
@@ -137,6 +154,7 @@ export default function App() {
           <span className={`badge ${connected ? "s-completed" : "s-error"}`}>
             {DEMO ? "Demostración" : connected ? "En directo" : "Sin conexión"}
           </span>
+          <span className="muted">4 canales · YTAUTO</span>
         </div>
       </nav>
       <main className="main">{page}</main>

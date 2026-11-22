@@ -269,7 +269,7 @@ export function StudioLights() {
   );
 }
 
-function NamePlate({ label, z }: { label: string; z: number }) {
+export function NamePlate({ label, z }: { label: string; z: number }) {
   const tex = useMemo(() => canvasTex(256, 64, (c) => {
     c.fillStyle = "#b9bec4"; c.fillRect(0, 0, 256, 64);
     c.fillStyle = "#16191d"; c.font = "bold 30px Impact, sans-serif"; c.textAlign = "center"; c.textBaseline = "middle";

@@ -7,6 +7,7 @@ cola central.
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -43,15 +44,18 @@ _MODEL_PATTERNS = re.compile(
 )
 _RESET_PATTERN = re.compile(r"reset[s]? (?:at )?([^\n.|]+)", re.IGNORECASE)
 
-Runner = Callable[[list[str], str, float, Path], subprocess.CompletedProcess]
+Runner = Callable[..., subprocess.CompletedProcess]
 
 
-def _default_runner(cmd: list[str], stdin: str, timeout: float, cwd: Path) -> subprocess.CompletedProcess:
+def _default_runner(cmd: list[str], stdin: str, timeout: float, cwd: Path,
+                    env: dict[str, str] | None = None) -> subprocess.CompletedProcess:
     exe = shutil.which(cmd[0])  # ruta completa: en Windows encuentra claude.exe o claude.cmd
     if exe:
         cmd = [exe, *cmd[1:]]
+    full_env = {**os.environ, **env} if env else None
     return subprocess.run(
-        cmd, input=stdin, capture_output=True, encoding="utf-8", errors="replace", timeout=timeout, cwd=str(cwd)
+        cmd, input=stdin, capture_output=True, encoding="utf-8", errors="replace", timeout=timeout, cwd=str(cwd),
+        env=full_env,
     )
 
 
@@ -100,7 +104,10 @@ class ClaudeCodeCLIProvider(LLMProvider):
         timeout_s: float = 600,
         use_agent_flag: bool = True,
         runner: Runner | None = None,
+        env: dict[str, str] | None = None,
     ):
+        """`env`: variables extra para esta licencia (CLAUDE_CONFIG_DIR de su sesión o ANTHROPIC_API_KEY)."""
+        self.env = env or {}
         self.claude_bin = claude_bin
         self.workdir = workdir or Path(__file__).resolve().parents[3]
         self.timeout_s = timeout_s
@@ -126,7 +133,7 @@ class ClaudeCodeCLIProvider(LLMProvider):
         prompt = render_prompt(request)
         t0 = time.monotonic()
         try:
-            proc = self._run(cmd, prompt, self.timeout_s, self.workdir)
+            proc = self._invoke(cmd, prompt, self.timeout_s)
         except FileNotFoundError as e:
             raise AuthenticationError(
                 f"No se encuentra el binario '{self.claude_bin}'. Instala Claude Code."
@@ -163,6 +170,11 @@ class ClaudeCodeCLIProvider(LLMProvider):
 
         return LLMResponse(data=data, raw_text=str(envelope.get("result", "")), usage=self._usage(envelope, elapsed))
 
+    def _invoke(self, cmd: list[str], stdin: str, timeout: float) -> subprocess.CompletedProcess:
+        if self.env:
+            return self._run(cmd, stdin, timeout, self.workdir, env=self.env)
+        return self._run(cmd, stdin, timeout, self.workdir)
+
     @staticmethod
     def _usage(envelope: dict[str, Any], elapsed: float) -> LLMUsage:
         usage = envelope.get("usage") or {}
@@ -175,13 +187,15 @@ class ClaudeCodeCLIProvider(LLMProvider):
             output_tokens=usage.get("output_tokens"),
             cost_usd_equivalent=envelope.get("total_cost_usd"),
             num_turns=envelope.get("num_turns"),
+            cache_read_tokens=usage.get("cache_read_input_tokens"),
+            cache_creation_tokens=usage.get("cache_creation_input_tokens"),
         )
 
     def health_check(self) -> tuple[bool, str]:
         if not shutil.which(self.claude_bin) and not Path(self.claude_bin).exists():
             return False, f"Binario '{self.claude_bin}' no encontrado"
         try:
-            proc = self._run([self.claude_bin, "--version"], "", 30, self.workdir)
+            proc = self._invoke([self.claude_bin, "--version"], "", 30)
         except Exception as e:  # pragma: no cover - depende del sistema
             return False, str(e)
         return proc.returncode == 0, (proc.stdout or proc.stderr).strip()

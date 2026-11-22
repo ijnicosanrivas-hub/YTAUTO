@@ -10,7 +10,11 @@ import { bodyColor, displayName, personaFor, quoteFor } from "../theme";
 import { Base, Batcave, FLOOR_Y, PLATE_H, StudioLights, plateRadius } from "../minifig/Batcave";
 import { AgentPanel, type PipelinePhase } from "../components/AgentPanel";
 import { BatSwarm, Facilities, FloorPads } from "../minifig/Hub";
-import { HUB, HUB_SCALE, OVERVIEW, facingYaw, focusShot, recentActions } from "../minifig/hub";
+import { HUB, HUB_SCALE, OVERVIEW, facingYaw, focusShot, hasWorld, recentActions, stationFor } from "../minifig/hub";
+import { Avatar } from "../minifig/Avatar";
+import { avatarFor, avatarHeight } from "../minifig/avatars";
+import { Playroom, ProfileBase, ProfileStations, Stadium, ViceCity, WORLD_BACKGROUND } from "../minifig/Worlds";
+import { withChannel } from "../channels";
 import { FigureFx, Workstation } from "../minifig/Extras";
 import { Minifig } from "../minifig/Minifig";
 import { SpriteFigure, useFigureTexture } from "../minifig/SpriteFigure";
@@ -176,9 +180,13 @@ function HubNode({ agent, theme, overlay, selected, onSelect, receiving, seed, f
     return animationState({ status: a.status, finishedAt: a.finished_at, now: Date.now(), receiving: r });
   }).current;
   useEffect(() => () => { document.body.style.cursor = ""; }, []);
-  const sprite = useFigureTexture(agent.name, !!figure);
+  const profile = theme.id;
+  const lego = profile === "gotham";
+  const sprite = useFigureTexture(agent.name, !!figure, profile);
+  const avatar = lego ? undefined : avatarFor(profile, agent.name);
   if (!s || !variant) return null;
-  const top = PLATE_H + (sprite && figure ? spriteSize(figure).height * (variant.scale ?? 1) : FIGURE_HEIGHT * LDU * (variant.scale ?? 1)) + 0.5;
+  const figScale = lego ? variant.scale ?? 1 : 1;
+  const top = PLATE_H + (sprite && figure ? spriteSize(figure).height * figScale : avatar ? avatarHeight(avatar) : FIGURE_HEIGHT * LDU * figScale) + 0.5;
   return (
     <group position={[s.x, FLOOR_Y, s.z]} scale={HUB_SCALE}
       onClick={(e) => { e.stopPropagation(); onSelect(agent.name); }}
@@ -186,11 +194,15 @@ function HubNode({ agent, theme, overlay, selected, onSelect, receiving, seed, f
       onPointerOut={() => { setHover(false); document.body.style.cursor = ""; }}>
       <group position={[0, PLATE_H, 0]}>
         {sprite && figure
-          ? <SpriteFigure texture={sprite} meta={figure} scale={variant.scale ?? 1} getAnim={getAnim} seed={seed} glowColor={statusColor} />
-          : <Minifig variant={variant} getAnim={getAnim} seed={seed} yaw={facingYaw(agent.name)} turnToWork />}
+          ? <SpriteFigure texture={sprite} meta={figure} scale={figScale} getAnim={getAnim} seed={seed} glowColor={statusColor} />
+          : avatar
+            ? <Avatar spec={avatar} getAnim={getAnim} seed={seed} yaw={facingYaw(agent.name)} turnToWork />
+            : <Minifig variant={variant} getAnim={getAnim} seed={seed} yaw={facingYaw(agent.name)} turnToWork />}
         <FigureFx getAnim={getAnim} finishedAt={agent.finished_at} seed={seed} />
       </group>
-      <Base position={[0, 0, 0]} color={color} big={central} label={persona?.character ?? agent.title} />
+      {lego
+        ? <Base position={[0, 0, 0]} color={color} big={central} label={persona?.character ?? agent.title} />
+        : <ProfileBase color={color} big={central} label={persona?.character ?? agent.title} profile={profile} />}
       {/* anillo de ESTADO real; el aro amarillo exterior marca el personaje seleccionado o bajo el cursor */}
       <mesh position={[0, PLATE_H + 0.04, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <torusGeometry args={[plateRadius(central) + 0.07, 0.035, 8, 64]} />
@@ -238,7 +250,10 @@ function HubScene({ agents, links, overlay, theme, quality, selected, onSelect, 
     return () => clearInterval(t);
   }, []);
   const receiving = (name: string) => links.some((l) => l.kind === "flow" && l.target === name && now - (last[l.source] ?? 0) < ACTIVE_MS);
-  const { data: figures } = useApi<Record<string, FigureMeta>>("/api/figures");
+  const { data: figures } = useApi<Record<string, FigureMeta>>(`/api/profiles/${theme.id}/figures`);
+  const profile = theme.id;
+  const busy = Object.values(agents).some((a) => a.status === "running");
+  const glyphs = useMemo(() => Object.fromEntries(Object.keys(HUB).map((n) => [n, personaFor(theme, n)?.glyph ?? "★"])), [theme]);
   const colors = useMemo(() => Object.fromEntries(Object.keys(HUB).map((n) => [n, personaFor(theme, n)?.color ?? "#ffffff"])), [theme]);
   return (
     <>
@@ -248,10 +263,21 @@ function HubScene({ agents, links, overlay, theme, quality, selected, onSelect, 
       <Environment resolution={128}>
         <StudioLights />
       </Environment>
-      <Batcave accent={theme.palette.accent} />
-      <FloorPads />
-      <Facilities agents={agents} colors={colors} />
-      <BatSwarm />
+      {profile === "gotham" ? (
+        <>
+          <Batcave accent={theme.palette.accent} />
+          <FloorPads />
+          <Facilities agents={agents} colors={colors} />
+          <BatSwarm />
+        </>
+      ) : (
+        <>
+          {profile === "gta6" && <ViceCity active={busy} />}
+          {profile === "kids" && <Playroom active={busy} />}
+          {profile === "deportes" && <Stadium active={busy} />}
+          <ProfileStations profile={profile} agents={agents} colors={colors} glyphs={glyphs} />
+        </>
+      )}
       {quality === "high" && (
         <EffectComposer multisampling={4}>
           <Bloom intensity={0.6} luminanceThreshold={0.85} mipmapBlur />
@@ -319,12 +345,13 @@ export default function ProductionRoom() {
   const overlay = useRef<HTMLDivElement>(null);
   const initial = useMemo(initialQuality, []);
   const [quality, setQuality] = useState<"high" | "low">(initial.quality);
-  const { data } = useApi<{ agents: AgentState[]; links: Link[]; pipeline: PipelinePhase[] }>("/api/agents");
-  const { data: events } = useApi<YtEvent[]>("/api/events?limit=500", { live: true });
+  const channel = useLive((st) => st.channel);
+  const { data } = useApi<{ agents: AgentState[]; links: Link[]; pipeline: PipelinePhase[] }>(withChannel("/api/agents", channel));
+  const { data: events } = useApi<YtEvent[]>(withChannel("/api/events?limit=500", channel), { live: true });
   const live = useLive((st) => st.agents);
   const connected = useLive((st) => st.connected);
   const theme = useLive((st) => st.theme);
-  const hub = theme.id !== "classic";
+  const hub = hasWorld(theme.id);
   const manual = useRef(false);
   const [selected, setSelected] = useState<string | null>(() => {
     try { const a = new URLSearchParams(location.hash.split("?")[1] ?? "").get("agente"); return a && HUB[a] ? a : null; } catch { return null; }
@@ -342,7 +369,8 @@ export default function ProductionRoom() {
   const running = Object.values(agents).filter((a) => a.status === "running");
   const phaseAgent = useMemo(() => Object.fromEntries((data?.pipeline ?? []).map((p) => [p.id, p.agent])), [data]);
   const sel = selected ? agents[selected] : undefined;
-  const liveEvents = useLive((st) => st.events);
+  const allLive = useLive((st) => st.events);
+  const liveEvents = useMemo(() => allLive.filter((e) => e.channel === channel), [allLive, channel]);
   const actions = useMemo(() => {
     if (!selected) return [];
     const merged = [...liveEvents, ...(events ?? [])];
@@ -351,6 +379,7 @@ export default function ProductionRoom() {
   }, [selected, liveEvents, events, phaseAgent]);
   return (
     <>
+      <div className="room-head">
       <PageHead title={theme.room_title} subtitle={`${theme.room_subtitle}. Haz clic en un agente para ver su expediente: todo lo que se mueve corresponde a actividad real.`}>
         <span className={`badge ${connected ? "s-completed" : "s-error"}`}>{connected ? "En directo" : "Sin conexión"}</span>
         <span className="badge s-running">{running.length} en ejecución</span>
@@ -360,19 +389,20 @@ export default function ProductionRoom() {
           </button>
         )}
       </PageHead>
+      </div>
       <div className="panel room">
         <Canvas shadows={quality === "high"} dpr={quality === "high" ? [1, 2] : 1} camera={{ position: hub ? OVERVIEW.position : [0, 7, 11], fov: hub ? 46 : 50 }} onPointerMissed={() => hub && select(null)}>
           {!initial.locked && hub && <PerformanceMonitor onDecline={() => setQuality("low")} />}
-          <color attach="background" args={[hub ? theme.palette.background : "#05070f"]} />
+          <color attach="background" args={[WORLD_BACKGROUND[theme.id] ?? (hub ? theme.palette.background : "#05070f")]} />
           {hub ? (
-            <HubScene agents={agents} links={data?.links ?? []} overlay={overlay} theme={theme} quality={quality} selected={selected} onSelect={select} manual={manual} />
+            <HubScene key={theme.id} agents={agents} links={data?.links ?? []} overlay={overlay} theme={theme} quality={quality} selected={selected} onSelect={select} manual={manual} />
           ) : (
             <ClassicScene agents={agents} links={data?.links ?? []} overlay={overlay} theme={theme} />
           )}
         </Canvas>
         <div ref={overlay} className="room-overlay" />
         {hub && sel && (
-          <AgentPanel agent={sel} persona={personaFor(theme, sel.name)} station={HUB[sel.name]} phases={data?.pipeline ?? []} actions={actions}
+          <AgentPanel agent={sel} persona={personaFor(theme, sel.name)} station={stationFor(theme.id, sel.name)} phases={data?.pipeline ?? []} actions={actions}
             quote={quoteFor(theme, sel)} onClose={() => select(null)} onOverview={() => select(null)} />
         )}
         <div className="room-legend">

@@ -9,7 +9,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.engine import Engine
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 metadata = MetaData()
 
@@ -163,6 +163,29 @@ cost_ledger = Table(
     Column("at", String, nullable=False),
 )
 
+# ---------------------------------------------------------------- licencias de Claude (v3)
+# Cada canal tiene sus licencias (sesiones de Claude Code con su propia carpeta de configuración o claves
+# de la API de Anthropic). El secreto se guarda cifrado; la API solo devuelve una pista enmascarada.
+licenses = Table(
+    "licenses", metadata,
+    Column("id", String, primary_key=True),
+    Column("name", String, nullable=False),
+    Column("channel_id", String, nullable=False, index=True),
+    Column("kind", String, nullable=False),  # claude_session | api_key
+    Column("plan", String, nullable=False, default=""),  # Pro, Max 5x, Max 20x, API...
+    Column("config_dir", String),  # CLAUDE_CONFIG_DIR de la sesión (claude_session)
+    Column("secret_cipher", Text),  # ANTHROPIC_API_KEY cifrada (api_key)
+    Column("secret_hint", String),
+    Column("monthly_token_limit", Integer),  # referencia para el % de uso (None = sin referencia)
+    Column("enabled", Boolean, nullable=False, default=True),
+    Column("limited_until", Float),  # epoch; límite de uso alcanzado
+    Column("limited_reason", Text),
+    Column("is_limited", Boolean, nullable=False, default=False),
+    Column("last_used_at", String),
+    Column("notes", Text),
+    Column("created_at", String, nullable=False),
+)
+
 app_settings = Table(
     "app_settings", metadata,
     Column("key", String, primary_key=True),
@@ -202,5 +225,5 @@ def init_db(engine: Engine) -> None:
         elif int(row[0]) > SCHEMA_VERSION:
             raise RuntimeError(f"La base de datos es de una versión más nueva ({row[0]}) que el código ({SCHEMA_VERSION})")
         elif int(row[0]) < SCHEMA_VERSION:
-            # v1 → v2: solo añade tablas nuevas (create_all ya las creó); se actualiza la versión.
+            # v1 → v2 → v3: solo añaden tablas nuevas (create_all ya las creó); se actualiza la versión.
             conn.execute(meta.update().where(meta.c.key == "schema_version").values(value=str(SCHEMA_VERSION)))

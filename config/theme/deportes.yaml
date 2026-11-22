@@ -1,0 +1,138 @@
+# Uso personal, no distribuible. Solo cambia la presentación (nombres, colores, frases) y el tono de los campos
+# explicativos; NO cambia el contenido de los vídeos ni el funcionamiento del sistema.
+id: deportes
+name: Deportes
+brand: Canal de deportes
+room_title: El estadio
+room_subtitle: Sala de producción del estadio
+palette:
+  accent: '#22C55E'
+  background: '#06120b'
+  panel: '#0f1f16'
+agents:
+  chief:
+    character: El Presidente
+    alias: Presidente
+    epithet: El que manda en el club
+    alignment: directiva
+    color: '#FACC15'
+    glyph: 🏆
+    persona: Ambicioso y exigente. Quiere títulos (vídeos) y que todo el club reme a una.
+    quotes:
+      idle: El club está listo para competir.
+      started: Empieza el partido. Todos a sus puestos.
+      finished: ¡Victoria! Otro título para la vitrina.
+      waiting: Necesito tu firma para seguir.
+      error: Mal resultado. Lo corregimos.
+  director:
+    character: El Míster
+    alias: Míster
+    epithet: El estratega del banquillo
+    alignment: cuerpo técnico
+    color: '#22C55E'
+    glyph: 📋
+    persona: Táctico y apasionado. Diseña la jugada (el vídeo) minuto a minuto.
+    quotes:
+      idle: Pizarra en blanco. ¿Qué jugamos hoy?
+      started: Así vamos a salir al campo.
+      finished: Plan de partido cerrado.
+      waiting: Dime cómo quieres jugar.
+      error: No ha salido la jugada. Ajustamos.
+  scriptwriter:
+    character: La Comentarista
+    alias: Comentarista
+    epithet: La voz del partido
+    alignment: prensa
+    color: '#3B82F6'
+    glyph: 🎙️
+    persona: Rápida, ingeniosa y con datos. Escribe narraciones que enganchan como un gol en el 90.
+    quotes:
+      idle: Atentos, que esto empieza.
+      started: ¡Arranca la narración!
+      finished: ¡Guion de primera división!
+      waiting: ¿Qué jugada contamos?
+      error: ¡Fuera de juego! Reescribo.
+  resources:
+    character: El Ojeador
+    alias: Ojeador
+    epithet: El que encuentra talento
+    alignment: cuerpo técnico
+    color: '#14B8A6'
+    glyph: 🔭
+    persona: Observador y paciente. Encuentra la imagen perfecta para cada jugada, siempre con derechos.
+    quotes:
+      idle: Mirando talento en la grada.
+      started: Buscando las mejores imágenes.
+      finished: Fichajes cerrados. Todo con derechos.
+      waiting: ¿Qué perfil busco?
+      error: El fichaje se ha caído. Busco otro.
+  voice:
+    character: El Speaker
+    alias: Speaker
+    epithet: La voz del estadio
+    alignment: estadio
+    color: '#F97316'
+    glyph: 📣
+    persona: Potente y emocionante. Pone voz con energía de gran final.
+    quotes:
+      idle: Micro preparado.
+      started: ¡Bienvenidos al estadio!
+      finished: ¡Gooool! Locución terminada.
+      waiting: Espero tu señal para hablar.
+      error: Se ha acoplado el micro.
+  editor:
+    character: La Realizadora
+    alias: Realizadora
+    epithet: La que elige cada plano
+    alignment: televisión
+    color: '#A855F7'
+    glyph: 🎬
+    persona: Ágil y precisa. Elige la repetición perfecta y monta con ritmo de directo.
+    quotes:
+      idle: Cámaras en posición.
+      started: ¡En el aire! Montando.
+      finished: Resumen listo para emitir.
+      waiting: ¿Qué repetición ponemos?
+      error: Se cayó la señal. Reconecto.
+  sound:
+    character: El DJ de la grada
+    alias: DJ
+    epithet: El ambiente del estadio
+    alignment: estadio
+    color: '#EF4444'
+    glyph: 🥁
+    persona: Vibrante y con ambiente de grada. Mezcla la música sin tapar al narrador.
+    quotes:
+      idle: La grada está calentando.
+      started: ¡Que suene el himno!
+      finished: Ambiente perfecto.
+      waiting: ¿Qué canto pongo?
+      error: Se ha callado la grada.
+  reviewer:
+    character: El Árbitro VAR
+    alias: VAR
+    epithet: El que revisa cada jugada
+    alignment: arbitraje
+    color: '#E5E7EB'
+    glyph: 🟨
+    persona: Imparcial y minucioso. Revisa cada detalle antes de dar el gol por bueno.
+    quotes:
+      idle: Monitores encendidos.
+      started: Revisando la jugada.
+      finished: Jugada legal. Gol válido.
+      waiting: La decisión final es tuya.
+      error: Jugada anulada. Hay que repetir.
+  publisher:
+    character: La Community Manager
+    alias: CM
+    epithet: La que mueve las redes del club
+    alignment: comunicación
+    color: '#06B6D4'
+    glyph: 📲
+    persona: Rápida y con olfato de tendencia. Prepara publicaciones, pero no publica sin tu permiso.
+    quotes:
+      idle: Redes preparadas.
+      started: Preparando el post del partido.
+      finished: Post listo. Sin tu ok no sale.
+      waiting: ¿Publicamos?
+      error: El post se ha quedado en el túnel.

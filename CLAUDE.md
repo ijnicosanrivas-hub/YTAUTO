@@ -7,9 +7,10 @@ Arquitectura: `docs/architecture.md`. Decisiones: `docs/adr/`.
 1. `backend/ytauto/agents/` y `backend/ytauto/orchestrator/` **nunca** importan adaptadores
    concretos (`ytauto.providers.<categoría>.<proveedor>`) ni SDKs de proveedores. Solo
    `ytauto.providers.interfaces`. Lo verifica `tests/test_architecture.py`.
-2. La inteligencia de Claude se usa solo a través de `LLMProvider`. En producción es
-   `ClaudeCodeCLIProvider` (binario oficial `claude -p`, sesión Pro). Nunca la API de Anthropic
-   asumida como incluida en Pro, nunca extraer tokens, nunca instancias paralelas para eludir límites.
+2. La inteligencia de Claude se usa solo a través de `LLMProvider`. En producción es `LicenseRouter`
+   → `ClaudeCodeCLIProvider` (binario oficial `claude -p`) con la licencia del canal: su sesión
+   (`CLAUDE_CONFIG_DIR`) o su clave de API cifrada. Nunca la API asumida como incluida en Pro, nunca extraer
+   tokens, nunca dos llamadas a la vez con la misma licencia, nunca saltar solo a la licencia de otro canal.
 3. Ningún gasto (proveedor `is_paid`) ni publicación sin autorización expresa registrada. Privado y público son
    autorizaciones distintas (`publish:<plataforma>` / `publish:<plataforma>:public`); nunca se publica en abierto por defecto.
    Los adaptadores `requires_network` no se registran solos, no se prueban contra el servicio real y los de pago
@@ -36,6 +37,8 @@ Arquitectura: `docs/architecture.md`. Decisiones: `docs/adr/`.
 - `.claude/agents/*.md` instrucciones de rol de cada agente (usadas por `claude -p --agent`).
 - `INSTALAR_WINDOWS.bat` instalador único en cmd puro (sin PowerShell); `backend/ytauto/core/tools.py` localiza FFmpeg/voz/Claude/Git Bash instalados; `frontend/dist` se versiona (el paquete no exige Node).
 - `config/theme/` tema de personajes (`YTAUTO_THEME`, por defecto `gotham`); `scripts/aplicar_tema.py` sincroniza los prompts de rol. Solo presentación.
+- Canales: `config/channels.yaml` (4 canales, cada uno con su perfil) · licencias `backend/ytauto/llm/licenses.py` ·
+  entrevista del director `agents/briefing.py` · API `api/channels_api.py` · detalle en `docs/canales.md`.
 - `config/` modelos por agente, narrativa, perfiles de plataforma (con `verified_at`, `sources` y `unverified`: no presentar como oficial lo que no lo es).
 
 ## Modelos

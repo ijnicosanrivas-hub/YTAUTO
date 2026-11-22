@@ -10,12 +10,17 @@ from .db.schema import make_engine
 from .db.store import SqlStateStore
 from .llm.base import LLMProvider
 from .llm.claude_cli import ClaudeCodeCLIProvider
+from .llm.licenses import License, LicenseRouter, LicenseStore
 from .llm.mock import LocalDraftLLM
 from .orchestrator.orchestrator import Orchestrator, OrchestratorSettings
+from .orchestrator.pipeline import PHASES
 from .providers.bootstrap import ProviderSystem, build_provider_system
 from .providers.interfaces import ProviderGateway
 from .queue.task_queue import TaskQueue
 from .queue.worker import ProductionWorker
+
+# Como mucho tantas llamadas simultáneas a Claude como licencias (cada una, de una en una).
+MAX_LICENSE_SLOTS = 8
 
 # Eventos de alta frecuencia que no se guardan en el historial persistente.
 _EPHEMERAL_EVENTS = {"agent.progress"}
@@ -33,6 +38,14 @@ class App:
     worker: ProductionWorker
     models: ModelConfig
     provider_system: ProviderSystem | None = None
+    licenses: LicenseStore | None = None
+    router: LicenseRouter | None = None
+    base_concurrency: int = 1
+
+    def refresh_claude_slots(self) -> int:
+        """Concurrencia del carril de Claude = nº de licencias activas (mínimo la configurada)."""
+        n = len([lic for lic in self.licenses.list() if lic.enabled]) if self.licenses else 0
+        return self.queue.set_concurrency("claude", max(self.base_concurrency, min(n, MAX_LICENSE_SLOTS)))
 
 
 def build_llm(settings: Settings, models: ModelConfig) -> LLMProvider:
@@ -40,6 +53,19 @@ def build_llm(settings: Settings, models: ModelConfig) -> LLMProvider:
         return LocalDraftLLM()
     return ClaudeCodeCLIProvider(claude_bin=settings.claude_bin, workdir=REPO_ROOT,
                                  timeout_s=settings.claude_timeout_s or models.timeout_s)
+
+
+def license_factory(settings: Settings, models: ModelConfig, default: LLMProvider):
+    """Crea el motor de cada licencia: el binario oficial con SU carpeta de sesión o SU clave de API."""
+    def make(lic: License, secret: str | None) -> LLMProvider:
+        if settings.llm_provider == "local_draft":
+            return default  # pruebas/sin Claude: misma respuesta simulada, pero contabilizada por licencia
+        env = {"CLAUDE_CONFIG_DIR": lic.config_dir} if lic.kind == "claude_session" and lic.config_dir else {}
+        if lic.kind == "api_key" and secret:
+            env = {"ANTHROPIC_API_KEY": secret}
+        return ClaudeCodeCLIProvider(claude_bin=settings.claude_bin, workdir=REPO_ROOT,
+                                     timeout_s=settings.claude_timeout_s or models.timeout_s, env=env)
+    return make
 
 
 def build_app(settings: Settings, providers: ProviderGateway | None = None, llm: LLMProvider | None = None,
@@ -51,10 +77,17 @@ def build_app(settings: Settings, providers: ProviderGateway | None = None, llm:
     engine = make_engine(settings.db_path)
     store = SqlStateStore(engine)
     concurrency = min(settings.claude_concurrency or models.concurrency, models.max_concurrency)
-    queue = TaskQueue(engine, concurrency={"claude": concurrency}, max_claude_concurrency=models.max_concurrency)
+    queue = TaskQueue(engine, concurrency={"claude": concurrency},
+                      max_claude_concurrency=max(models.max_concurrency, MAX_LICENSE_SLOTS))
     events = EventBus()
     events.subscribe(lambda e: None if e.type in _EPHEMERAL_EVENTS else store.log_event(e))
-    llm = llm or build_llm(settings, models)
+    base_llm = llm or build_llm(settings, models)
+    from .providers.registry.vault import load_or_create_master_key
+    licenses = LicenseStore(engine, load_or_create_master_key(settings.master_key, settings.data_dir / "secrets" / "master.key"),
+                            settings.data_dir)
+    router = LicenseRouter(licenses, base_llm, license_factory(settings, models, base_llm),
+                           spec_lookup=lambda pid: store.get_project(pid).spec)
+    llm = router
     holder: dict[str, Orchestrator] = {}
     system = None
     if providers is None:
@@ -76,6 +109,18 @@ def build_app(settings: Settings, providers: ProviderGateway | None = None, llm:
                         events=events, models=models,
                         cost_reader=(lambda pid: system.budget.ledger(pid)) if system else None)
     holder["o"] = orch
-    worker = ProductionWorker(orch, queue)
-    return App(settings=settings, store=store, queue=queue, events=events, llm=llm, providers=providers,
-               orchestrator=orch, worker=worker, models=models, provider_system=system)
+
+    def license_blocked(pid: str) -> bool:
+        for ph in store.list_phases(pid):
+            if ph.blocked_code == "usage_limit":
+                agent = PHASES[ph.phase].agent
+                lic = router.resolve(pid, agent) if agent else None
+                return bool(lic and lic.limited_now())
+        return False
+
+    worker = ProductionWorker(orch, queue, license_blocked=license_blocked)
+    app = App(settings=settings, store=store, queue=queue, events=events, llm=llm, providers=providers,
+              orchestrator=orch, worker=worker, models=models, provider_system=system, licenses=licenses,
+              router=router, base_concurrency=concurrency)
+    app.refresh_claude_slots()
+    return app

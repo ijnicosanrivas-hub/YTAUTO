@@ -3,18 +3,19 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { getToken } from "../api";
 import { DEMO } from "../demo/demo";
-import { billboardYaw, figureUrl, spriteMotion, spriteSize, type FigureMeta } from "./sprites";
+import { figureImage } from "../channels";
+import { billboardYaw, spriteMotion, spriteSize, type FigureMeta } from "./sprites";
 import type { animationState } from "./pose";
 
 type Anim = ReturnType<typeof animationState>;
 
 /** Carga el recorte del personaje; `null` mientras llega o si falla (la sala usa entonces la figura de ladrillos). */
-export function useFigureTexture(agent: string, enabled: boolean): THREE.Texture | null {
+export function useFigureTexture(agent: string, enabled: boolean, profile = "gotham"): THREE.Texture | null {
   const [tex, setTex] = useState<THREE.Texture | null>(null);
   useEffect(() => {
     if (!enabled) return;
     let dead = false;
-    new THREE.TextureLoader().load(DEMO ? `/personajes/${agent}.png` : figureUrl(agent, getToken() || null), (t) => {
+    new THREE.TextureLoader().load(DEMO ? `/personajes/${agent}.png` : figureImage(profile, agent, getToken() || null), (t) => {
       t.colorSpace = THREE.SRGBColorSpace;
       t.anisotropy = 8;
       t.generateMipmaps = true;
@@ -22,7 +23,7 @@ export function useFigureTexture(agent: string, enabled: boolean): THREE.Texture
       if (dead) t.dispose(); else setTex(t);
     }, undefined, () => { if (!dead) setTex(null); });
     return () => { dead = true; };
-  }, [agent, enabled]);
+  }, [agent, enabled, profile]);
   useEffect(() => () => tex?.dispose(), [tex]);
   return tex;
 }

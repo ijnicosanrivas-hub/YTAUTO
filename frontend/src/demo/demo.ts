@@ -13,9 +13,18 @@ export async function demoGet(path: string): Promise<unknown> {
   const p = path.split("?")[0];
   if (p === "/api/agents") return agents;
   if (p === "/api/theme") return theme;
+  if (p === "/api/channels") {
+    const t = theme as { palette: { accent: string }; room_title: string; agents: Record<string, { character: string; glyph: string; color: string }> };
+    const ref = (a: string) => ({ character: t.agents[a].character, glyph: t.agents[a].glyph, color: t.agents[a].color });
+    return [{ id: "general", name: "General", theme: "gotham", tagline: "Demostración", accent: t.palette.accent, room_title: t.room_title,
+      director: ref("director"), chief: ref("chief"), has_director_image: true }];
+  }
+  if (p === "/api/overview") return { channels: [], claude_slots: 1 };
+  if (p === "/api/dashboard") return { projects: { total: 0, by_status: {} }, waiting_approval: [], claude: { calls: 0, seconds: 0, lanes: {} }, budget: null, agents: (agents as { agents: AgentState[] }).agents };
+  if (p === "/api/projects") return [];
   if (p === "/api/health") return { ok: true, llm: { provider: "demostración", ok: true, message: "Sin servidor" }, worker: false };
   if (p === "/api/events") return [];
-  if (p === "/api/figures") {
+  if (p === "/api/figures" || p === "/api/profiles/gotham/figures") {
     const r = await fetch("/personajes/meta.json");
     const m = (await r.json()) as Record<string, { anchor_x: number; w: number; h: number }>;
     return Object.fromEntries(Object.entries(m).map(([k, v]) => [k, { anchor_x: v.anchor_x, w: v.w, h: v.h }]));

@@ -79,3 +79,53 @@ export function recentActions(events: YtEvent[], agent: string, phaseAgent: Reco
   }
   return out;
 }
+
+/** Nombre y descripción de cada puesto según el perfil del canal (la posición es la misma en todos). */
+const PROFILE_STATIONS: Record<string, Record<string, [string, string]>> = {
+  gta6: {
+    chief: ["Ático de Ocean Drive", "Centro de mando: coordina las 18 fases y el presupuesto, y redacta el informe."],
+    director: ["Mesa del plan", "Planifica el golpe: concepto, estilo y estructura de retención."],
+    scriptwriter: ["Furgoneta de la radio pirata", "Escribe el gancho y la narración con teorías imposibles de ignorar."],
+    publisher: ["Estudio de streaming", "Prepara títulos, hashtags y exportaciones; solo publica con tu permiso."],
+    voice: ["Cabina de Only Raw", "Graba la locución con ritmo y pausas."],
+    resources: ["Almacén del puerto", "Consigue imágenes y clips, siempre limpios y con licencia."],
+    sound: ["Estudio de grabación", "Música, efectos y mezcla con la voz por delante."],
+    editor: ["Sala de montaje", "Monta el vídeo vertical, la cámara y las transiciones, y renderiza."],
+    reviewer: ["Muelle de los Cayos", "Revisión independiente: puntúa y pide correcciones."],
+  },
+  kids: {
+    chief: ["Casa de juegos", "Organiza el juego: coordina las 18 fases y el informe final."],
+    director: ["Rincón de los descubrimientos", "Imagina el concepto y la historia paso a paso."],
+    scriptwriter: ["Rincón del cuento", "Escribe frases cortas, claras y divertidas."],
+    publisher: ["Buzón de las sorpresas", "Prepara títulos seguros para familias; publica solo con tu permiso."],
+    voice: ["Escenario de canciones", "Pone la voz con ritmo y alegría."],
+    resources: ["Caja de los tesoros", "Busca dibujos e imágenes adecuadas y con licencia."],
+    sound: ["Orquesta de juguete", "Canciones y efectos suaves que no tapan la voz."],
+    editor: ["Mesa de colores", "Monta escenas claras y fáciles de seguir."],
+    reviewer: ["Consulta de juguetes", "Chequeo de calidad y seguridad para peques."],
+  },
+  deportes: {
+    chief: ["Palco presidencial", "Dirige el club: coordina las 18 fases, el presupuesto y el informe."],
+    director: ["Banquillo", "Diseña la jugada: concepto, estilo y ritmo."],
+    scriptwriter: ["Cabina de prensa", "Narra la jugada con datos y emoción."],
+    publisher: ["Sala de redes", "Prepara publicaciones; solo publica con tu permiso."],
+    voice: ["Megafonía", "Locución con energía de gran final."],
+    resources: ["Grada de ojeadores", "Encuentra imágenes con derechos para cada jugada."],
+    sound: ["Fondo de animación", "Música y ambiente de grada sin tapar al narrador."],
+    editor: ["Unidad móvil de TV", "Elige las repeticiones y monta con ritmo de directo."],
+    reviewer: ["Sala VAR", "Revisa cada jugada antes de dar el gol por bueno."],
+  },
+};
+
+/** Puesto de un agente en el perfil indicado (por defecto, las instalaciones de la Baticueva). */
+export function stationFor(profile: string, agent: string): Station | undefined {
+  const base = HUB[agent];
+  const named = PROFILE_STATIONS[profile]?.[agent];
+  return base && named ? { ...base, name: named[0], blurb: named[1] } : base;
+}
+
+/** ¿Tiene el perfil su propia sala inmersiva? */
+export const PROFILE_WORLDS = ["gotham", "gta6", "kids", "deportes"] as const;
+export function hasWorld(profile: string): boolean {
+  return (PROFILE_WORLDS as readonly string[]).includes(profile);
+}

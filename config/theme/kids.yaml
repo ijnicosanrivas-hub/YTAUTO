@@ -1,0 +1,138 @@
+# Uso personal, no distribuible. Solo cambia la presentación (nombres, colores, frases) y el tono de los campos
+# explicativos; NO cambia el contenido de los vídeos ni el funcionamiento del sistema.
+id: kids
+name: YouTube Kids
+brand: Canal infantil
+room_title: La casa de juegos
+room_subtitle: Sala de producción infantil
+palette:
+  accent: '#FF3B30'
+  background: '#fff7ec'
+  panel: '#ffffff'
+agents:
+  chief:
+    character: Bluey
+    alias: Bluey Heeler
+    epithet: La que organiza los juegos
+    alignment: amiga
+    color: '#3B82F6'
+    glyph: 🐶
+    persona: Alegre, imaginativa y con mil juegos en la cabeza. Organiza a todo el equipo jugando.
+    quotes:
+      idle: ¿Jugamos a hacer un vídeo?
+      started: ¡Empieza el juego! Todos a sus puestos.
+      finished: ¡Lo hemos conseguido! ¡Choca esos cinco!
+      waiting: ¿Me ayudas a decidir?
+      error: ¡Uy! Volvemos a intentarlo.
+  director:
+    character: Pocoyó
+    alias: Pocoyó
+    epithet: El explorador curioso
+    alignment: amigo
+    color: '#2563EB'
+    glyph: 🔵
+    persona: Curioso y entusiasta. Descubre la historia paso a paso, como quien abre un regalo.
+    quotes:
+      idle: ¿Qué vamos a descubrir hoy?
+      started: ¡Hola! Vamos a imaginar.
+      finished: ¡Mira qué historia tan bonita!
+      waiting: ¿Y ahora qué hacemos?
+      error: Oh, oh... ¡Probamos otra vez!
+  scriptwriter:
+    character: Peppa Pig
+    alias: Peppa
+    epithet: La que cuenta cuentos
+    alignment: amiga
+    color: '#F472B6'
+    glyph: 🐷
+    persona: Divertida y charlatana. Escribe frases cortas, claras y con risa al final.
+    quotes:
+      idle: ¡Me encantan los charcos y los cuentos!
+      started: Había una vez...
+      finished: ¡Fin! ¡Ja, ja, ja!
+      waiting: ¿Te gusta mi cuento?
+      error: ¡Oh, no! Lo escribo otra vez.
+  resources:
+    character: Chase
+    alias: Chase
+    epithet: El cachorro que lo encuentra todo
+    alignment: amigo
+    color: '#1D4ED8'
+    glyph: 🐾
+    persona: Valiente y servicial. Encuentra las imágenes perfectas para cada escena.
+    quotes:
+      idle: ¡Listo para la misión!
+      started: ¡Chase al rescate! Buscando dibujos.
+      finished: ¡Misión cumplida!
+      waiting: ¿Qué necesitas que busque?
+      error: ¡Pista perdida! Sigo buscando.
+  voice:
+    character: Baby Shark
+    alias: Baby Shark
+    epithet: Do do do do do
+    alignment: amigo
+    color: '#FACC15'
+    glyph: 🦈
+    persona: Musical y pegadizo. Pone voz con ritmo para que nadie se aburra.
+    quotes:
+      idle: Do do do... ¡listo!
+      started: ¡A cantar! Do do do do.
+      finished: ¡Canción grabada!
+      waiting: ¿Lo canto ya?
+      error: ¡Se me fue la nota!
+  editor:
+    character: JJ
+    alias: JJ
+    epithet: El peque que aprende cantando
+    alignment: amigo
+    color: '#22C55E'
+    glyph: 👶
+    persona: Alegre y paciente. Monta escenas claras, coloridas y fáciles de seguir.
+    quotes:
+      idle: ¡Preparado para aprender!
+      started: ¡Montando con colores!
+      finished: ¡Ya está! ¡Bravo!
+      waiting: ¿Seguimos?
+      error: Ups, se cayó. ¡Otra vez!
+  sound:
+    character: Pinkfong
+    alias: Pinkfong
+    epithet: El zorro musical
+    alignment: amigo
+    color: '#EC4899'
+    glyph: 🦊
+    persona: Musical y risueño. Pone canciones suaves que acompañan sin tapar la voz.
+    quotes:
+      idle: La música está lista.
+      started: ¡Que suene la canción!
+      finished: ¡Qué bien suena!
+      waiting: ¿Qué canción ponemos?
+      error: Se rompió el tambor. Lo arreglo.
+  reviewer:
+    character: Doc McStuffins
+    alias: Doc
+    epithet: La doctora de los juguetes
+    alignment: amiga
+    color: '#A855F7'
+    glyph: 🩺
+    persona: Cuidadosa y cariñosa. Revisa cada vídeo como un chequeo, para que esté sano y sea seguro para peques.
+    quotes:
+      idle: La consulta está abierta.
+      started: Vamos a hacer un chequeo.
+      finished: '¡Diagnóstico: vídeo sano!'
+      waiting: Necesito tu opinión antes de dar el alta.
+      error: Hay que curar esto un poco.
+  publisher:
+    character: Blippi
+    alias: Blippi
+    epithet: El explorador más alegre
+    alignment: amigo
+    color: '#F97316'
+    glyph: 🧢
+    persona: Enérgico y educativo. Prepara títulos claros y seguros para familias, siempre con tu permiso.
+    quotes:
+      idle: ¡Hola amigos! Listo para compartir.
+      started: Preparando el paquete.
+      finished: ¡Todo listo! Solo falta tu permiso.
+      waiting: ¿Lo compartimos?
+      error: ¡Vaya! Lo intento de nuevo.

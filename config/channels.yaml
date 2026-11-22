@@ -1,0 +1,19 @@
+# Canales que produce la fábrica en paralelo. Cada uno tiene su perfil visual (config/theme/<theme>.yaml),
+# sus proyectos y sus licencias de Claude. Solo presentación y organización: el flujo de producción es el mismo.
+channels:
+  - id: general
+    name: General
+    theme: gotham
+    tagline: Canal principal · La Baticueva
+  - id: gta6
+    name: GTA VI
+    theme: gta6
+    tagline: Vice City · Leonida
+  - id: kids
+    name: YouTube Kids
+    theme: kids
+    tagline: Canal infantil
+  - id: deportes
+    name: Deportes
+    theme: deportes
+    tagline: Actualidad deportiva

@@ -1,8 +1,64 @@
 import { displayName } from "../theme";
+import { tokens, withChannel } from "../channels";
+import { Face } from "../components/Face";
 import { AGENT_COLOR, describeEvent, eur, shortDate } from "../format";
 import { Badge, ErrorBox, PageHead, Progress, useApi } from "../components/ui";
 import { useLive } from "../store";
-import type { AgentState, ProjectSummary, YtEvent } from "../types";
+import type { AgentState, Channel, ChannelOverview, ProjectSummary, YtEvent } from "../types";
+
+const ROLE: Record<string, string> = {
+  chief: "Jefe", director: "Director", scriptwriter: "Guionista", resources: "Recursos", voice: "Voz",
+  editor: "Editor", sound: "Sonido", reviewer: "Revisor", publisher: "Publicador",
+};
+
+/** Los 4 canales a la vez: qué está produciendo cada uno ahora mismo. Pulsar uno cambia de canal. */
+function ChannelsOverview({ current }: { current: string }) {
+  const { data } = useApi<{ channels: ChannelOverview[]; claude_slots: number }>("/api/overview", { live: true, pollMs: 15000 });
+  const { data: channels } = useApi<Channel[]>("/api/channels");
+  const setChannel = useLive((s) => s.setChannel);
+  if (!data) return null;
+  return (
+    <section className="channels-overview" aria-label="Canales">
+      {data.channels.map((o) => {
+        const c = channels?.find((x) => x.id === o.channel.id);
+        const active = o.projects.by_status.active ?? 0;
+        return (
+          <button key={o.channel.id} className={`ch-card${o.channel.id === current ? " current" : ""}`} style={{ ["--ch" as string]: o.accent }}
+            onClick={() => setChannel(o.channel.id)}>
+            <div className="ch-card-head">
+              <Face theme={o.channel.theme} agent="director" persona={o.director} size={46} image={c?.has_director_image} ring={o.accent} />
+              <div>
+                <b>{o.channel.name}</b>
+                <small>{o.channel.tagline}</small>
+              </div>
+              <span className={`pulse ${o.running_agents.length ? "on" : ""}`} title={o.running_agents.length ? "Produciendo" : "En espera"} />
+            </div>
+            <div className="ch-card-now">
+              {o.running_agents.length ? (
+                o.running_agents.slice(0, 2).map((a) => (
+                  <div key={a.name} className="now-row">
+                    <span>{ROLE[a.name] ?? a.name}</span>
+                    <span className="muted ellipsis">{a.task ?? "trabajando"}</span>
+                    <Progress value={a.progress} />
+                  </div>
+                ))
+              ) : (
+                <div className="muted">{o.current ? `En curso: ${o.current.name}` : "Sin producción en marcha"}</div>
+              )}
+            </div>
+            <div className="ch-card-stats">
+              <span><b>{active}</b> en curso</span>
+              <span><b>{o.projects.by_status.completed ?? 0}</b> hechos</span>
+              <span><b>{o.waiting_agents}</b> esperan</span>
+              <span><b>{tokens(o.tokens_total)}</b> tokens</span>
+              <span className={o.licenses.limited ? "warn" : ""}><b>{o.licenses.total}</b> lic.{o.licenses.limited ? ` (${o.licenses.limited} agotada)` : ""}</span>
+            </div>
+          </button>
+        );
+      })}
+    </section>
+  );
+}
 
 interface Dash {
   projects: { total: number; by_status: Record<string, number> };
@@ -13,11 +69,13 @@ interface Dash {
 }
 
 export default function Dashboard() {
-  const { data, error } = useApi<Dash>("/api/dashboard", { live: true });
-  const { data: projects } = useApi<ProjectSummary[]>("/api/projects", { live: true });
-  const liveEvents = useLive((s) => s.events);
+  const channel = useLive((s) => s.channel);
+  const { data, error } = useApi<Dash>(withChannel("/api/dashboard", channel), { live: true });
+  const { data: projects } = useApi<ProjectSummary[]>(withChannel("/api/projects", channel), { live: true });
+  const allEvents = useLive((s) => s.events);
+  const liveEvents = allEvents.filter((e) => e.channel === channel);
   // Historial reciente persistido + eventos que llegan en directo (sin duplicar)
-  const { data: recent } = useApi<YtEvent[]>("/api/events?limit=60");
+  const { data: recent } = useApi<YtEvent[]>(withChannel("/api/events?limit=60", channel));
   const seen = new Set(liveEvents.map((e) => e.at + e.type + e.agent));
   const events = [...liveEvents, ...[...(recent ?? [])].reverse().filter((e) => !seen.has(e.at + e.type + e.agent))];
   const liveAgents = useLive((s) => s.agents);
@@ -27,11 +85,13 @@ export default function Dashboard() {
 
   return (
     <>
-      <PageHead title="Dashboard" subtitle="Estado real de la fábrica: proyectos, agentes, Claude y presupuesto">
-        <a className="btn primary" href="#/projects">
+      <PageHead title="Panel general" subtitle="Los 4 canales en paralelo. Debajo, el detalle del canal seleccionado">
+        <a className="btn primary" href="#/new">
           + Nuevo vídeo
         </a>
       </PageHead>
+      <ChannelsOverview current={channel} />
+      <h2 className="section-title">Canal {theme.name === "Clásico" ? channel : theme.brand}</h2>
       <ErrorBox error={error} />
       {claudeLane?.paused && (
         <div className="alert">
@@ -51,7 +111,7 @@ export default function Dashboard() {
           <div className="kpi">{data?.waiting_approval.length ?? "—"}</div>
         </div>
         <div className="panel">
-          <h2>Llamadas a Claude</h2>
+          <h2>Llamadas a Claude (canal)</h2>
           <div className="kpi">
             {data?.claude.calls ?? "—"}
             <small>{data ? `${Math.round(data.claude.seconds)} s` : ""}</small>

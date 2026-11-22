@@ -1,20 +1,21 @@
 :root {
-  --bg: #070a13;
-  --bg-2: #0c1222;
-  --panel: rgba(17, 25, 45, 0.78);
-  --panel-solid: #111a2e;
-  --line: rgba(120, 160, 255, 0.14);
-  --line-strong: rgba(120, 160, 255, 0.3);
-  --text: #e6ecff;
-  --muted: #8a97b8;
+  --bg: #0a0c10;
+  --bg-2: #0f1218;
+  --panel: rgba(22, 26, 34, 0.86);
+  --panel-solid: #161a22;
+  --line: rgba(255, 255, 255, 0.07);
+  --line-strong: rgba(255, 255, 255, 0.16);
+  --text: #e9ebf1;
+  --muted: #8b93a6;
   --accent: #22d3ee;
   --accent-2: #a78bfa;
   --warn: #f5b941;
   --danger: #f43f5e;
   --ok: #34d399;
   --radius: 14px;
-  --font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font: "Nunito", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --display: "Lilita One", "Nunito", system-ui, sans-serif;
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
@@ -35,8 +36,7 @@ html, body, #root { height: 100%; margin: 0; }
 body {
   font-family: var(--font);
   color: var(--text);
-  background: radial-gradient(1200px 700px at 70% -10%, rgba(34, 211, 238, 0.08), transparent 60%),
-    radial-gradient(900px 600px at -10% 110%, rgba(167, 139, 250, 0.08), transparent 60%), var(--bg);
+  background: radial-gradient(1100px 600px at 80% -12%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 62%), var(--bg);
   font-size: 14px;
   line-height: 1.45;
 }
@@ -178,147 +178,6 @@ video { width: 100%; max-height: 70vh; border-radius: 12px; background: #000; }
 .node-card .quote { font-size: 10.5px; margin-top: 3px; color: #d5dcf2; }
 .muted { color: var(--muted); }
 
-/* =====================================================================================
-   TEMA LEGO (html.lego): ladrillos, tacos y tipografía redondeada. Solo presentación.
-   Paleta oficial LEGO: negro #05131D, gris azulado #6C6E68/#A0A5A9, amarillo #F2CD37, rojo #C91A09,
-   azul #0055BF, verde #4B9F4A, naranja #FE8A18.
-   ===================================================================================== */
-html.lego {
-  --font: "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --display: "Lilita One", "Nunito", system-ui, sans-serif;
-  --bg: #0e1114;
-  --bg-2: #14181c;
-  --panel: #232a31;
-  --panel-solid: #2b343c;
-  --line: rgba(255, 255, 255, 0.07);
-  --line-strong: rgba(255, 255, 255, 0.2);
-  --text: #f2f3f2;
-  --muted: #a0a5a9;
-  --accent: #f2cd37;
-  --accent-2: #c91a09;
-  --warn: #fe8a18;
-  --danger: #ff5a45;
-  --ok: #5fc15e;
-  --radius: 12px;
-  --brick-shadow: #07090b;
-  --stud: rgba(255, 255, 255, 0.07);
-}
-html.lego body {
-  /* placa base: rejilla de tacos sobre negro */
-  background:
-    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.075) 0 30%, rgba(0, 0, 0, 0.45) 33% 44%, transparent 47%) 0 0 / 30px 30px,
-    radial-gradient(1100px 700px at 75% -15%, rgba(242, 205, 55, 0.09), transparent 62%),
-    var(--bg);
-  font-weight: 600;
-  font-size: 14.5px;
-}
-html.lego ::selection { background: var(--accent); color: #05131d; }
-html.lego h1, html.lego h2, html.lego h3, html.lego .kpi, html.lego th, html.lego .btn, html.lego .tab, html.lego .nav-item { font-family: var(--display); font-weight: 400; letter-spacing: 0.02em; }
-
-/* barra lateral: ladrillo negro con fila de tacos */
-html.lego .sidebar {
-  position: relative; background: #0a0d0f; border-right: 4px solid #000; padding-top: 28px; gap: 6px;
-  box-shadow: inset -3px 0 0 rgba(255, 255, 255, 0.04);
-}
-html.lego .sidebar::before {
-  content: ""; position: absolute; top: 0; left: 0; right: 0; height: 10px;
-  background: radial-gradient(circle at 50% 100%, #2b343c 0 4px, transparent 4.6px) 0 0 / 22px 10px repeat-x;
-}
-html.lego .brand {
-  display: block; margin: 0 4px 16px; padding: 10px 12px 9px; text-align: center; border-radius: 10px;
-  background: var(--accent-2); color: #fff; border: 3px solid #05131d; border-bottom-width: 6px;
-  font-family: var(--display); font-weight: 400; font-size: 19px; line-height: 1.05; letter-spacing: 0.03em;
-  -webkit-text-stroke: 1.2px #05131d; paint-order: stroke fill; text-shadow: 0 2px 0 #05131d;
-  box-shadow: 0 0 0 3px var(--accent);
-}
-html.lego .brand-dot { display: none; }
-html.lego .brand small { display: block; font-family: var(--font); -webkit-text-stroke: 0; text-shadow: none; font-size: 10.5px; font-weight: 800; letter-spacing: 0.14em; color: #ffe38a; text-transform: uppercase; margin-top: 2px; }
-html.lego .nav-item {
-  background: var(--panel-solid); color: var(--text); border: 2px solid #0a0d0f; border-bottom: 5px solid #0a0d0f; border-radius: 9px;
-  padding: 8px 12px 6px; font-size: 15px; transition: transform 0.08s, background 0.12s;
-}
-html.lego .nav-item:hover { background: #36414a; transform: translateY(-1px); color: var(--text); }
-html.lego .nav-item:active { transform: translateY(2px); border-bottom-width: 3px; }
-html.lego .nav-item.active { background: var(--accent); color: #05131d; border-bottom-color: #9c8310; }
-html.lego .nav-count { background: var(--accent-2); color: #fff; font-family: var(--display); border: 2px solid #05131d; padding: 0 8px; }
-html.lego .sidebar-foot { color: var(--muted); }
-
-/* contenido */
-html.lego .main { padding-top: 30px; }
-html.lego .page-head h1 {
-  font-size: 38px; line-height: 1.05; text-transform: uppercase; color: var(--accent);
-  -webkit-text-stroke: 1.6px #000; paint-order: stroke fill; text-shadow: 0 4px 0 #000, 0 7px 14px rgba(0, 0, 0, 0.5);
-}
-html.lego .page-head p { color: var(--muted); font-weight: 700; }
-
-/* paneles = ladrillos con fila de tacos */
-html.lego .panel {
-  position: relative; background: var(--panel); border: 3px solid #0a0d0f; border-radius: var(--radius); backdrop-filter: none;
-  box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.07), inset 0 -4px 0 rgba(0, 0, 0, 0.25), 0 6px 0 var(--brick-shadow);
-  margin-top: 10px;
-}
-html.lego .panel:not(.room)::before {
-  content: ""; position: absolute; top: -10px; left: 10px; right: 10px; height: 8px; pointer-events: none;
-  background: radial-gradient(ellipse at 50% 100%, #2f3942 0 5px, transparent 5.6px) 0 0 / 22px 8px repeat-x;
-}
-html.lego .panel h2 { font-family: var(--display); font-weight: 400; font-size: 16px; letter-spacing: 0.06em; color: var(--accent); }
-html.lego .kpi { font-size: 36px; color: var(--text); }
-html.lego .kpi small { font-family: var(--font); font-weight: 800; }
-
-/* botones = ladrillos pulsables */
-html.lego .btn {
-  background: var(--panel-solid); color: var(--text); border: 2px solid #0a0d0f; border-bottom: 5px solid #0a0d0f; border-radius: 9px;
-  padding: 7px 14px 5px; font-size: 15px; letter-spacing: 0.04em; text-transform: uppercase; transition: transform 0.08s, filter 0.12s;
-}
-html.lego .btn:hover { border-color: #0a0d0f; filter: brightness(1.18); transform: translateY(-1px); }
-html.lego .btn:active { transform: translateY(2px); border-bottom-width: 3px; }
-html.lego .btn.primary { background: var(--accent); color: #05131d; border-bottom-color: #9c8310; }
-html.lego .btn.danger { background: var(--accent-2); color: #fff; border-bottom-color: #650d05; }
-html.lego .btn.ok { background: #237841; color: #fff; border-bottom-color: #0f3d20; }
-html.lego .btn:disabled { filter: grayscale(0.6) brightness(0.7); transform: none; }
-
-/* insignias = placas pequeñas */
-html.lego .badge { border-radius: 6px; font-family: var(--font); font-weight: 800; background: #10141a; border: 2px solid #0a0d0f; border-bottom-width: 3px; padding: 1px 9px; }
-html.lego .badge::before { border-radius: 2px; }
-
-/* progreso = fila de ladrillos con tacos */
-html.lego .progress { height: 16px; background: #0d1114; border: 2px solid #05080a; border-radius: 6px; }
-html.lego .progress > div {
-  border-radius: 3px; box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.25);
-  background: radial-gradient(circle at 11px 5px, rgba(255, 255, 255, 0.55) 0 3px, transparent 3.6px) 0 0 / 22px 100% repeat-x, var(--accent);
-}
-
-/* tablas, formularios, pestañas */
-html.lego th { color: var(--accent); font-size: 14px; border-bottom: 3px solid #0a0d0f; }
-html.lego td { border-bottom: 2px solid rgba(0, 0, 0, 0.35); }
-html.lego tr.clickable:hover td { background: rgba(242, 205, 55, 0.08); }
-html.lego input, html.lego select, html.lego textarea { background: #0f1317; border: 3px solid #0a0d0f; border-radius: 9px; font-weight: 700; }
-html.lego input:focus, html.lego select:focus, html.lego textarea:focus { outline: 3px solid var(--accent); outline-offset: 0; }
-html.lego label.field { font-weight: 800; letter-spacing: 0.03em; }
-html.lego .tab { border: 2px solid #0a0d0f; border-bottom: 4px solid #0a0d0f; border-radius: 8px; background: var(--panel-solid); color: var(--text); padding: 5px 13px 3px; }
-html.lego .tab.active { background: var(--accent); color: #05131d; border-color: #0a0d0f; border-bottom-color: #9c8310; }
-html.lego .phase { background: #1b2127; border: 2px solid #0a0d0f; border-left: 8px solid #3a444d; border-radius: 8px; }
-html.lego .phase.err { border-left-color: var(--accent-2); border-color: #0a0d0f; }
-html.lego .alert { border: 0; border-left: 14px solid transparent; border-image: repeating-linear-gradient(45deg, #f2cd37 0 9px, #05131d 9px 18px) 1; background: #2a2210; color: #ffe38a; border-radius: 4px; font-weight: 800; }
-html.lego .alert.err { background: #2a1210; color: #ffb4a8; }
-html.lego .event-log div { border-bottom: 2px dashed rgba(255, 255, 255, 0.06); }
-
-/* sala: marco de ladrillo y etiquetas */
-html.lego .room { border: 4px solid #0a0d0f; box-shadow: 0 6px 0 var(--brick-shadow), 0 0 0 3px #2f3942; }
-html.lego .room-legend { background: rgba(5, 19, 29, 0.78); border: 2px solid #0a0d0f; border-radius: 8px; padding: 5px 10px; color: #cfd3d6; font-weight: 800; }
-html.lego .node-card {
-  background: rgba(14, 17, 20, 0.92); border: 2px solid #05080a; border-bottom: 5px solid var(--accent); border-radius: 9px;
-  font-family: var(--font); font-weight: 700; width: 200px;
-}
-html.lego .node-card b { font-family: var(--display); font-weight: 400; font-size: 14px; letter-spacing: 0.03em; }
-html.lego .node-card.compact { width: auto; white-space: nowrap; padding: 4px 10px; }
-html.lego .node-card.compact .quote, html.lego .node-card.compact .task { display: none; }
-html.lego .quote { color: #dfe3e6; }
-html.lego .persona .glyph { filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.5)); }
-html.lego ::-webkit-scrollbar { width: 12px; height: 12px; }
-html.lego ::-webkit-scrollbar-track { background: #0a0d0f; }
-html.lego ::-webkit-scrollbar-thumb { background: #3a444d; border: 3px solid #0a0d0f; border-radius: 8px; }
-@media (prefers-reduced-motion: reduce) { html.lego .btn, html.lego .nav-item { transition: none; } }
 
 /* pantalla de código de acceso (acceso desde el móvil) */
 .gate { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: rgba(4, 7, 14, 0.82); padding: 16px; }
@@ -365,6 +224,140 @@ html.lego ::-webkit-scrollbar-thumb { background: #3a444d; border: 3px solid #0a
 .agent-panel .actions .mono { color: var(--accent); margin-right: 6px; }
 .agent-panel .errline { color: #ff8a7a; }
 .agent-panel footer { margin-top: 14px; position: sticky; bottom: 0; padding-top: 8px; background: linear-gradient(transparent, rgba(10, 14, 18, 0.96) 30%); }
-html.lego .node-card.selected { border-bottom-color: #fff; box-shadow: 0 0 0 2px var(--accent); }
 @media (max-width: 760px) { .agent-panel { top: auto; left: 10px; right: 10px; bottom: 54px; width: auto; max-height: 62%; } }
 @media (prefers-reduced-motion: reduce) { .agent-panel { animation: none; } }
+
+/* =====================================================================================
+   ARMAZÓN GENERAL (todas las pantallas): neutro; cada canal solo aporta su color de acento.
+   ===================================================================================== */
+.layout { grid-template-columns: 248px 1fr; }
+.sidebar { background: #07090c; gap: 2px; }
+.nav-item { justify-content: flex-start; gap: 10px; font-weight: 600; }
+.nav-item .nav-icon { width: 18px; text-align: center; opacity: 0.75; }
+.nav-item .nav-label { flex: 1; }
+.nav-item.active { border-color: transparent; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--text); box-shadow: inset 3px 0 0 var(--accent); }
+.sidebar-foot { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.section-title { margin: 22px 0 10px; font-size: 15px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.small { font-size: 12px; }
+.ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.btn.small { padding: 4px 10px; font-size: 12px; }
+.btn.big { padding: 11px 22px; font-size: 15px; }
+
+/* caras de personajes */
+.face { position: relative; display: inline-grid; place-items: center; flex: 0 0 auto; overflow: hidden; border-radius: 14px;
+  border: 2px solid var(--face); background: radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--face) 45%, #1b2030), #0d1016 75%); }
+.face svg { position: absolute; inset: 0; }
+.face img { position: absolute; left: 50%; top: 0; width: 190%; transform: translateX(-50%); object-fit: contain; pointer-events: none; }
+.face-glyph { line-height: 1; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.5)); }
+
+/* selector de canal (arriba a la izquierda) */
+.ch-switch { position: relative; margin: 0 0 14px; }
+.ch-current { position: relative; width: 100%; display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 16px; cursor: pointer;
+  background: color-mix(in srgb, var(--ch) 10%, #10131a); border: 1px solid color-mix(in srgb, var(--ch) 40%, transparent); text-align: left; }
+.ch-current:hover { background: color-mix(in srgb, var(--ch) 18%, #10131a); }
+.ch-text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.ch-text b { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ch-text small { color: var(--muted); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ch-caret { color: var(--muted); }
+.ch-live { position: absolute; top: 4px; left: 60px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px; background: var(--ok); color: #04140c;
+  font-size: 11px; font-weight: 800; display: grid; place-items: center; box-shadow: 0 0 0 2px #07090c; }
+.ch-menu { position: fixed; z-index: 60; top: 108px; left: 12px; width: 300px; padding: 8px; border-radius: 16px; background: #10131a;
+  border: 1px solid var(--line-strong); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55); display: grid; gap: 6px; animation: menu-in 0.16s ease-out both; }
+@keyframes menu-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+.ch-option { position: relative; display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 12px; border: 1px solid transparent;
+  background: transparent; cursor: pointer; text-align: left; }
+.ch-option:hover { background: color-mix(in srgb, var(--ch) 14%, transparent); }
+.ch-option.active { border-color: color-mix(in srgb, var(--ch) 55%, transparent); background: color-mix(in srgb, var(--ch) 10%, transparent); }
+.ch-option .ch-live { position: static; height: auto; padding: 2px 7px; box-shadow: none; }
+.ch-idle { font-size: 11px; color: var(--muted); }
+
+/* panel general: los 4 canales */
+.channels-overview { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.ch-card { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 16px; cursor: pointer; text-align: left; color: var(--text);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--ch) 16%, #141821), #11141b 60%); border: 1px solid color-mix(in srgb, var(--ch) 28%, transparent);
+  transition: transform 0.12s, border-color 0.12s; }
+.ch-card:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--ch) 60%, transparent); }
+.ch-card.current { box-shadow: 0 0 0 2px var(--ch); }
+.ch-card-head { display: flex; align-items: center; gap: 10px; }
+.ch-card-head > div { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.ch-card-head b { font-size: 16px; }
+.ch-card-head small { color: var(--muted); font-size: 12px; }
+.ch-card-now { min-height: 46px; display: grid; gap: 4px; font-size: 12.5px; }
+.now-row { display: grid; grid-template-columns: 70px 1fr 60px; gap: 6px; align-items: center; }
+.ch-card-stats { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 8px; }
+.ch-card-stats b { color: var(--text); }
+.ch-card-stats .warn b, .ch-card-stats .warn { color: var(--warn); }
+.pulse { width: 10px; height: 10px; border-radius: 50%; background: #3b4252; }
+.pulse.on { background: var(--ok); box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.6); animation: pulse 1.6s infinite; }
+@keyframes pulse { 70% { box-shadow: 0 0 0 9px rgba(52, 211, 153, 0); } 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); } }
+
+/* licencias */
+.lic-group { margin-top: 22px; }
+.lic-group-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+.lic-group-head h2 { margin: 0; font-size: 17px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
+.lic-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 12px; }
+.lic-card { border-top: 3px solid var(--lic); display: flex; flex-direction: column; gap: 8px; }
+.lic-card.limited { border-top-color: var(--danger); }
+.lic-card.disabled { opacity: 0.65; }
+.lic-name { margin: 0; font-size: 16px; }
+.lic-big b { font-size: 28px; font-weight: 800; margin-right: 6px; }
+.meter { height: 8px; border-radius: 99px; background: rgba(255, 255, 255, 0.07); overflow: hidden; }
+.meter i { display: block; height: 100%; border-radius: 99px; }
+.lic-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.lic-stats div { background: rgba(255, 255, 255, 0.035); border-radius: 10px; padding: 6px 8px; display: flex; flex-direction: column; }
+.lic-stats small { color: var(--muted); font-size: 11px; }
+.lic-stats b { font-size: 15px; }
+.spark { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px; height: 46px; align-items: end; padding: 4px 0; }
+.spark span { height: 100%; display: flex; align-items: flex-end; }
+.spark i { display: block; width: 100%; border-radius: 3px 3px 0 0; background: rgba(255, 255, 255, 0.08); }
+.lic-cols { display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px; }
+.lic-cols h4 { margin: 4px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.hbars { display: grid; gap: 4px; }
+.hbar { display: grid; grid-template-columns: 74px 1fr 44px; gap: 6px; align-items: center; font-size: 12px; }
+.hbar-track { height: 6px; background: rgba(255, 255, 255, 0.06); border-radius: 99px; overflow: hidden; }
+.hbar-track i { display: block; height: 100%; border-radius: 99px; }
+.kv { display: flex; justify-content: space-between; font-size: 12.5px; padding: 2px 0; }
+.kv span { color: var(--muted); }
+.login-help summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
+.copy { display: block; padding: 8px 10px; border-radius: 8px; background: #07090c; border: 1px solid var(--line); font-size: 11.5px; cursor: copy; word-break: break-all; }
+
+/* asistente de nuevo vídeo */
+.stepper { display: flex; gap: 6px; list-style: none; padding: 0; margin: 0 0 14px; flex-wrap: wrap; }
+.stepper button { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 99px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; color: var(--muted); font-weight: 700; }
+.stepper button:disabled { cursor: default; opacity: 0.6; }
+.stepper span { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: rgba(255, 255, 255, 0.08); font-size: 12px; }
+.stepper .active button { color: var(--text); border-color: var(--accent); }
+.stepper .active span, .stepper .done span { background: var(--accent); color: #0a0c10; }
+.wizard { display: flex; flex-direction: column; gap: 14px; }
+.director-say { display: flex; gap: 14px; align-items: flex-start; padding: 12px; border-radius: 14px; background: color-mix(in srgb, var(--accent) 8%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent); }
+.director-say p { margin: 4px 0 0; }
+textarea.idea { min-height: 130px; font-size: 15px; }
+.question { display: flex; flex-direction: column; gap: 6px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { padding: 6px 12px; border-radius: 99px; border: 1px solid var(--line-strong); background: transparent; cursor: pointer; }
+.chip:hover { border-color: var(--accent); }
+.chip.on { background: var(--accent); border-color: var(--accent); color: #0a0c10; font-weight: 700; }
+.lic-assign select { min-width: 280px; }
+.qa { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.qa li { font-size: 13px; }
+
+/* sala de agentes: cabecera inmersiva según el perfil del canal */
+.room-head h1 { font-family: var(--display); font-weight: 400; font-size: 30px; letter-spacing: 0.02em; }
+[data-profile="gotham"] .room-head h1 { color: #ffd400; text-shadow: 0 2px 0 #000; }
+[data-profile="gta6"] .room-head h1 { background: linear-gradient(90deg, #ff4fa3, #ff9f43 55%, #5ee7ff); -webkit-background-clip: text; background-clip: text; color: transparent; font-style: italic; }
+[data-profile="kids"] .room-head h1 { color: #ff3b30; text-shadow: 3px 3px 0 #ffd60a, 6px 6px 0 #34c759; }
+[data-profile="deportes"] .room-head h1 { font-family: Impact, "Arial Narrow", system-ui, sans-serif; text-transform: uppercase; letter-spacing: 0.04em; color: #fff; text-shadow: 0 0 18px rgba(34, 197, 94, 0.6); }
+
+@media (max-width: 1100px) { .channels-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 760px) {
+  .channels-overview { grid-template-columns: 1fr; }
+  .ch-switch { margin: 0; flex: 0 0 auto; }
+  .ch-current { padding: 4px 8px 4px 4px; }
+  .ch-current .face { width: 40px !important; height: 40px !important; }
+  .ch-current small, .ch-caret { display: none; }
+  .ch-menu { position: fixed; top: 64px; left: 8px; right: 8px; width: auto; }
+  .lic-stats { grid-template-columns: repeat(2, 1fr); }
+  .lic-cols { grid-template-columns: 1fr; }
+  .lic-assign select { min-width: 0; width: 100%; }
+}

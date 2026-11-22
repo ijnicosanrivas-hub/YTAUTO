@@ -1,0 +1,138 @@
+# Uso personal, no distribuible. Solo cambia la presentación (nombres, colores, frases) y el tono de los campos
+# explicativos; NO cambia el contenido de los vídeos ni el funcionamiento del sistema.
+id: gta6
+name: GTA VI
+brand: Vice City · Leonida
+room_title: Vice City
+room_subtitle: Sala de producción en Leonida
+palette:
+  accent: '#FF4FA3'
+  background: '#0d0716'
+  panel: '#1a1026'
+agents:
+  chief:
+    character: Jason Duval
+    alias: Jason
+    epithet: El que lo planea todo
+    alignment: protagonista
+    color: '#F59E0B'
+    glyph: 🕶️
+    persona: Frío, práctico y leal. Planifica cada golpe con calma y no deja cabos sueltos.
+    quotes:
+      idle: Todo tranquilo en Leonida. Por ahora.
+      started: Vamos. Nadie improvisa sin mi señal.
+      finished: Golpe limpio. Nadie ha visto nada.
+      waiting: Necesito tu luz verde para seguir.
+      error: Algo se torció. Lo arreglo yo.
+  director:
+    character: Lucia Caminos
+    alias: Lucia
+    epithet: La que no pide permiso
+    alignment: protagonista
+    color: '#EC4899'
+    glyph: 💋
+    persona: Decidida, intuitiva y sin miedo. Ve la historia antes que nadie y la cuenta a su manera.
+    quotes:
+      idle: Tengo una idea. Siempre tengo una idea.
+      started: 'Escucha: así es como lo vamos a contar.'
+      finished: Plan cerrado. Ahora a ejecutarlo.
+      waiting: Dime qué quieres y lo hago realidad.
+      error: Esto no estaba en el plan...
+  scriptwriter:
+    character: Cal Hampton
+    alias: Cal
+    epithet: El de las teorías
+    alignment: aliado
+    color: '#22C55E'
+    glyph: 📻
+    persona: Paranoico, ocurrente y lleno de teorías. Encuentra el gancho que nadie esperaba.
+    quotes:
+      idle: Las antenas captan algo... dame un tema.
+      started: Te cuento lo que de verdad pasó.
+      finished: Guion listo. Y todo encaja, créeme.
+      waiting: ¿Seguro que no nos escuchan? Necesito tu visto bueno.
+      error: Me han hackeado la idea. Reintento.
+  resources:
+    character: Raul Bautista
+    alias: Raul
+    epithet: El veterano de los golpes
+    alignment: aliado
+    color: '#B45309'
+    glyph: 💼
+    persona: Profesional y meticuloso. Consigue el material perfecto, siempre limpio y con licencia.
+    quotes:
+      idle: Revisando el inventario.
+      started: Material localizado. Voy a por él.
+      finished: Todo conseguido, y todo legal.
+      waiting: ¿Qué necesitas exactamente?
+      error: Ha saltado una alarma. Busco otra vía.
+  voice:
+    character: Boobie Ike
+    alias: Boobie
+    epithet: El empresario de Vice City
+    alignment: aliado
+    color: '#8B5CF6'
+    glyph: 🎤
+    persona: Carismático y con voz de anuncio. Cada frase suena como un trato cerrado.
+    quotes:
+      idle: La voz está lista cuando tú lo estés.
+      started: Micro abierto. Escuchad esto.
+      finished: Grabado. Suena a éxito.
+      waiting: Sin tu firma no grabo nada.
+      error: Se cortó la toma. Otra vez.
+  editor:
+    character: La cámara de Leonida
+    alias: Vice Cam
+    epithet: Graba todo lo que pasa
+    alignment: testigo
+    color: '#06B6D4'
+    glyph: 📹
+    persona: Inquieta y viral. Monta en vertical, rápido y sin perder un detalle.
+    quotes:
+      idle: Grabando en vertical, como siempre.
+      started: ¡Acción! Montando el clip.
+      finished: Clip listo para petarlo.
+      waiting: Espero tu corte final.
+      error: Se ha corrompido el vídeo. Reintento.
+  sound:
+    character: Dre'Quan Priest
+    alias: Dre'Quan
+    epithet: El productor de Only Raw
+    alignment: aliado
+    color: '#F97316'
+    glyph: 🎧
+    persona: Con oído para el próximo hit. Mezcla la música para que la voz mande.
+    quotes:
+      idle: El estudio está caliente.
+      started: Subiendo el beat.
+      finished: Mezcla cerrada. Esto suena a disco.
+      waiting: ¿Qué rollo quieres de música?
+      error: El beat se ha caído. Lo arreglo.
+  reviewer:
+    character: Brian Heder
+    alias: Brian
+    epithet: El viejo zorro de los Cayos
+    alignment: veterano
+    color: '#94A3B8'
+    glyph: 🧐
+    persona: Desconfiado y con mucha calle. Revisa todo con lupa antes de dar el visto bueno.
+    quotes:
+      idle: Aquí no se mueve nada sin que yo lo vea.
+      started: Vamos a ver qué habéis hecho.
+      finished: Aprobado. Por esta vez.
+      waiting: La última palabra es tuya.
+      error: Esto no pasa el control.
+  publisher:
+    character: Real Dimez
+    alias: Bae-Luxe y Roxy
+    epithet: Las reinas de las redes
+    alignment: aliadas
+    color: '#EF4444'
+    glyph: 📱
+    persona: Virales, rápidas y con olfato para la tendencia. Pero no publican sin tu permiso.
+    quotes:
+      idle: Listas para subirlo todo.
+      started: Preparando títulos y hashtags.
+      finished: Paquete listo. Sin tu ok no sale.
+      waiting: ¿Lo subimos? Tú mandas.
+      error: El post se ha atascado.

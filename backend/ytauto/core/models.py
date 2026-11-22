@@ -61,6 +61,13 @@ class Section(str, Enum):
 Intensity = Literal["low", "medium", "high"]
 
 
+class BriefAnswer(BaseModel):
+    """Una pregunta del director antes de empezar y la respuesta del usuario."""
+
+    question: str
+    answer: str = ""
+
+
 class ProjectSpec(BaseModel):
     """Lo que introduce el usuario en el formulario de creación."""
 
@@ -83,6 +90,9 @@ class ProjectSpec(BaseModel):
     mode: Literal["auto", "custom"] = "auto"
     fps: int = 30
     require_script_approval: bool = True
+    channel: str = "general"  # canal al que pertenece (config/channels.yaml)
+    brief: list[BriefAnswer] = Field(default_factory=list)  # preguntas del director y respuestas
+    license_map: dict[str, str] = Field(default_factory=dict)  # agente → licencia de Claude elegida
 
     @field_validator("duration_s")
     @classmethod
