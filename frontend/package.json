@@ -12,8 +12,13 @@
     "build:demo": "VITE_DEMO=1 vite build --outDir dist-demo"
   },
   "dependencies": {
+    "@fontsource/anton": "^5.3.0",
+    "@fontsource/fredoka": "^5.3.0",
+    "@fontsource/jetbrains-mono": "^5.3.0",
     "@fontsource/lilita-one": "^5.3.0",
+    "@fontsource/manrope": "^5.3.0",
     "@fontsource/nunito": "^5.3.0",
+    "@fontsource/oswald": "^5.3.0",
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.2",
     "@react-three/postprocessing": "^3.2.2",

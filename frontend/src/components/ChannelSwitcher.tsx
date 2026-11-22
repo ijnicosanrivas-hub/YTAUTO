@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useLive } from "../store";
 import type { Channel, ChannelOverview } from "../types";
+import { ChannelArt } from "./ChannelArt";
 import { Face } from "./Face";
+import { Icon } from "./Icon";
 
 /** Arriba a la izquierda: la cara del director del canal activo. Al pulsar se despliegan los demás canales. */
 export function ChannelSwitcher({ channels, overview }: { channels: Channel[]; overview: ChannelOverview[] }) {
@@ -34,14 +36,16 @@ export function ChannelSwitcher({ channels, overview }: { channels: Channel[]; o
           <b>{current.name}</b>
           <small>{current.director?.character ?? "Director"} · dirige</small>
         </span>
-        <span className="ch-caret" aria-hidden>{open ? "▴" : "▾"}</span>
+        <span className="ch-caret" aria-hidden><Icon name="chevron" size={16} /></span>
         {busy(current.id) > 0 && <span className="ch-live" title="Agentes trabajando">{busy(current.id)}</span>}
       </button>
       {open && (
         <div className="ch-menu" role="menu" aria-label="Canales">
+          <div className="ch-menu-title">Cambiar de canal</div>
           {channels.map((c) => (
             <button key={c.id} role="menuitem" className={`ch-option${c.id === channel ? " active" : ""}`} onClick={() => pick(c.id)}
               style={{ ["--ch" as string]: c.accent }}>
+              <ChannelArt profile={c.theme} />
               <Face theme={c.theme} agent="director" persona={c.director} size={56} image={c.has_director_image} ring={c.accent} />
               <span className="ch-text">
                 <b>{c.name}</b>

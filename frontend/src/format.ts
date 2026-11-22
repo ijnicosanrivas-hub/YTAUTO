@@ -68,6 +68,10 @@ export function describeEvent(type: string, data: Record<string, unknown>): stri
   switch (type) {
     case "agent.started":
       return "comienza";
+    case "project.created":
+      return `nuevo proyecto${data.name ? `: ${data.name}` : ""}`;
+    case "project.status":
+      return `proyecto → ${statusLabel(String(data.status))}${data.reason ? ` (${data.reason})` : ""}`;
     case "agent.finished":
       return String(data.summary ?? "termina");
     case "agent.progress":

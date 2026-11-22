@@ -3,6 +3,7 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { UNAUTHORIZED_EVENT, setToken } from "./api";
 import { useApi } from "./components/ui";
 import { ChannelSwitcher } from "./components/ChannelSwitcher";
+import { Icon } from "./components/Icon";
 import { withChannel } from "./channels";
 import { useLive } from "./store";
 import type { Channel, ChannelOverview, Theme } from "./types";
@@ -22,20 +23,27 @@ import Providers from "./pages/Providers";
 // La sala 3D carga Three.js: se descarga solo al abrirla.
 const ProductionRoom = lazy(() => import("./pages/ProductionRoom"));
 
-const NAV: { page: string; label: string; icon: string }[] = [
-  { page: "dashboard", label: "Panel", icon: "▦" },
-  { page: "new", label: "Nuevo vídeo", icon: "＋" },
-  { page: "projects", label: "Proyectos", icon: "▤" },
-  { page: "room", label: "Sala de agentes", icon: "◉" },
-  { page: "agents", label: "Agentes", icon: "◎" },
-  { page: "licenses", label: "Licencias", icon: "⚿" },
-  { page: "library", label: "Biblioteca", icon: "▧" },
-  { page: "providers", label: "Proveedores", icon: "⚙" },
-  { page: "budget", label: "Presupuesto", icon: "€" },
-  { page: "models", label: "Modelos Claude", icon: "✦" },
-  { page: "exports", label: "Exportaciones", icon: "⇩" },
-  { page: "history", label: "Historial", icon: "☰" },
+const NAV: { title: string; items: { page: string; label: string; icon: string }[] }[] = [
+  { title: "Producción", items: [
+    { page: "dashboard", label: "Panel", icon: "panel" },
+    { page: "new", label: "Nuevo vídeo", icon: "plus" },
+    { page: "projects", label: "Proyectos", icon: "projects" },
+    { page: "room", label: "Sala de agentes", icon: "room" },
+  ] },
+  { title: "Equipo", items: [
+    { page: "agents", label: "Agentes", icon: "agents" },
+    { page: "licenses", label: "Licencias", icon: "key" },
+    { page: "models", label: "Modelos Claude", icon: "sparkles" },
+  ] },
+  { title: "Recursos", items: [
+    { page: "library", label: "Biblioteca", icon: "library" },
+    { page: "providers", label: "Proveedores", icon: "plug" },
+    { page: "budget", label: "Presupuesto", icon: "wallet" },
+    { page: "exports", label: "Exportaciones", icon: "download" },
+    { page: "history", label: "Historial", icon: "history" },
+  ] },
 ];
+const PAGE_LABEL: Record<string, string> = Object.fromEntries(NAV.flatMap((g) => g.items.map((i) => [i.page, i.label])));
 
 /** Pide el código de acceso cuando el servidor lo exige (acceso desde el móvil) y falta o es incorrecto. */
 function TokenGate() {
@@ -89,10 +97,9 @@ export default function App() {
   const current = channels?.find((c) => c.id === channel);
   useEffect(() => {
     // Estética general neutra para todas las pantallas; el perfil del canal solo aporta su color de acento.
+    // Cada canal viste toda la app con su piel (colores, tipografía de rótulos, formas); ver styles.css.
     const root = document.documentElement;
-    root.dataset.theme = "dark";
-    root.dataset.profile = theme.id;
-    root.style.setProperty("--accent", current?.accent ?? theme.palette.accent);
+    root.dataset.profile = current?.theme ?? theme.id;
     document.title = `${current?.name ?? "YTAUTO"} · YTAUTO`;
   }, [theme, current]);
 
@@ -139,25 +146,36 @@ export default function App() {
       page = <Dashboard />;
   }
 
+  const pageLabel = route.page === "room" ? theme.room_title : PAGE_LABEL[route.page] ?? "Panel";
   return (
     <div className="layout">
       <nav className="sidebar" aria-label="Secciones">
         {channels?.length ? <ChannelSwitcher channels={channels} overview={overview?.channels ?? []} /> : <div className="brand">YTAUTO</div>}
-        {NAV.map((n) => (
-          <a key={n.page} href={`#/${n.page}`} className={`nav-item ${route.page === n.page ? "active" : ""}`}>
-            <span className="nav-icon" aria-hidden>{n.icon}</span>
-            <span className="nav-label">{n.page === "room" ? theme.room_title : n.label}</span>
-            {n.page === "projects" && pending > 0 && <span className="nav-count">{pending}</span>}
-          </a>
+        {NAV.map((g) => (
+          <div key={g.title} className="nav-group">
+            <div className="nav-group-title">{g.title}</div>
+            {g.items.map((n) => (
+              <a key={n.page} href={`#/${n.page}`} className={`nav-item ${route.page === n.page ? "active" : ""}`}>
+                <Icon name={n.icon} />
+                <span className="nav-label">{n.page === "room" ? theme.room_title : n.label}</span>
+                {n.page === "projects" && pending > 0 && <span className="nav-count">{pending}</span>}
+              </a>
+            ))}
+          </div>
         ))}
         <div className="sidebar-foot">
-          <span className={`badge ${connected ? "s-completed" : "s-error"}`}>
-            {DEMO ? "Demostración" : connected ? "En directo" : "Sin conexión"}
-          </span>
-          <span className="muted">4 canales · YTAUTO</span>
+          <span className="brandmark"><i />YTAUTO · 4 CANALES</span>
         </div>
       </nav>
-      <main className="main">{page}</main>
+      <main className="main">
+        <header className="topbar">
+          <div className="crumbs"><span className="dot" />{current?.name ?? "YTAUTO"}<span>/</span><b>{pageLabel}</b></div>
+          <span className="spacer" />
+          <span className={`live-pill${connected || DEMO ? "" : " off"}`}><i />{DEMO ? "Demostración" : connected ? "En directo" : "Sin conexión"}</span>
+          {route.page !== "new" && <a className="btn primary small" href="#/new"><Icon name="plus" size={15} />Nuevo vídeo</a>}
+        </header>
+        {page}
+      </main>
       <TokenGate />
     </div>
   );

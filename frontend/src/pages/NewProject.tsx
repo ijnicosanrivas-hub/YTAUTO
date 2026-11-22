@@ -60,7 +60,7 @@ export default function NewProject() {
 
   return (
     <>
-      <PageHead title="Nuevo vídeo" subtitle={`Canal ${ch?.name ?? channel}: cuéntale la idea al director, contesta sus preguntas, elige licencias y lanza`} />
+      <PageHead title="Nuevo vídeo" subtitle={`Cuéntale la idea a ${ch?.director?.character ?? "tu director"}, contesta sus preguntas, elige las licencias y lanza la producción en ${ch?.name ?? channel}.`} />
       <ol className="stepper" aria-label="Pasos">
         {STEPS.map((s, i) => (
           <li key={s} className={i === step ? "active" : i < step ? "done" : ""}>
@@ -118,21 +118,28 @@ export default function NewProject() {
               {brief.source === "base" && <p className="muted small">Claude no está disponible ahora: uso mi cuestionario base.</p>}
             </div>
           </div>
-          {brief.questions.map((q) => (
-            <div key={q.id} className="question">
-              <label htmlFor={`q-${q.id}`}><b>{q.question}</b></label>
-              {q.why && <div className="muted small">{q.why}</div>}
-              {q.kind === "choice" && q.options.length > 0 && (
-                <div className="chips">
-                  {q.options.map((o) => (
-                    <button type="button" key={o} className={`chip${answers[q.id] === o ? " on" : ""}`} onClick={() => setAnswers((a) => ({ ...a, [q.id]: o }))}>{o}</button>
-                  ))}
+          <div className="chat">
+            {brief.questions.map((q) => (
+              <div key={q.id} className="question">
+                <span className="q-avatar"><Face theme={ch?.theme ?? theme.id} agent="director" persona={ch?.director} size={40} image={ch?.has_director_image} /></span>
+                <div className="bubble">
+                  <label htmlFor={`q-${q.id}`}><b>{q.question}</b></label>
+                  {q.why && <div className="muted small">{q.why}</div>}
                 </div>
-              )}
-              <input id={`q-${q.id}`} value={answers[q.id] ?? ""} onChange={(e) => setAnswers((a) => ({ ...a, [q.id]: e.target.value }))}
-                placeholder={q.kind === "choice" ? "…o escribe tu propia respuesta" : "Tu respuesta (puedes dejarla vacía)"} />
-            </div>
-          ))}
+                <div className="answer">
+                  {q.kind === "choice" && q.options.length > 0 && (
+                    <div className="chips">
+                      {q.options.map((o) => (
+                        <button type="button" key={o} className={`chip${answers[q.id] === o ? " on" : ""}`} onClick={() => setAnswers((a) => ({ ...a, [q.id]: o }))}>{o}</button>
+                      ))}
+                    </div>
+                  )}
+                  <input id={`q-${q.id}`} value={answers[q.id] ?? ""} onChange={(e) => setAnswers((a) => ({ ...a, [q.id]: e.target.value }))}
+                    placeholder={q.kind === "choice" ? "…o escribe tu propia respuesta" : "Tu respuesta (puedes dejarla vacía)"} />
+                </div>
+              </div>
+            ))}
+          </div>
           <div className="row">
             <button className="btn" onClick={() => setStep(0)}>← Idea</button>
             <span className="muted">Duración: {duration} s</span>

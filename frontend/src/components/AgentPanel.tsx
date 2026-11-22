@@ -20,8 +20,8 @@ const time = (iso: string) => {
 };
 
 /** Expediente del agente seleccionado: estado real, tarea actual, estadísticas y últimas acciones. */
-export function AgentPanel({ agent, persona, station, phases, actions, quote, onClose, onOverview }: {
-  agent: AgentState; persona?: Persona; station?: Station; phases: PipelinePhase[]; actions: Action[]; quote?: string;
+export function AgentPanel({ agent, persona, station, phases, actions, quote, onClose, onOverview, face }: {
+  agent: AgentState; persona?: Persona; station?: Station; phases: PipelinePhase[]; actions: Action[]; quote?: string; face?: React.ReactNode;
   onClose: () => void; onOverview: () => void;
 }) {
   const [, tick] = useState(0);
@@ -35,7 +35,7 @@ export function AgentPanel({ agent, persona, station, phases, actions, quote, on
   return (
     <aside className="agent-panel" aria-label={`Expediente de ${persona?.character ?? agent.title}`}>
       <header>
-        <span className="glyph">{persona?.glyph ?? "●"}</span>
+        {face ?? <span className="glyph">{persona?.glyph ?? "●"}</span>}
         <div className="who">
           <b style={persona ? { color: persona.color } : undefined}>{persona?.character ?? agent.title}</b>
           <span className="muted">{agent.title}{persona ? ` · ${persona.epithet}` : ""}</span>

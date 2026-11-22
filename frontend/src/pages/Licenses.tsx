@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api } from "../api";
 import { groupByChannel, tokens } from "../channels";
+import { Icon } from "../components/Icon";
 import { ErrorBox, PageHead, useAction, useApi } from "../components/ui";
 import { shortDate } from "../format";
 import { useLive } from "../store";
@@ -219,10 +220,10 @@ export default function Licenses() {
       </PageHead>
       <ErrorBox error={error} />
       <div className="grid cols-4">
-        <div className="panel"><h2>Tokens este mes</h2><div className="kpi">{tokens(data?.totals.tokens_month)}</div></div>
-        <div className="panel"><h2>Llamadas este mes</h2><div className="kpi">{data?.totals.calls_month ?? "—"}</div></div>
-        <div className="panel"><h2>Licencias</h2><div className="kpi">{lics.length}<small>{limited ? `${limited} agotada${limited > 1 ? "s" : ""}` : "todas disponibles"}</small></div></div>
-        <div className="panel"><h2>Llamadas simultáneas</h2><div className="kpi">{data?.claude_slots ?? "—"}<small>una por licencia</small></div></div>
+        <div className="panel kpi-card"><span className="kpi-icon"><Icon name="coins" size={20} /></span><h2>Tokens este mes</h2><div className="kpi">{tokens(data?.totals.tokens_month)}</div><div className="kpi-foot">entre los 4 canales</div></div>
+        <div className="panel kpi-card"><span className="kpi-icon"><Icon name="sparkles" size={20} /></span><h2>Llamadas este mes</h2><div className="kpi">{data?.totals.calls_month ?? "—"}</div><div className="kpi-foot">a Claude, todas las licencias</div></div>
+        <div className="panel kpi-card"><span className="kpi-icon"><Icon name="key" size={20} /></span><h2>Licencias</h2><div className="kpi">{lics.length}</div><div className="kpi-foot" style={limited ? { color: "var(--danger)" } : undefined}>{limited ? `${limited} agotada${limited > 1 ? "s" : ""} ahora` : "todas disponibles"}</div></div>
+        <div className="panel kpi-card"><span className="kpi-icon"><Icon name="bolt" size={20} /></span><h2>Llamadas simultáneas</h2><div className="kpi">{data?.claude_slots ?? "—"}</div><div className="kpi-foot">una por licencia, nunca dos</div></div>
       </div>
       {editing && <div style={{ marginTop: 14 }}><LicenseForm draft={editing} channels={data?.channels ?? []} onDone={done} /></div>}
       {groupByChannel(lics, order).map(([ch, list]) => (

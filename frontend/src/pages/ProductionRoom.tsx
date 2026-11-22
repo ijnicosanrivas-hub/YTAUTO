@@ -3,7 +3,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Bloom, EffectComposer, Vignette } from "@react-three/postprocessing";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
-import { PageHead, useApi } from "../components/ui";
+import { useApi } from "../components/ui";
 import { AGENT_COLOR, elapsed, statusLabel } from "../format";
 import { useLive } from "../store";
 import { bodyColor, displayName, personaFor, quoteFor } from "../theme";
@@ -15,6 +15,7 @@ import { Avatar } from "../minifig/Avatar";
 import { avatarFor, avatarHeight } from "../minifig/avatars";
 import { Playroom, ProfileBase, ProfileStations, Stadium, ViceCity, WORLD_BACKGROUND } from "../minifig/Worlds";
 import { withChannel } from "../channels";
+import { Face } from "../components/Face";
 import { FigureFx, Workstation } from "../minifig/Extras";
 import { Minifig } from "../minifig/Minifig";
 import { SpriteFigure, useFigureTexture } from "../minifig/SpriteFigure";
@@ -379,17 +380,6 @@ export default function ProductionRoom() {
   }, [selected, liveEvents, events, phaseAgent]);
   return (
     <>
-      <div className="room-head">
-      <PageHead title={theme.room_title} subtitle={`${theme.room_subtitle}. Haz clic en un agente para ver su expediente: todo lo que se mueve corresponde a actividad real.`}>
-        <span className={`badge ${connected ? "s-completed" : "s-error"}`}>{connected ? "En directo" : "Sin conexión"}</span>
-        <span className="badge s-running">{running.length} en ejecución</span>
-        {hub && (
-          <button className="btn" title="Calidad gráfica: alta usa brillos, antialiasing y sombras; baja es para equipos modestos" onClick={() => { const q = quality === "high" ? "low" : "high"; setQuality(q); try { localStorage.setItem("ytauto.calidad", q === "high" ? "alta" : "baja"); } catch { /* sin almacenamiento */ } }}>
-            Calidad: {quality === "high" ? "alta" : "baja"}
-          </button>
-        )}
-      </PageHead>
-      </div>
       <div className="panel room">
         <Canvas shadows={quality === "high"} dpr={quality === "high" ? [1, 2] : 1} camera={{ position: hub ? OVERVIEW.position : [0, 7, 11], fov: hub ? 46 : 50 }} onPointerMissed={() => hub && select(null)}>
           {!initial.locked && hub && <PerformanceMonitor onDecline={() => setQuality("low")} />}
@@ -401,16 +391,29 @@ export default function ProductionRoom() {
           )}
         </Canvas>
         <div ref={overlay} className="room-overlay" />
+        <div className="room-hud">
+          <h1>{theme.room_title}</h1>
+          <p>{theme.room_subtitle}. Pulsa un agente para abrir su expediente.</p>
+          <div className="hud-chips">
+            <span className="hud-chip" style={{ color: connected ? "var(--ok)" : "var(--danger)" }}><i />{connected ? "En directo" : "Sin conexión"}</span>
+            <span className="hud-chip" style={{ color: "var(--info)" }}><i />{running.length} en ejecución</span>
+            {hub && (
+              <button className="hud-chip" title="Calidad gráfica: alta usa brillos, antialiasing y sombras; baja es para equipos modestos" onClick={() => { const q = quality === "high" ? "low" : "high"; setQuality(q); try { localStorage.setItem("ytauto.calidad", q === "high" ? "alta" : "baja"); } catch { /* sin almacenamiento */ } }}>
+                Calidad {quality === "high" ? "alta" : "baja"}
+              </button>
+            )}
+          </div>
+        </div>
         {hub && sel && (
           <AgentPanel agent={sel} persona={personaFor(theme, sel.name)} station={stationFor(theme.id, sel.name)} phases={data?.pipeline ?? []} actions={actions}
+            face={<Face theme={theme.id} agent={sel.name} persona={personaFor(theme, sel.name)} size={58} image={theme.id === "gotham"} />}
             quote={quoteFor(theme, sel)} onClose={() => select(null)} onOverview={() => select(null)} />
         )}
         <div className="room-legend">
           {(["idle", "running", "waiting", "error"] as const).map((s) => (
             <span key={s}><span style={{ color: AGENT_COLOR[s] }}>●</span> {statusLabel(s)}</span>
           ))}
-          <span>○ anillo = estado</span>
-          {hub && <span>clic en un agente = expediente · Esc = vista general</span>}
+          {hub && <span>Esc = vista general</span>}
         </div>
       </div>
     </>

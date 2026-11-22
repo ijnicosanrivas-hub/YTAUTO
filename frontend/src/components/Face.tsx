@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getToken } from "../api";
 import { figureImage } from "../channels";
 import { avatarFor } from "../minifig/avatars";
@@ -10,6 +10,7 @@ export function Face({ theme, agent, persona, size = 44, image = true, ring }: {
   theme: string; agent: string; persona: PersonaRef | null | undefined; size?: number; image?: boolean; ring?: string;
 }) {
   const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [theme, agent]); // otra imagen: se vuelve a intentar
   const color = persona?.color ?? "#64748b";
   const style: React.CSSProperties = { width: size, height: size, borderColor: ring ?? color, ["--face" as string]: color };
   const showImg = image && !failed;
