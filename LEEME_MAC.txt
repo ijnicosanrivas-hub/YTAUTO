@@ -1,0 +1,28 @@
+YTAUTO - Fabrica de videos cortos (Mac)
+=======================================
+
+PARA INSTALARLO (se hace una sola vez, 10-30 minutos):
+
+ 1. Haz doble clic en el archivo ZIP: el Mac lo descomprime solo en una carpeta YTAUTO.
+ 2. Abre la carpeta YTAUTO y haz doble clic en  INSTALAR_MAC.command
+ 3. La primera vez el Mac puede decir que "no se puede abrir porque es de un desarrollador no identificado".
+    - Ve a  Ajustes del Sistema > Privacidad y seguridad, baja hasta el final y pulsa "Abrir igualmente".
+    - O bien: clic derecho (o Ctrl + clic) sobre INSTALAR_MAC.command > Abrir > Abrir.
+    - Si nada de eso aparece: abre la app Terminal, escribe  bash  y un espacio, arrastra INSTALAR_MAC.command
+      a la ventana y pulsa Intro.
+ 4. Espera. Se instala todo solo: Homebrew, Python, FFmpeg, la voz (eSpeak NG) y Claude Code.
+    Te pedira la contrasena de tu Mac una vez (para Homebrew). Al escribirla no se ve nada: es normal.
+ 5. Al final te pide iniciar sesion en Claude con TU cuenta. Se abre el navegador; al terminar, escribe /exit
+
+PARA USARLO (cada vez):
+
+ - Doble clic en YTAUTO.command del Escritorio (o en INICIAR_MAC.command dentro de la carpeta).
+ - Se abre el navegador con la fabrica. No cierres la ventana del Terminal mientras la uses.
+
+REQUISITOS: macOS 13 (Ventura) o posterior, Mac con chip Apple (M1/M2/M3/M4) o Intel, conexion a Internet,
+10 GB libres y tu propia cuenta de Claude.
+
+SI ALGO FALLA: abre DIAGNOSTICO_MAC.command. Te dice que falta y como arreglarlo.
+Tambien puedes volver a abrir INSTALAR_MAC.command: retoma lo que falte sin repetir lo hecho.
+
+Guia completa: docs/MAC.md

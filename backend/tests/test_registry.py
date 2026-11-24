@@ -169,7 +169,7 @@ def test_every_adapter_satisfies_its_contract(name, tmp_path, test_library):
     if cls.requires_network:
         pytest.skip(f"{name} habla con un servicio externo: se prueba contra un servidor simulado en test_integrations.py")
     provider = cls(params=params, credentials=creds)
-    if name in ("piper", "espeak") and not provider.health_check().ok:
+    if name in ("piper", "espeak", "macos_say") and not provider.health_check().ok:
         pytest.skip(f"{name} no disponible en este entorno: {provider.health_check().message}")
     report = run_contract(provider, workdir=tmp_path, allow_paid=True)
     failed = [f"{c.name}: {c.detail}" for c in report.checks if not c.passed]

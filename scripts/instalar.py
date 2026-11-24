@@ -84,7 +84,8 @@ def main(argv: list[str] | None = None) -> int:
             return result.returncode
     if not args.dry_run and ensure_env():
         print("\nSe ha creado el archivo de configuracion .env (puedes dejarlo como esta).")
-    print("\nListo. Para usar YTAUTO, abre INICIAR_WINDOWS.bat (Windows) o ejecuta: python -m ytauto.api.server")
+    print("\nListo. Para usar YTAUTO, abre " + ("INICIAR_MAC.command" if sys.platform == "darwin" else
+          "INICIAR_WINDOWS.bat" if sys.platform.startswith("win") else "python -m ytauto.api.server"))
     return 0
 
 

@@ -51,6 +51,12 @@ def local_tool_dirs(root: Path = REPO_ROOT, env: MutableMapping[str, str] | None
     ffmpeg = root / "tools" / "ffmpeg" / "bin"
     if (ffmpeg / ("ffmpeg.exe" if windows else "ffmpeg")).is_file():
         dirs.append(ffmpeg)
+    if (platform or sys.platform) == "darwin":
+        # Lanzado desde el Finder, el PATH no siempre incluye Homebrew ni Claude Code (~/.local/bin).
+        home = env.get("HOME")
+        for d in (Path("/opt/homebrew/bin"), Path("/usr/local/bin"), (Path(home) if home else Path.home()) / ".local" / "bin"):
+            if d.is_dir():
+                dirs.append(d)
     if windows:
         espeak = find_espeak_dir(root)
         if espeak:
