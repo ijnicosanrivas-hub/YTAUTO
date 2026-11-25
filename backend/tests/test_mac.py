@@ -11,7 +11,8 @@ from ytauto.core import tools
 from ytauto.providers.voice import macos_say
 
 ROOT = Path(__file__).resolve().parents[2]
-COMMANDS = ["INSTALAR_MAC.command", "INICIAR_MAC.command", "INICIAR_MAC_SIN_CLAUDE.command", "DIAGNOSTICO_MAC.command"]
+COMMANDS = ["INSTALAR_MAC.command", "INICIAR_MAC.command", "INICIAR_MAC_SIN_CLAUDE.command", "INICIAR_MAC_MOVIL.command",
+            "DIAGNOSTICO_MAC.command"]
 
 
 @pytest.mark.parametrize("name", COMMANDS)

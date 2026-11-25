@@ -20,6 +20,9 @@ abran sin avisos. No usa `sudo` por su cuenta.
 ## Uso
 - `INICIAR_MAC.command` (o `YTAUTO.command` del Escritorio): diagnóstico y abre la fábrica en el navegador.
 - `INICIAR_MAC_SIN_CLAUDE.command`: modo de prueba sin Claude.
+- `INICIAR_MAC_MOVIL.command`: igual, pero accesible desde el iPad/iPhone en el mismo Wi-Fi (`--lan`, con código de
+  acceso). El iPad no puede ejecutar la fábrica (iPadOS no permite Python, FFmpeg ni Claude Code): la usa a través del
+  navegador mientras el Mac o el PC la ejecutan.
 - `DIAGNOSTICO_MAC.command`: qué está instalado y qué falta (prueba la voz generando una frase de verdad).
 
 Los lanzadores cargan Homebrew (`/opt/homebrew` en Apple Silicon, `/usr/local` en Intel) y `~/.local/bin`, y
