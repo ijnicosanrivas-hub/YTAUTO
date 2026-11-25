@@ -611,3 +611,18 @@ html[data-profile="kids"] .lm-edit summary { color: var(--accent-2); }
 .spend-box { margin-top: 14px; padding: 12px; border-radius: var(--radius-sm); border: 1px dashed var(--line, #ffffff22); display: flex; flex-direction: column; gap: 8px; }
 .spend-box h4 { margin: 0; }
 .acc-form label.acc-always { flex-direction: row; align-items: center; font-weight: 500; color: var(--text); }
+
+/* ---------------------------------------------------------------- música de YouTube */
+.yt-steps ol { margin: 6px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; line-height: 1.45; }
+.yt-drop { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center;
+  min-height: 170px; border: 2px dashed color-mix(in srgb, var(--accent) 45%, transparent); cursor: pointer; }
+.yt-drop:hover { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+.yt-drop .icon { color: var(--accent); }
+.yt-pending { display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; }
+.yt-item { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: var(--radius-sm); background: var(--fill); }
+.yt-item label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; font-weight: 600; }
+.yt-item label.row { flex-direction: row; align-items: center; font-weight: 500; }
+.yt-table { width: 100%; border-collapse: collapse; }
+.yt-table th { text-align: left; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; padding: 6px 8px; }
+.yt-table td { padding: 8px; border-top: 1px solid var(--line, #ffffff14); vertical-align: middle; }
+.table-wrap { overflow-x: auto; }

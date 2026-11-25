@@ -165,7 +165,7 @@ def test_library(tmp_path_factory):
 def test_every_adapter_satisfies_its_contract(name, tmp_path, test_library):
     cls = discover(include_mocks=True)[name]
     creds = {k: "test-credential-000" for k in cls.required_credentials}
-    params = {"root": str(test_library)} if "root" in cls.default_params and name.startswith("library") else {}
+    params = {"root": str(test_library)} if "root" in cls.default_params and (name.startswith("library") or name == "youtube_audio_library") else {}
     if cls.requires_network:
         pytest.skip(f"{name} habla con un servicio externo: se prueba contra un servidor simulado en test_integrations.py")
     provider = cls(params=params, credentials=creds)

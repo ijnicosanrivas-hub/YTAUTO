@@ -58,7 +58,7 @@ function ElevenCard({ v, onChanged }: { v: AccountsView["elevenlabs"]; onChanged
       <div className="acc-head">
         <span className="acc-logo eleven" aria-hidden>11</span>
         <div>
-          <h3>ElevenLabs <small className="muted">· voz</small></h3>
+          <h3>ElevenLabs <small className="muted">· solo voz</small></h3>
           <div className="muted small">{v.linked ? `Plan ${sub?.tier ?? "—"} · clave ${v.key_hint ?? ""}` : "Sin vincular"}</div>
         </div>
         <span className="spacer" />

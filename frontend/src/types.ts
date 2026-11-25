@@ -365,3 +365,11 @@ export interface HiggsView {
 }
 
 export interface AccountsView { elevenlabs: ElevenView; higgsfield: HiggsView; always: string[] }
+
+// ---------------------------------------------------------------- música de la Biblioteca de audio de YouTube Studio
+export interface YtTrack {
+  file: string; size_mb: number; title: string | null; artist: string | null; genre: string | null; mood: string | null;
+  license: string | null; attribution_required: boolean; attribution: string | null; duration_s: number | null; usable: boolean;
+}
+
+export interface YtMusicView { tracks: YtTrack[]; genres: string[]; moods: string[]; folder: string; audio_library_url: string; help_url: string }

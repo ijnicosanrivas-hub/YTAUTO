@@ -32,6 +32,10 @@ def build_library(root: Path) -> Path:
     music = root / "music"
     write_wav(music / "calm_piano.wav", synth_music("calm", 10))
     (music / "calm_piano.wav.json").write_text(json.dumps({**lic, "mood": "calm"}))
+    yal = root / "youtube_audio_library"  # pistas importadas de la Biblioteca de audio de YouTube Studio
+    write_wav(yal / "Calm Waves - Demo.wav", synth_music("calm", 10))
+    (yal / "Calm Waves - Demo.wav.json").write_text(json.dumps({"license": "YouTube Audio Library", "mood": "Calm",
+                                                                 "commercial_use": True}))
     s = root / "sfx"
     for e in ("whoosh", "impact"):
         write_wav(s / f"{e}.wav", sfx(e))

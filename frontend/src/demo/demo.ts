@@ -109,6 +109,20 @@ const DEMO_ACCOUNTS = {
   },
 };
 
+const YT_T = (title: string, artist: string, genre: string, mood: string, d: number, cc = false) => ({
+  file: `${title} - ${artist}.mp3`, size_mb: +(d / 30).toFixed(1), title, artist, genre, mood, duration_s: d, usable: true,
+  license: cc ? "Creative Commons (YouTube Audio Library)" : "YouTube Audio Library", attribution_required: cc,
+  attribution: cc ? `${title} by ${artist} is licensed under a Creative Commons Attribution 4.0 licence.` : null,
+});
+/** Pistas de ejemplo (demostración): nombres inventados, no son pistas reales de la biblioteca. */
+const DEMO_YT_MUSIC = {
+  folder: "library/youtube_audio_library", audio_library_url: "https://www.youtube.com/audiolibrary", help_url: "https://support.google.com/youtube/answer/3376882",
+  genres: ["Ambient", "Children's", "Cinematic", "Classical", "Country & Folk", "Dance & Electronic", "Hip Hop & Rap", "Holiday", "Jazz & Blues", "Pop", "R&B & Soul", "Reggae", "Rock"],
+  moods: ["Angry", "Bright", "Calm", "Dark", "Dramatic", "Funky", "Happy", "Inspirational", "Romantic", "Sad"],
+  tracks: [YT_T("Ejemplo Noche Gotham", "Demo", "Cinematic", "Dark", 154), YT_T("Ejemplo Persecución", "Demo", "Cinematic", "Dramatic", 128, true),
+    YT_T("Ejemplo Patio de Juegos", "Demo", "Children's", "Happy", 96), YT_T("Ejemplo Estadio", "Demo", "Hip Hop & Rap", "Funky", 142)],
+};
+
 export async function demoGet(path: string): Promise<unknown> {
   const p = path.split("?")[0];
   const ch = chOf(path);
@@ -124,6 +138,7 @@ export async function demoGet(path: string): Promise<unknown> {
   }
   if (p === "/api/licenses") return demoLicenses();
   if (p === "/api/accounts") return DEMO_ACCOUNTS;
+  if (p === "/api/music/youtube") return DEMO_YT_MUSIC;
   if (p === "/api/accounts/elevenlabs/voices") return [{ id: "demo-lucia", name: "Lucía · narradora" }, { id: "demo-mateo", name: "Mateo · épico" }];
   if (p === "/api/licenses/plan") return { plan: Object.fromEntries(ORDER.map((a) => [a, null])), license_map: {} };
   if (p === "/api/health") return { ok: true, llm: { provider: "demostración", ok: true, message: "Sin servidor" }, worker: false };

@@ -82,6 +82,10 @@ def _link_or_copy(src: Path, dst: Path) -> None:
         shutil.copy2(src, dst)
 
 
+YT_MUSIC_OFF_PLATFORM = ("La música viene de la Biblioteca de audio de YouTube: es segura en YouTube, pero YouTube no "
+                         "garantiza su uso fuera de su plataforma. Revisa la licencia de la pista antes de publicar aquí.")
+
+
 class PublisherAgent(Agent):
     name = "publisher"
     title = "Publicador"
@@ -176,22 +180,29 @@ class PublisherAgent(Agent):
         frame = ctx.workspace.dir("exports") / "thumb_frame.png"
         ctx.providers.query(ProviderCategory.RENDERING, "extract_frame", master, 1.0, frame,
                             project_id=ctx.project_id)
+        credit, yt_music = self._music_credit(ctx)
         package: dict[str, dict] = {}
         for item in meta.items:
             prof = profiles[item.platform]
-            fields = fit_hashtags(prof, item.title, item.description, item.hashtags)
+            description = item.description
+            if credit and credit not in description:
+                # Licencia Creative Commons: el crédito al artista es obligatorio en la descripción.
+                description = f"{description.rstrip()}\n\n🎵 {credit}".strip()
+            fields = fit_hashtags(prof, item.title, description, item.hashtags)
             thumb = None
             if prof.thumbnail.get("supported", False):
                 thumb = str(compose_thumbnail(
                     frame, item.title or script.internal_title,
                     ctx.workspace.dir("exports") / f"{item.platform}_thumb.jpg",
                     safe_top=prof.safe_area.get("top", 220)))
-            manual = self._manual_package(ctx, prof, fields, Path(exports[item.platform]["path"]), thumb)
+            extra = [YT_MUSIC_OFF_PLATFORM] if yt_music and item.platform != "youtube_shorts" else []
+            manual = self._manual_package(ctx, prof, fields, Path(exports[item.platform]["path"]), thumb, extra)
             package[item.platform] = {
                 "title": fields.title or item.title, "description": fields.description or fields.caption or "",
                 "hashtags": fields.hashtags, "thumbnail": thumb, "fields": fields.model_dump(mode="json"),
                 "issues": validate_fields(prof, fields), "manual_dir": str(manual),
-                "publish_notes": prof.publish.notes, "unaudited_private_only": prof.publish.unaudited_private_only,
+                "publish_notes": [*prof.publish.notes, *extra],
+                "music_credit": credit, "unaudited_private_only": prof.publish.unaudited_private_only,
                 "privacy_options": prof.publish.privacy_options,
                 "public_url_required": prof.publish.public_url_required,
                 "profile_verified_at": prof.verified_at,
@@ -201,8 +212,17 @@ class PublisherAgent(Agent):
                            summary=f"Metadatos, miniaturas y paquetes manuales para {', '.join(package)}",
                            artifacts={"publish_package": str(path)})
 
+    @staticmethod
+    def _music_credit(ctx: AgentContext) -> tuple[str | None, bool]:
+        """(crédito obligatorio de la música, ¿es de la Biblioteca de audio de YouTube?)."""
+        try:
+            sound = ctx.workspace.load("sound", "sound_manifest", SoundManifest)
+        except Exception:  # noqa: BLE001 - sin mezcla registrada no hay crédito que añadir
+            return None, False
+        return sound.music_credit, sound.music_provider == "youtube_audio_library"
+
     def _manual_package(self, ctx: AgentContext, prof: PlatformProfile, fields: PublishFields, video: Path,
-                        thumb: str | None) -> Path:
+                        thumb: str | None, extra_notes: list[str] | None = None) -> Path:
         """Carpeta lista para publicar a mano (también cuando la API oficial no lo permite)."""
         d = ctx.workspace.dir("exports") / "manual" / prof.id
         _link_or_copy(video, d / "video.mp4")
@@ -210,7 +230,7 @@ class PublisherAgent(Agent):
             _link_or_copy(Path(thumb), d / "miniatura.jpg")
         text = [f"Título: {fields.title}"] if fields.title and fields.title != fields.caption else []
         text.append(fields.description or fields.caption or "")
-        notes = "\n".join(f"- {n}" for n in prof.publish.notes) or "- Ninguna conocida."
+        notes = "\n".join(f"- {n}" for n in [*prof.publish.notes, *(extra_notes or [])]) or "- Ninguna conocida."
         (d / "LEEME.txt").write_text(MANUAL_README.format(
             display_name=prof.display_name, thumb_line="miniatura.jpg     miniatura propuesta" if thumb else
             "(esta plataforma no usa miniatura propia en su API)", text_block="\n".join(text), notes=notes,

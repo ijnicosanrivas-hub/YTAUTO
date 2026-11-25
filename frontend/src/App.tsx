@@ -21,6 +21,7 @@ import ProjectDetail from "./pages/ProjectDetail";
 import Projects from "./pages/Projects";
 import Providers from "./pages/Providers";
 import Accounts from "./pages/Accounts";
+import YouTubeMusic from "./pages/YouTubeMusic";
 
 // La sala 3D carga Three.js: se descarga solo al abrirla.
 const ProductionRoom = lazy(() => import("./pages/ProductionRoom"));
@@ -40,6 +41,7 @@ const NAV: { title: string; items: { page: string; label: string; icon: string }
   ] },
   { title: "Recursos", items: [
     { page: "accounts", label: "Cuentas conectadas", icon: "link" },
+    { page: "music", label: "Música de YouTube", icon: "music" },
     { page: "library", label: "Biblioteca", icon: "library" },
     { page: "providers", label: "Proveedores", icon: "plug" },
     { page: "budget", label: "Presupuesto", icon: "wallet" },
@@ -133,6 +135,9 @@ export default function App() {
       break;
     case "accounts":
       page = <Accounts />;
+      break;
+    case "music":
+      page = <YouTubeMusic />;
       break;
     case "library":
       page = <Library />;

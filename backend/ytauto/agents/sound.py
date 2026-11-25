@@ -7,7 +7,11 @@ from ..core.errors import ProviderError, ProviderNotConfigured
 from ..core.models import CreativeBrief, Script, Section
 from ..core.timeline import EditManifest, SoundManifest, VoiceManifest
 from ..providers.interfaces import (
-    AudioMixSpec, AudioTrack, MusicRequest, ProviderCategory, SFXRequest,
+    AudioMixSpec,
+    AudioTrack,
+    MusicRequest,
+    ProviderCategory,
+    SFXRequest,
 )
 from .base import Agent, AgentContext, AgentResult
 
@@ -36,6 +40,7 @@ class SoundAgent(Agent):
                 tracks.append(AudioTrack(path=Path(vs.path), start_s=vs.start_s + vs.voice_offset_s, role="voice"))
 
         music_id = None
+        music_provider = music_credit = None
         if (ctx.spec.music or "").lower() not in ("none", "sin música", "no"):
             self.progress(ctx, phase, 0.2, "Música")
             mood = ctx.spec.music or brief.music_direction or script.music
@@ -45,6 +50,9 @@ class SoundAgent(Agent):
                     MusicRequest(mood=mood, duration_s=total, out_dir=out_dir), project_id=ctx.project_id,
                 )
                 music_id = music.id
+                music_provider = music.provider
+                if music.metadata.get("attribution_required") and music.license.attribution:
+                    music_credit = music.license.attribution
                 tracks.append(AudioTrack(path=Path(music.path), role="music", gain_db=MUSIC_GAIN_DB,
                                          loop=(music.duration_s or 0) < total, fade_in_s=0.5, fade_out_s=1.5))
             except (ProviderNotConfigured, ProviderError) as e:
@@ -84,7 +92,8 @@ class SoundAgent(Agent):
             AudioMixSpec(tracks=tracks, duration_s=total, duck_music_under_voice=True, out_path=mix_path),
             project_id=ctx.project_id,
         )
-        manifest = SoundManifest(mix_path=str(mix_path), music_asset_id=music_id, sfx=sfx_log, duration_s=total)
+        manifest = SoundManifest(mix_path=str(mix_path), music_asset_id=music_id, music_provider=music_provider,
+                                 music_credit=music_credit, sfx=sfx_log, duration_s=total)
         path = ctx.workspace.save("sound", "sound_manifest", manifest)
         return AgentResult(
             summary=f"Mezcla: voz + {'música' if music_id else 'sin música'} + {len(sfx_log)} efectos, −14 LUFS",

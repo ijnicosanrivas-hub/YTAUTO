@@ -54,5 +54,7 @@ class EditManifest(BaseModel):
 class SoundManifest(BaseModel):
     mix_path: str
     music_asset_id: str | None = None
+    music_provider: str | None = None
+    music_credit: str | None = None  # atribución obligatoria (p. ej. Creative Commons) para la descripción
     sfx: list[dict] = Field(default_factory=list)
     duration_s: float

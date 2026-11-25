@@ -6,7 +6,8 @@ import { ErrorBox, PageHead, useAction, useApi } from "../components/ui";
 import { PLATFORM_LABEL } from "../format";
 import { paidAccounts } from "../accounts";
 import { useLive } from "../store";
-import type { AccountsView, BriefQuestions, Channel, LicensesView, ProjectSpec, ProjectView } from "../types";
+import { MUSIC_CHOICES, musicSpec, musicWarnings } from "../music";
+import type { AccountsView, BriefQuestions, Channel, LicensesView, ProjectSpec, ProjectView, YtMusicView } from "../types";
 
 const AGENTS = ["chief", "director", "scriptwriter", "resources", "voice", "editor", "sound", "reviewer", "publisher"];
 const ROLE: Record<string, string> = {
@@ -28,6 +29,10 @@ export default function NewProject() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [picked, setPicked] = useState<Record<string, string>>({}); // agente → licencia ("" = automática)
   const [approveScript, setApproveScript] = useState(true);
+  const [musicChoice, setMusicChoice] = useState<string>("auto");
+  const [musicStyle, setMusicStyle] = useState("");
+  const { data: ytMusic } = useApi<YtMusicView>(musicChoice === "youtube" ? "/api/music/youtube" : null);
+  const musicWarn = musicWarnings(musicChoice, ytMusic?.tracks.filter((x) => x.usable).length ?? null, platforms);
   const { data: lic } = useApi<LicensesView>(step >= 2 ? "/api/licenses" : null);
   const { data: plan } = useApi<{ plan: Record<string, string | null> }>(step >= 2 ? `/api/licenses/plan?channel=${channel}` : null);
   const { data: accounts } = useApi<AccountsView>(step >= 3 ? "/api/accounts" : null);
@@ -58,6 +63,7 @@ export default function NewProject() {
     const license_map = Object.fromEntries(Object.entries(picked).filter(([, v]) => v));
     const body: ProjectSpec = {
       name: nameFromIdea(idea), topic: nameFromIdea(idea), idea, duration_s: duration, language, intensity: "medium",
+      ...musicSpec(musicChoice, musicStyle),
       platforms, budget_max_eur: spending ? Math.max(0, Number(budgetEur) || 0) : 0, mode: "auto", require_script_approval: approveScript, subtitle_mode: null,
       channel, brief: qa, license_map,
     };
@@ -110,7 +116,22 @@ export default function NewProject() {
                 <option value="es">Español</option><option value="en">Inglés</option><option value="pt">Portugués</option><option value="fr">Francés</option>
               </select>
             </label>
+            <label className="field">Música
+              <select value={musicChoice} onChange={(e) => setMusicChoice(e.target.value)}>
+                {MUSIC_CHOICES.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+              </select>
+            </label>
+            {musicChoice !== "none" && (
+              <label className="field">Estilo de la música <small className="muted">(opcional)</small>
+                <input value={musicStyle} onChange={(e) => setMusicStyle(e.target.value)} placeholder="p. ej. épica y tensa, alegre, tranquila…" />
+              </label>
+            )}
           </div>
+          {musicWarn.map((w) => (
+            <div key={w.text} className={`alert ${w.level === "info" ? "info" : ""}`}>
+              <span>{w.text}{w.link && <> <a href={w.link}>Importar pistas</a></>}</span>
+            </div>
+          ))}
           <ErrorBox error={ask.error} />
           <div className="row">
             <span className="spacer" />
@@ -251,7 +272,7 @@ export default function NewProject() {
                   <div className="muted small">Si una cuenta no se marca, su parte se hace con las herramientas gratuitas.</div>
                 </div>
               )}
-              <p className="muted small">{duration} s · {platforms.map((p) => PLATFORM_LABEL[p]).join(", ")} · {spending ? `gasto máximo ${Number(budgetEur) || 0} €` : "sin gasto externo (0 €)"}</p>
+              <p className="muted small">{duration} s · {platforms.map((p) => PLATFORM_LABEL[p]).join(", ")} · música: {MUSIC_CHOICES.find((m) => m.id === musicChoice)?.label}{musicStyle ? ` (${musicStyle})` : ""} · {spending ? `gasto máximo ${Number(budgetEur) || 0} €` : "sin gasto externo (0 €)"}</p>
             </div>
           </div>
           <ErrorBox error={launch.error} />

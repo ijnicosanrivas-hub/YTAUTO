@@ -20,6 +20,7 @@ KEY = "sk_test_ELEVEN_0123456789"
 @pytest.fixture
 def env(tmp_path, monkeypatch):
     monkeypatch.delenv("YTAUTO_MASTER_KEY", raising=False)
+    monkeypatch.delenv("YTAUTO_API_TOKEN", raising=False)
     s = Settings.from_env(load_env_file=False)
     s.data_dir, s.projects_dir = tmp_path / "data", tmp_path / "projects"
     s.db_path, s.logs_dir, s.backups_dir = tmp_path / "data/y.db", tmp_path / "logs", tmp_path / "b"

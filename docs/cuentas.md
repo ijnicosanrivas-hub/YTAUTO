@@ -44,3 +44,29 @@ saldo en higgsfield.ai. Los términos de uso comercial de lo generado se consult
 Código: `backend/ytauto/providers/higgsfield.py`, `providers/video/higgsfield.py`, `providers/image/higgsfield.py`,
 `providers/voice/elevenlabs.py`, `api/accounts_api.py`, `frontend/src/pages/Accounts.tsx`. Pruebas:
 `tests/test_higgsfield.py`, `tests/test_accounts.py`, `tests/test_integrations.py` (siempre con servicios simulados).
+
+## Música: Biblioteca de audio de YouTube Studio (y ElevenLabs solo para la voz)
+ElevenLabs se usa **únicamente para la voz** (no hay adaptador de música ni efectos de ElevenLabs; lo comprueba
+`tests/test_youtube_music.py`). La música, cuando se elige en «Nuevo vídeo» → **Música: Biblioteca de audio de YouTube
+Studio**, sale de pistas de esa biblioteca.
+
+Dato oficial (Ayuda de YouTube, https://support.google.com/youtube/answer/3376882):
+- La biblioteca está solo en YouTube Studio (youtube.com/audiolibrary); cada pista se descarga a mano (MP3). **No hay
+  API**: YTAUTO no entra en tu cuenta ni descarga nada solo.
+- Es música «copyright-safe»: Content ID no la reclama y se puede monetizar en YouTube.
+- Las pistas Creative Commons exigen el crédito del artista en la descripción (texto copiado de «License type»).
+- YouTube **no garantiza** el uso fuera de su plataforma («can't give legal guidance… off the platform»).
+
+Cómo funciona:
+1. **Recursos → Música de YouTube**: arrastras los MP3 descargados, indicas género y ánimo (filtros de la biblioteca)
+   y, si es Creative Commons, pegas el crédito (obligatorio para importarla). Se guardan en
+   `library/youtube_audio_library/` con su ficha `.json` (fuera de git).
+2. En «Nuevo vídeo» eliges la música (Automática / Biblioteca de audio de YouTube Studio / Sin música) y, opcional, un
+   estilo («épica y tensa»…). El agente de sonido elige la pista cuyo ánimo encaja (tensa → Dark/Dramatic, alegre →
+   Happy/Bright…). Si no hay pistas importadas, usa la música automática y lo anota.
+3. Si la pista exige crédito, el publicador lo añade solo a la descripción de cada plataforma.
+4. Los paquetes de TikTok e Instagram llevan un aviso (en la app y en su `LEEME.txt`) para revisar la licencia de la
+   pista antes de publicar fuera de YouTube.
+
+La biblioteca se registra detrás de la música procedural: la música automática nunca la usa si no se pide.
+Código: `providers/music/youtube_audio_library.py`, `api/music_api.py`, `frontend/src/pages/YouTubeMusic.tsx`.
