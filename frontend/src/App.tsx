@@ -20,6 +20,7 @@ import Models from "./pages/Models";
 import ProjectDetail from "./pages/ProjectDetail";
 import Projects from "./pages/Projects";
 import Providers from "./pages/Providers";
+import Accounts from "./pages/Accounts";
 
 // La sala 3D carga Three.js: se descarga solo al abrirla.
 const ProductionRoom = lazy(() => import("./pages/ProductionRoom"));
@@ -38,6 +39,7 @@ const NAV: { title: string; items: { page: string; label: string; icon: string }
     { page: "models", label: "Modelos Claude", icon: "sparkles" },
   ] },
   { title: "Recursos", items: [
+    { page: "accounts", label: "Cuentas conectadas", icon: "link" },
     { page: "library", label: "Biblioteca", icon: "library" },
     { page: "providers", label: "Proveedores", icon: "plug" },
     { page: "budget", label: "Presupuesto", icon: "wallet" },
@@ -128,6 +130,9 @@ export default function App() {
       break;
     case "monitor":
       page = <Monitor />;
+      break;
+    case "accounts":
+      page = <Accounts />;
       break;
     case "library":
       page = <Library />;

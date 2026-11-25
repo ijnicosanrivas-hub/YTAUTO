@@ -331,3 +331,37 @@ export interface LiveView {
   channels: { id: string; name: string; theme: string }[];
   now: string;
 }
+
+// ---------------------------------------------------------------- cuentas conectadas (ElevenLabs, Higgsfield)
+export interface ElevenSubscription {
+  tier: string; used: number; limit: number; remaining: number; pct: number;
+  resets_at_unix: number | null; status?: string | null; commercial_use: boolean | null; can_extend: boolean;
+}
+
+export interface ElevenView {
+  linked: boolean; has_key: boolean; key_hint?: string; role?: string | null; error?: string;
+  models: Record<string, string>;
+  plans: Record<string, { label: string; credits: number; price_eur: number; note: string }>;
+  params?: { model_id?: string; default_voice_id?: string; price_per_1k_chars_eur?: number; reserve_credits?: number };
+  subscription?: ElevenSubscription;
+  always_authorized: boolean;
+}
+
+export interface HiggsUse { linked: boolean; role: string | null; model: string | null; resolution?: string | null; max_per_video: number | null }
+
+export interface HiggsView {
+  cli_path: string | null;
+  status: { installed: boolean; logged_in: boolean | null; credits: number | null; plan?: string | null; message: string };
+  video_models: Record<string, string>;
+  image_models: Record<string, string>;
+  plans: Record<string, { label: string; credits: number; price_eur: number }>;
+  video: HiggsUse;
+  image: HiggsUse;
+  price_per_credit_eur: number | null;
+  reserve_credits: number | null;
+  require_balance_check: boolean;
+  always_authorized: Record<string, boolean>;
+  help: { api: string; cli: string };
+}
+
+export interface AccountsView { elevenlabs: ElevenView; higgsfield: HiggsView; always: string[] }

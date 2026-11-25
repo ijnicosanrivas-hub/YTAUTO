@@ -4,8 +4,9 @@ import { durationFromAnswer, groupByChannel, licenseWarning, nameFromIdea, token
 import { Face } from "../components/Face";
 import { ErrorBox, PageHead, useAction, useApi } from "../components/ui";
 import { PLATFORM_LABEL } from "../format";
+import { paidAccounts } from "../accounts";
 import { useLive } from "../store";
-import type { BriefQuestions, Channel, LicensesView, ProjectSpec, ProjectView } from "../types";
+import type { AccountsView, BriefQuestions, Channel, LicensesView, ProjectSpec, ProjectView } from "../types";
 
 const AGENTS = ["chief", "director", "scriptwriter", "resources", "voice", "editor", "sound", "reviewer", "publisher"];
 const ROLE: Record<string, string> = {
@@ -29,6 +30,12 @@ export default function NewProject() {
   const [approveScript, setApproveScript] = useState(true);
   const { data: lic } = useApi<LicensesView>(step >= 2 ? "/api/licenses" : null);
   const { data: plan } = useApi<{ plan: Record<string, string | null> }>(step >= 2 ? `/api/licenses/plan?channel=${channel}` : null);
+  const { data: accounts } = useApi<AccountsView>(step >= 3 ? "/api/accounts" : null);
+  const [spend, setSpend] = useState<Record<string, boolean>>({}); // cuenta de pago → autorizada en este vídeo
+  const [budgetEur, setBudgetEur] = useState("5");
+  const paid = paidAccounts(accounts);
+  const always = accounts?.always ?? [];
+  const spending = paid.some((a) => spend[a.id]) || always.length > 0;
   const ask = useAction();
   const launch = useAction();
 
@@ -51,10 +58,16 @@ export default function NewProject() {
     const license_map = Object.fromEntries(Object.entries(picked).filter(([, v]) => v));
     const body: ProjectSpec = {
       name: nameFromIdea(idea), topic: nameFromIdea(idea), idea, duration_s: duration, language, intensity: "medium",
-      platforms, budget_max_eur: 0, mode: "auto", require_script_approval: approveScript, subtitle_mode: null,
+      platforms, budget_max_eur: spending ? Math.max(0, Number(budgetEur) || 0) : 0, mode: "auto", require_script_approval: approveScript, subtitle_mode: null,
       channel, brief: qa, license_map,
     };
-    const res = await launch.run(() => api.post<ProjectView>("/api/projects", body));
+    const res = await launch.run(async () => {
+      const created = await api.post<ProjectView>("/api/projects", body);
+      // Autorizaciones de gasto explícitas y registradas (puerta spend:<cuenta>), solo las marcadas.
+      for (const a of paid.filter((x) => spend[x.id]))
+        await api.post(`/api/projects/${created.project.id}/approve`, { gate: `spend:${a.id}`, approved: true, note: "Autorizado al crear el vídeo" });
+      return created;
+    });
     if (res) location.hash = `#/projects/${res.project.id}`;
   };
 
@@ -217,7 +230,28 @@ export default function NewProject() {
               <label className="row" style={{ color: "var(--text)", marginTop: 12 }}>
                 <input type="checkbox" checked={approveScript} onChange={(e) => setApproveScript(e.target.checked)} /> Quiero aprobar el guion antes de producir
               </label>
-              <p className="muted small">{duration} s · {platforms.map((p) => PLATFORM_LABEL[p]).join(", ")} · sin gasto externo (0 €)</p>
+              {(paid.length > 0 || always.length > 0) && (
+                <div className="spend-box">
+                  <h4>Cuentas de pago para este vídeo</h4>
+                  <div className="spend-list">
+                    {paid.map((a) => (
+                      <label key={a.id} className={`spend-item ${a.low ? "low" : ""}`}>
+                        <input type="checkbox" checked={!!spend[a.id]} onChange={(e) => setSpend((s) => ({ ...s, [a.id]: e.target.checked }))} />
+                        <span><b>{a.label}</b> <span className="muted small">· {a.detail}{a.low ? " · saldo bajo" : ""}</span></span>
+                      </label>
+                    ))}
+                    {always.length > 0 && <div className="muted small">Con autorización permanente: {always.join(", ")} (<a href="#/accounts">cambiar</a>)</div>}
+                  </div>
+                  {spending && (
+                    <label className="row" style={{ marginTop: 8 }}>
+                      Tope de gasto de este vídeo
+                      <input type="number" min="0" step="0.5" value={budgetEur} onChange={(e) => setBudgetEur(e.target.value)} style={{ width: 90 }} /> €
+                    </label>
+                  )}
+                  <div className="muted small">Si una cuenta no se marca, su parte se hace con las herramientas gratuitas.</div>
+                </div>
+              )}
+              <p className="muted small">{duration} s · {platforms.map((p) => PLATFORM_LABEL[p]).join(", ")} · {spending ? `gasto máximo ${Number(budgetEur) || 0} €` : "sin gasto externo (0 €)"}</p>
             </div>
           </div>
           <ErrorBox error={launch.error} />

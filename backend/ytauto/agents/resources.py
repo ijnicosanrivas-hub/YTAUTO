@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-from ..core.errors import ProviderError, ProviderNotConfigured
+from ..core.errors import BudgetExceeded, ProviderError, ProviderNotConfigured, SpendNotAuthorized
 from ..core.workspace import stable_hash
 from ..core.models import CreativeBrief, MediaAsset, ScenePrompt, Script
 from ..providers.interfaces import ImageRequest, ProviderCategory, VideoRequest
@@ -143,7 +143,8 @@ class ResourcesAgent(Agent):
                                  exclude_hashes=exclude, out_dir=out_dir),
                     project_id=ctx.project_id, scene_index=p.scene_index,
                 )
-            except (ProviderNotConfigured, ProviderError) as e:
+            except (ProviderNotConfigured, ProviderError, SpendNotAuthorized, BudgetExceeded) as e:
+                # Un clip de pago sin autorización o fuera de presupuesto no bloquea el vídeo: la escena usa imagen.
                 ctx.memory.add_decision(self.name, f"Escena {p.scene_index}: sin clip de vídeo ({e}); uso imagen")
         return ctx.providers.invoke(
             ProviderCategory.IMAGE, "generate",

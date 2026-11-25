@@ -3,8 +3,38 @@ import { api } from "../api";
 import { groupByChannel, tokens } from "../channels";
 import { Icon } from "../components/Icon";
 import { ErrorBox, PageHead, useAction, useApi } from "../components/ui";
+import { fmtCredits } from "../accounts";
 import { STATUS, ago, clock, duration, meterTone, minutesUntil } from "../monitor";
-import type { Channel, License, LiveLicense, LiveUsage, LiveView } from "../types";
+import type { AccountsView, Channel, License, LiveLicense, LiveUsage, LiveView } from "../types";
+
+/** Saldos reales de las cuentas de voz y vídeo (ElevenLabs y Higgsfield), junto a los tokens de Claude. */
+function AccountStrip() {
+  const { data } = useApi<AccountsView>("/api/accounts", { pollMs: 60000 });
+  if (!data) return null;
+  const e = data.elevenlabs;
+  const h = data.higgsfield;
+  if (!e.linked && !h.video.linked && !h.image.linked) return null;
+  const tone = (left: number | null, total: number | null) => left == null || !total ? "var(--muted)" : left / total < 0.1 ? "var(--danger)" : left / total < 0.3 ? "var(--warn)" : "var(--ok)";
+  const hTotal = h.plans.plus?.credits ?? null;
+  return (
+    <div className="acc-strip">
+      {e.linked && (
+        <a className="panel acc-mini" href="#/accounts">
+          <div className="row"><span className="acc-logo eleven" style={{ width: 28, height: 28, fontSize: 12 }}>11</span><b>ElevenLabs</b><span className="spacer" /><span className="muted small">{e.subscription?.tier ?? ""}</span></div>
+          <div className="acc-big"><b style={{ fontSize: 22 }}>{fmtCredits(e.subscription?.remaining)}</b><span className="muted small">créditos de voz libres</span></div>
+          <div className="meter"><i style={{ width: `${e.subscription ? 100 - e.subscription.pct : 0}%`, background: tone(e.subscription?.remaining ?? null, e.subscription?.limit ?? null) }} /></div>
+        </a>
+      )}
+      {(h.video.linked || h.image.linked) && (
+        <a className="panel acc-mini" href="#/accounts">
+          <div className="row"><span className="acc-logo higgs" style={{ width: 28, height: 28, fontSize: 12 }}>H</span><b>Higgsfield</b><span className="spacer" /><span className="muted small">{h.status.logged_in ? "sesión iniciada" : "sin sesión"}</span></div>
+          <div className="acc-big"><b style={{ fontSize: 22 }}>{fmtCredits(h.status.credits)}</b><span className="muted small">créditos de vídeo e imagen</span></div>
+          <div className="meter"><i style={{ width: `${h.status.credits != null && hTotal ? Math.min(100, (h.status.credits / hTotal) * 100) : 0}%`, background: tone(h.status.credits, hTotal) }} /></div>
+        </a>
+      )}
+    </div>
+  );
+}
 
 const ROLE: Record<string, string> = {
   chief: "Jefe", director: "Director", scriptwriter: "Guionista", resources: "Recursos", voice: "Voz",
@@ -187,6 +217,7 @@ export default function Monitor() {
         </span>
       </div>
       <ErrorBox error={error} />
+      <AccountStrip />
       <div className="grid cols-4">
         <div className="panel kpi-card"><span className="kpi-icon"><Icon name="coins" size={20} /></span><h2>Tokens últimas 5 h</h2><div className="kpi">{tokens(t?.used_5h)}</div><div className="kpi-foot">todas las licencias</div></div>
         <div className="panel kpi-card"><span className="kpi-icon"><Icon name="trend" size={20} /></span><h2>Ritmo ahora</h2><div className="kpi">{tokens(Math.round(t?.burn_per_min ?? 0))}<small>tokens/min</small></div><div className="kpi-foot">media de los últimos 15 min</div></div>

@@ -30,7 +30,7 @@ from ..core.workspace import Workspace
 from ..orchestrator.pipeline import PHASES, PIPELINE
 from ..providers.interfaces import ProviderCategory
 from ..providers.registry import RegistryError
-from . import channels_api
+from . import accounts_api, channels_api
 from ..core.channels import channel_ids, channels
 from .board import ChannelBoards, rebuild
 
@@ -358,6 +358,7 @@ def create_api(app: App, start_worker: bool = False, token: str | None = None,
         return theme.model_dump()
 
     channels_api.register(api, app, A, boards, schedule)
+    accounts_api.register(api, app, A)
 
     @api.get("/api/figures", dependencies=A)
     def figures() -> dict[str, Any]:

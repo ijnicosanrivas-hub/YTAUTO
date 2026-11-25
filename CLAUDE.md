@@ -40,6 +40,8 @@ Arquitectura: `docs/architecture.md`. Decisiones: `docs/adr/`.
 - Paquetes: `scripts/empaquetar.py` (un ZIP por sistema con su instalador arriba) y `.github/workflows/publicar.yml` (pruebas + Releases en cada push a main).
 - Canales: `config/channels.yaml` (4 canales, cada uno con su perfil) · licencias `backend/ytauto/llm/licenses.py` ·
   entrevista del director `agents/briefing.py` · API `api/channels_api.py` · detalle en `docs/canales.md`.
+- Cuentas conectadas: ElevenLabs (clave cifrada + saldo real) y Higgsfield (CLI oficial con los créditos del plan;
+  la API es otro saldo) · `api/accounts_api.py` · `providers/higgsfield.py` · detalle en `docs/cuentas.md`.
 - `config/` modelos por agente, narrativa, perfiles de plataforma (con `verified_at`, `sources` y `unverified`: no presentar como oficial lo que no lo es).
 
 ## Modelos

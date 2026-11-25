@@ -26,6 +26,8 @@ const P: Record<string, string> = {
   trend: "M3 17l6-6 4 4 8-8M15 7h6v6",
   live: "M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM7.8 16.2a6 6 0 0 1 0-8.4M16.2 7.8a6 6 0 0 1 0 8.4M5 19a10 10 0 0 1 0-14M19 5a10 10 0 0 1 0 14",
   close: "M6 6l12 12M18 6L6 18",
+  link: "M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1",
+  mic: "M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3",
 };
 
 export function Icon({ name, size = 18, className, stroke = 1.8 }: { name: keyof typeof P | string; size?: number; className?: string; stroke?: number }) {

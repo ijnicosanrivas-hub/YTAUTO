@@ -305,11 +305,15 @@ def mp3_bytes(tmp_path_factory):
     return out.read_bytes()
 
 
-def eleven(mp3: bytes, status=200, **params):
+def eleven(mp3: bytes, status=200, sub=None, **params):
     seen = {"requests": []}
+    sub = sub if sub is not None else {"tier": "creator", "character_count": 1000, "character_limit": 121000,
+                                       "next_character_count_reset_unix": 1767225600, "status": "active"}
 
     def handler(r: httpx.Request) -> httpx.Response:
         seen["requests"].append(r)
+        if r.url.path == "/v1/user/subscription":
+            return httpx.Response(200, json=sub) if isinstance(sub, dict) else httpx.Response(sub)
         if r.url.path == "/v1/voices":
             return httpx.Response(200, json={"voices": [{"voice_id": "V1", "name": "Rachel", "labels": {"gender": "female"}}]})
         if r.url.path.startswith("/v1/text-to-speech/"):
@@ -357,6 +361,35 @@ def test_elevenlabs_satisfies_the_tts_contract_offline(tmp_path, mp3_bytes):
     p, _ = eleven(mp3_bytes, price_per_1k_chars_eur=0.3)
     report = run_contract(p, workdir=tmp_path, allow_paid=True)
     assert report.passed, [c for c in report.checks if not c.passed]
+
+
+def test_elevenlabs_reads_real_plan_credits_and_marks_commercial_license(tmp_path, mp3_bytes):
+    from ytauto.providers.voice.elevenlabs import summarize_subscription
+    p, seen = eleven(mp3_bytes, price_per_1k_chars_eur=0.18)
+    s = p.subscription()
+    assert s["tier"] == "creator" and s["limit"] == 121000 and s["remaining"] == 120000 and s["commercial_use"]
+    assert seen["requests"][-1].headers["xi-api-key"] == SECRET
+    a = p.synthesize(TTSRequest(text="Hola canal", voice_id="V1", out_path=tmp_path / "a.wav"))
+    assert a.license.commercial_use is True and a.metadata["plan"] == "creator" and a.metadata["credits"] == 10
+    assert summarize_subscription({"tier": "free", "character_count": 10, "character_limit": 10000})["commercial_use"] is False
+    free, _ = eleven(mp3_bytes, sub={"tier": "free", "character_count": 0, "character_limit": 10000}, price_per_1k_chars_eur=0.1)
+    assert free.synthesize(TTSRequest(text="hola", voice_id="V1", out_path=tmp_path / "b.wav")).license.commercial_use is False
+
+
+def test_elevenlabs_refuses_to_enter_overage_and_fails_closed(tmp_path, mp3_bytes):
+    near = {"tier": "creator", "character_count": 119500, "character_limit": 121000}
+    p, seen = eleven(mp3_bytes, sub=near, price_per_1k_chars_eur=0.18, reserve_credits=1000)
+    with pytest.raises(ProviderError) as e:
+        p.synthesize(TTSRequest(text="x" * 600, voice_id="V1", out_path=tmp_path / "a.wav"))
+    assert not e.value.transient and "casi agotados" in str(e.value)
+    assert not any(r.url.path.startswith("/v1/text-to-speech") for r in seen["requests"])  # no se llamó a la síntesis
+    flash, _ = eleven(mp3_bytes, sub=near, price_per_1k_chars_eur=0.18, reserve_credits=1000, model_id="eleven_flash_v2_5")
+    assert flash.credits_for("x" * 600) == 300  # Flash gasta medio crédito por carácter
+    broken, seen2 = eleven(mp3_bytes, sub=503, price_per_1k_chars_eur=0.18)
+    with pytest.raises(ProviderError) as e2:
+        broken.synthesize(TTSRequest(text="hola", voice_id="V1", out_path=tmp_path / "c.wav"))
+    assert "no se gasta a ciegas" in str(e2.value)
+    assert not any(r.url.path.startswith("/v1/text-to-speech") for r in seen2["requests"])
 
 
 # ======================================================================== OpenAI Images

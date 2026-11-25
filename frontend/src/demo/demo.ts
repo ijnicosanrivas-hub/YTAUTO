@@ -86,6 +86,29 @@ function overview() {
 }
 
 /** Respuesta a las lecturas de la API en modo demostración. */
+/** Cuentas de ejemplo (demostración): ElevenLabs Creator y Higgsfield Plus vinculadas. */
+const DEMO_ACCOUNTS = {
+  always: [],
+  elevenlabs: {
+    linked: true, has_key: true, key_hint: "sk_…a91f", role: "primary", always_authorized: false,
+    models: { eleven_multilingual_v2: "Multilingual v2 · máxima calidad (1 crédito/carácter)", eleven_flash_v2_5: "Flash v2.5 · rápido y barato (0,5 créditos/carácter)" },
+    plans: { creator: { label: "Creator", credits: 121000, price_eur: 20, note: "22 $/mes (11 $ el primer mes) ≈ 20 €" } },
+    params: { model_id: "eleven_multilingual_v2", default_voice_id: "demo-lucia", price_per_1k_chars_eur: 0.165, reserve_credits: 2000 },
+    subscription: { tier: "creator", used: 38420, limit: 121000, remaining: 82580, pct: 31.8, resets_at_unix: Math.floor(Date.now() / 1000) + 12 * 86400, commercial_use: true, can_extend: true },
+  },
+  higgsfield: {
+    cli_path: "C:\\YTAUTO\\tools\\higgsfield\\hf.exe", status: { installed: true, logged_in: true, credits: 1015, plan: "plus", message: "Sesión iniciada" },
+    video_models: { kling3_0_turbo: "Kling 3.0 Turbo · económico y rápido", seedance_2_5: "Seedance 2.5 · máxima calidad" },
+    image_models: { nano_banana_flash: "Nano Banana 2 · personajes y estilo dibujo", gpt_image_2_6: "GPT Image 2.6 · alta fidelidad", text2image_soul_v2: "Soul V2 · estilo cinematográfico" },
+    plans: { plus: { label: "Plus", credits: 1200, price_eur: 59 } },
+    video: { linked: true, role: "primary", model: "kling3_0_turbo", resolution: "720p", max_per_video: 3 },
+    image: { linked: true, role: "primary", model: "nano_banana_flash", max_per_video: 8 },
+    price_per_credit_eur: 0.049167, reserve_credits: 60, require_balance_check: true,
+    always_authorized: { higgsfield_video: false, higgsfield_image: false },
+    help: { api: "https://higgsfield.ai/creator-hub/help-center/integrations/what-is-the-higgsfield-api", cli: "https://higgsfield.ai/creator-hub/help-center/integrations/how-do-i-access-higgsfield-via-cli" },
+  },
+};
+
 export async function demoGet(path: string): Promise<unknown> {
   const p = path.split("?")[0];
   const ch = chOf(path);
@@ -100,6 +123,8 @@ export async function demoGet(path: string): Promise<unknown> {
       claude: { calls: 40 + ps.length * 37, seconds: 5200, lanes: {} }, agents: Object.values(useLive.getState().boards[ch] ?? {}) };
   }
   if (p === "/api/licenses") return demoLicenses();
+  if (p === "/api/accounts") return DEMO_ACCOUNTS;
+  if (p === "/api/accounts/elevenlabs/voices") return [{ id: "demo-lucia", name: "Lucía · narradora" }, { id: "demo-mateo", name: "Mateo · épico" }];
   if (p === "/api/licenses/plan") return { plan: Object.fromEntries(ORDER.map((a) => [a, null])), license_map: {} };
   if (p === "/api/health") return { ok: true, llm: { provider: "demostración", ok: true, message: "Sin servidor" }, worker: false };
   if (p === "/api/events") return [];
