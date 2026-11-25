@@ -1,9 +1,39 @@
 # YTAUTO — Fábrica multiagente de vídeos cortos
 
-Convierte una temática en un vídeo vertical (**1080×1920, H.264/AAC, 45–75 s**) listo para
-**Instagram Reels, YouTube Shorts y TikTok**, con nueve agentes coordinados por un agente jefe.
-La inteligencia es **una única licencia Claude Pro** (a través de Claude Code, sin API) y todo lo
-audiovisual funciona **en local y gratis** por defecto; los proveedores externos son opcionales e intercambiables.
+Convierte una idea en un vídeo vertical (**1080×1920, 45–75 s**) para **Reels, Shorts y TikTok**, con nueve agentes
+coordinados por un jefe, en **4 canales en paralelo** (General · GTA VI · YouTube Kids · Deportes). Se instala en el
+ordenador de cada persona; la inteligencia es Claude (licencias por canal) y lo audiovisual funciona en local y gratis.
+
+## Descargar e instalar
+
+Descarga el paquete de tu sistema desde **[Releases](https://github.com/ijnicosanrivas-hub/YTAUTO/releases/latest)**, descomprímelo y abre el instalador que verás arriba
+del todo. Se publica solo en cada versión (ver `.github/workflows/publicar.yml`).
+
+| Sistema | Paquete | Instalador | Guía |
+| --- | --- | --- | --- |
+| Windows 10/11 | [YTAUTO-windows.zip](https://github.com/ijnicosanrivas-hub/YTAUTO/releases/download/ultima-version/YTAUTO-windows.zip) | `INSTALAR_WINDOWS.bat` | [instaladores/windows](instaladores/windows/LEEME.txt) · [docs/WINDOWS.md](docs/WINDOWS.md) |
+| Mac (chip Apple o Intel) | [YTAUTO-mac.zip](https://github.com/ijnicosanrivas-hub/YTAUTO/releases/download/ultima-version/YTAUTO-mac.zip) | `INSTALAR_MAC.command` | [instaladores/mac](instaladores/mac/LEEME.txt) · [docs/MAC.md](docs/MAC.md) |
+| Linux (Ubuntu, Debian, Fedora, Arch) | [YTAUTO-linux.zip](https://github.com/ijnicosanrivas-hub/YTAUTO/releases/download/ultima-version/YTAUTO-linux.zip) | `bash instalar.sh` | [instaladores/linux](instaladores/linux/LEEME.txt) |
+| Android, iPhone, iPad | — (se usa desde el ordenador, como app) | modo móvil del ordenador | [instaladores/movil](instaladores/movil/LEEME.md) |
+| Demostración web (Netlify, Telegram) | [YTAUTO-web-demo.zip](https://github.com/ijnicosanrivas-hub/YTAUTO/releases/download/ultima-version/YTAUTO-web-demo.zip) | arrastrar a Netlify | [instaladores/web](instaladores/web/LEEME.md) |
+
+`YTAUTO-completo.zip` es el repositorio entero. Desde un clon del repositorio también sirven los lanzadores de
+`instaladores/<sistema>/` directamente: encuentran solos la carpeta de la aplicación.
+
+## Cómo está organizado
+
+| Carpeta | Contenido |
+| --- | --- |
+| `instaladores/` | Instaladores y lanzadores por sistema: `windows/`, `mac/`, `linux/`, `movil/`, `web/` |
+| `backend/` | La fábrica (Python): agentes, orquestador, cola, licencias, API |
+| `frontend/` | La interfaz (React); `dist/` ya compilada, así que no hace falta Node para usarla |
+| `config/` | Canales, temas de cada canal, modelos, narrativa y plataformas |
+| `assets/` | Recursos gráficos (personajes) |
+| `docs/` | Guías y documentación técnica |
+| `scripts/` | Instalación (`instalar.py`), paquetes (`empaquetar.py`) y utilidades |
+| `.github/workflows/` | Pruebas y publicación automática de los paquetes |
+
+Los datos de cada persona (proyectos, licencias, claves cifradas) se quedan en su ordenador, en `data/`, fuera de git.
 
 ## Qué hace
 `temática → dirección creativa → guion (con tu aprobación) → recursos → locución → montaje → música y efectos →
@@ -26,13 +56,9 @@ paquete de publicación → publicación solo con tu autorización → informe`
 Los agentes son personajes de Gotham (Batman es el jefe; el Joker, el guionista…) y la sala es *La Baticueva*.
 Es solo presentación: no cambia el contenido de los vídeos. Detalles y cómo volver al estilo clásico en `docs/theme.md`.
 
-## ¿Usas Windows y no sabes de informática?
-Sigue la **[guía para Windows](docs/WINDOWS.md)**: extraes el ZIP, haces doble clic en `INSTALAR_WINDOWS.bat`
-(instala **todo** solo: Python, Git, FFmpeg, voz y Claude Code), inicias sesión en Claude una vez y abres el icono YTAUTO.
-Para pasárselo a otras personas: **[docs/COMPARTIR.md](docs/COMPARTIR.md)**. `DIAGNOSTICO_WINDOWS.bat`
-(o `python -m ytauto doctor`) dice qué falta y cómo arreglarlo.
+## Para desarrolladores
 
-## Requisitos
+### Requisitos
 - **Python 3.11+**, **FFmpeg 6+** (con `libass`), **espeak-ng** (voz local de respaldo), **Node 20+** (interfaz).
 - **Claude Code** instalado y con sesión iniciada (`claude /login`, cuenta Pro).
 - Linux, macOS o **Windows 10/11** (ver la guía de Windows; sin WSL).
@@ -42,7 +68,7 @@ Para pasárselo a otras personas: **[docs/COMPARTIR.md](docs/COMPARTIR.md)**. `D
 sudo apt install ffmpeg espeak-ng
 ```
 
-## Instalación
+### Instalación desde el código
 ```bash
 git clone <este-repositorio> && cd YTAUTO
 python3 -m venv .venv && source .venv/bin/activate

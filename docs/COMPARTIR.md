@@ -14,7 +14,7 @@ Cualquiera con Windows 10/11 puede instalarlo **con un solo archivo**, sin insta
 > 3. Espera de 10 a 30 minutos y, al final, inicia sesión en Claude con **tu propia cuenta de Claude Pro**.
 > 4. Para usarlo: icono **YTAUTO** del Escritorio.
 
-Dentro del ZIP hay un `LEEME_PRIMERO.txt` con estos mismos pasos.
+Dentro del ZIP hay un `LEEME.txt` con estos mismos pasos. El paquete actualizado se descarga siempre de la página Releases del repositorio (`YTAUTO-windows.zip`).
 
 ## Qué necesita cada persona
 - Windows 10 (versión 1803+) o Windows 11, Internet y 10 GB libres.

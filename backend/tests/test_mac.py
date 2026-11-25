@@ -11,27 +11,28 @@ from ytauto.core import tools
 from ytauto.providers.voice import macos_say
 
 ROOT = Path(__file__).resolve().parents[2]
+MAC = ROOT / "instaladores" / "mac"
 COMMANDS = ["INSTALAR_MAC.command", "INICIAR_MAC.command", "INICIAR_MAC_SIN_CLAUDE.command", "INICIAR_MAC_MOVIL.command",
             "DIAGNOSTICO_MAC.command"]
 
 
 @pytest.mark.parametrize("name", COMMANDS)
 def test_command_files_are_valid_bash_with_unix_line_endings(name):
-    raw = (ROOT / name).read_bytes()
+    raw = (MAC / name).read_bytes()
     assert raw.startswith(b"#!/bin/bash\n") and b"\r" not in raw  # con CRLF el Terminal de macOS no los ejecuta
-    assert subprocess.run(["bash", "-n", str(ROOT / name)]).returncode == 0
+    assert subprocess.run(["bash", "-n", str(MAC / name)]).returncode == 0
     assert "sudo " not in raw.decode("utf-8")  # nunca pide privilegios por su cuenta (Homebrew los pide él mismo)
 
 
 @pytest.mark.parametrize("name", COMMANDS)
 def test_command_files_are_executable_in_the_zip(name):
     # git archive conserva el bit de ejecución: sin él, el doble clic en el Finder no hace nada
-    mode = subprocess.run(["git", "ls-files", "-s", name], cwd=ROOT, capture_output=True, text=True).stdout.split()[0]
+    mode = subprocess.run(["git", "ls-files", "-s", f"instaladores/mac/{name}"], cwd=ROOT, capture_output=True, text=True).stdout.split()[0]
     assert mode == "100755"
 
 
 def test_installer_uses_homebrew_for_ffmpeg_voice_and_python_and_the_official_claude_installer():
-    text = (ROOT / "INSTALAR_MAC.command").read_text(encoding="utf-8")
+    text = (MAC / "INSTALAR_MAC.command").read_text(encoding="utf-8")
     for pkg in ("python@3.12", "ffmpeg", "espeak-ng"):
         assert f"instalar_brew {pkg}" in text
     assert "https://claude.ai/install.sh" in text and "scripts/instalar.py" in text
@@ -41,7 +42,7 @@ def test_installer_uses_homebrew_for_ffmpeg_voice_and_python_and_the_official_cl
 
 def test_launchers_load_homebrew_and_claude_paths():
     for name in COMMANDS[1:]:
-        text = (ROOT / name).read_text(encoding="utf-8")
+        text = (MAC / name).read_text(encoding="utf-8")
         assert "/opt/homebrew/bin/brew" in text and "shellenv" in text and "$HOME/.local/bin" in text
 
 

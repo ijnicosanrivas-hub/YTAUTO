@@ -1,9 +1,12 @@
 @echo off
 setlocal EnableExtensions
 title Instalador de YTAUTO
+set "LANZ=%~dp0"
+rem Funciona desde el paquete (todo junto) o desde el repositorio (instaladores\windows)
 cd /d "%~dp0"
-set "RAIZ=%~dp0"
-set "HERR=%~dp0tools"
+if not exist "pyproject.toml" cd /d "%~dp0..\.."
+set "RAIZ=%CD%\"
+set "HERR=%CD%\tools"
 set "RESUMEN="
 
 echo.
@@ -16,7 +19,7 @@ echo  Tarda entre 10 y 30 minutos segun tu conexion. No cierres esta ventana.
 echo  No hace falta ser administrador. Si Windows pregunta algo, pulsa Si.
 echo.
 
-if not exist "%~dp0pyproject.toml" goto sin_extraer
+if not exist "%RAIZ%pyproject.toml" goto sin_extraer
 where curl >nul 2>nul
 if errorlevel 1 goto windows_antiguo
 where tar >nul 2>nul
@@ -274,5 +277,5 @@ if exist "%USERPROFILE%\OneDrive\Desktop" call :escribir_acceso "%USERPROFILE%\O
 exit /b 0
 
 :escribir_acceso
-> "%~1\YTAUTO.bat" echo @start "" "%RAIZ%INICIAR_WINDOWS.bat"
+> "%~1\YTAUTO.bat" echo @start "" "%LANZ%INICIAR_WINDOWS.bat"
 exit /b 0

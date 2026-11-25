@@ -1,6 +1,7 @@
 @echo off
 title YTAUTO - acceso desde el iPhone
 cd /d "%~dp0"
+if not exist "pyproject.toml" cd /d "%~dp0..\.."
 set PYTHONUTF8=1
 if not exist ".venv\Scripts\python.exe" goto sin_instalar
 ".venv\Scripts\python.exe" -m ytauto doctor

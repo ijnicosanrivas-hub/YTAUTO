@@ -3,8 +3,10 @@
 # Instala con Homebrew: Python 3.12, FFmpeg (con subtitulos) y la voz eSpeak NG; despues Claude Code y YTAUTO.
 # Compatible con el bash 3.2 que trae macOS.
 
-cd "$(dirname "$0")" || exit 1
-RAIZ="$(pwd)"
+LANZ="$(cd "$(dirname "$0")" && pwd)"  # carpeta de este archivo
+# Funciona desde el paquete (todo junto) o desde el repositorio (instaladores/mac)
+if [ -f "$LANZ/pyproject.toml" ]; then RAIZ="$LANZ"; else RAIZ="$(cd "$LANZ/../.." && pwd)"; fi
+cd "$RAIZ" || exit 1
 FALLOS=0
 
 titulo() { printf '\n\033[1m%s\033[0m\n' "$1"; }
@@ -35,7 +37,7 @@ fi
 
 # Lo descargado de Internet viene en «cuarentena»: se quita en esta carpeta para que los demas .command abran sin avisos.
 xattr -dr com.apple.quarantine "$RAIZ" 2>/dev/null
-chmod +x "$RAIZ"/*.command 2>/dev/null
+chmod +x "$LANZ"/*.command 2>/dev/null
 
 # ------------------------------------------------------------ 1. Homebrew
 titulo "[1/6] Homebrew (gestor de programas de Mac)"
@@ -124,7 +126,7 @@ fi
 ACCESO="$HOME/Desktop/YTAUTO.command"
 cat > "$ACCESO" <<EOF
 #!/bin/bash
-exec "$RAIZ/INICIAR_MAC.command"
+exec "$LANZ/INICIAR_MAC.command"
 EOF
 chmod +x "$ACCESO" && ok "Acceso directo creado en el Escritorio (YTAUTO.command)."
 

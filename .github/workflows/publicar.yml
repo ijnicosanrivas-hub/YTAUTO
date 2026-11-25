@@ -1,0 +1,89 @@
+# Publica los paquetes de YTAUTO para que cualquiera con acceso al repositorio los descargue:
+#   - cada push a main  → release «ultima-version» (se sustituye en cada publicación)
+#   - cada etiqueta v*  → release con ese número (p. ej. v1.2.0), que se conserva
+# Antes de publicar ejecuta todas las pruebas: si alguna falla, no se publica nada.
+name: Publicar paquetes
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publicar-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Herramientas del sistema (FFmpeg y voz)
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg espeak-ng
+      - name: Pruebas del backend
+        run: |
+          python -m pip install -e ".[dev]"
+          python -m pytest -q
+      - name: Pruebas de la interfaz
+        working-directory: frontend
+        run: |
+          npm ci
+          npx tsc --noEmit -p .
+          npm test
+
+  publicar:
+    needs: pruebas
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Demo web (Netlify / Telegram)
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build:demo
+      - name: Paquetes por sistema
+        run: python scripts/empaquetar.py --salida paquetes --version "${GITHUB_REF_NAME} · ${GITHUB_SHA::7}"
+      - name: Publicar en Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > notas.md <<'NOTAS'
+          Descarga el paquete de tu sistema, descomprímelo y abre el instalador que verás arriba del todo:
+
+          | Sistema | Paquete | Instalador |
+          | --- | --- | --- |
+          | Windows 10/11 | YTAUTO-windows.zip | INSTALAR_WINDOWS.bat |
+          | Mac (chip Apple o Intel) | YTAUTO-mac.zip | INSTALAR_MAC.command |
+          | Linux (Ubuntu, Debian, Fedora, Arch) | YTAUTO-linux.zip | bash instalar.sh |
+          | Android, iPhone, iPad | (se usa desde el ordenador) | USAR_DESDE_EL_MOVIL.md |
+          | Demostración web | YTAUTO-web-demo.zip | arrastrar a Netlify |
+
+          YTAUTO-completo.zip contiene el repositorio entero con todos los instaladores.
+          NOTAS
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            gh release create "$GITHUB_REF_NAME" paquetes/*.zip --title "YTAUTO $GITHUB_REF_NAME" --notes-file notas.md
+          else
+            gh release delete ultima-version --yes --cleanup-tag || true
+            gh release create ultima-version paquetes/*.zip --title "YTAUTO · última versión" \
+              --notes-file notas.md --target "$GITHUB_SHA" --latest
+          fi

@@ -63,18 +63,19 @@ def test_dry_run_changes_nothing(monkeypatch, capsys):
 
 
 # ---------------------------------------------------------------- scripts de Windows (revisión estática)
+WIN = ROOT / "instaladores" / "windows"
 BATS = ["INSTALAR_WINDOWS.bat", "INICIAR_WINDOWS.bat", "INICIAR_WINDOWS_SIN_CLAUDE.bat", "INICIAR_WINDOWS_MOVIL.bat", "DIAGNOSTICO_WINDOWS.bat"]
 
 
 @pytest.mark.parametrize("name", BATS)
 def test_bat_files_are_crlf_and_pure_ascii(name):
-    raw = (ROOT / name).read_bytes()
+    raw = (WIN / name).read_bytes()
     assert b"\r\n" in raw and b"\n" not in raw.replace(b"\r\n", b"")  # solo CRLF: con LF los «goto» de cmd fallan
     raw.decode("ascii")  # sin tildes: cmd.exe las corrompe según la página de códigos
 
 
 def _bat(name="INSTALAR_WINDOWS.bat") -> str:
-    return (ROOT / name).read_text(encoding="ascii")
+    return (WIN / name).read_text(encoding="ascii")
 
 
 def test_installer_is_pure_batch_without_powershell():
@@ -111,7 +112,8 @@ def test_installer_has_no_dangling_jumps_and_no_multiline_blocks():
     assert targets <= labels | {"EOF"}, targets - labels
     # Una carpeta con paréntesis (p. ej. «ytauto (1)») rompería cualquier bloque ( ... ) que expanda su ruta
     assert not re.search(r"\($", text, re.M), "bloques multilínea: usa subrutinas"
-    assert "%~dp0pyproject.toml" in text and "sin_extraer" in text  # avisa si se ejecuta desde dentro del ZIP
+    assert "%RAIZ%pyproject.toml" in text and "sin_extraer" in text  # avisa si se ejecuta desde dentro del ZIP
+    assert "cd /d \"%~dp0..\\..\"" in text  # desde el repositorio (instaladores\\windows) sube a la raíz
     for url in re.findall(r"https?://[^\s\"]+", text):
         assert url.startswith("https://"), url
 
@@ -129,7 +131,7 @@ def test_start_scripts_run_the_doctor_first_and_force_utf8():
     for name, flags in (("INICIAR_WINDOWS.bat", ("doctor", "ytauto.api.server --open")),
                         ("INICIAR_WINDOWS_SIN_CLAUDE.bat", ("doctor --no-claude", "--offline --open")),
                         ("INICIAR_WINDOWS_MOVIL.bat", ("doctor", "ytauto.api.server --lan --open"))):
-        text = (ROOT / name).read_text(encoding="ascii")
+        text = (WIN / name).read_text(encoding="ascii")
         assert "set PYTHONUTF8=1" in text and r".venv\Scripts\python.exe" in text and "cd /d" in text
         assert all(f in text for f in flags)
         labels = set(re.findall(r"^:(\w+)", text, re.M))
