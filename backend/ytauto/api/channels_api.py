@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import io
 import json
+from datetime import datetime, timezone
 import re
 from pathlib import Path
 from typing import Any, Callable
@@ -31,6 +32,12 @@ AGENT_NAMES = [c.name for c in AGENT_CLASSES]
 class BriefingIn(BaseModel):
     channel: str
     idea: str = Field(min_length=3, max_length=4000)
+
+
+class LimitsIn(BaseModel):
+    budget_5h_tokens: int | None = Field(default=None, ge=0)
+    budget_week_tokens: int | None = Field(default=None, ge=0)
+    budget_month_usd: float | None = Field(default=None, ge=0)
 
 
 class LicenseMapIn(BaseModel):
@@ -163,6 +170,30 @@ def register(api: FastAPI, app: App, deps: list, boards: ChannelBoards, schedule
         stats["claude_slots"] = app.queue.lanes()["claude"].concurrency
         return stats
 
+    @api.get("/api/licenses/live", dependencies=A)
+    def licenses_live() -> dict[str, Any]:
+        """Consumo de tokens AHORA, por licencia: ventana de 5 h, semana, mes, ritmo, freno y llamadas en curso."""
+        store = require_licenses()
+        if app.router is None:
+            raise HTTPException(503, "Enrutado de licencias no disponible")
+        names = {c.id: c.name for c in channels()}
+        out = []
+        for lic in store.list():
+            live = app.router.live(lic)
+            out.append({"id": lic.id, "name": lic.name, "plan": lic.plan, "kind": lic.kind, "channel_id": lic.channel_id,
+                        "channel_name": names.get(lic.channel_id, lic.channel_id), "enabled": lic.enabled,
+                        "budget_5h_tokens": lic.budget_5h_tokens, "budget_week_tokens": lic.budget_week_tokens,
+                        "budget_month_usd": lic.budget_month_usd, "observed_5h_tokens": lic.observed_5h_tokens, **live})
+        default = app.router.live(None)
+        totals = {"used_5h": sum(x["used_5h"] for x in out) + default["used_5h"],
+                  "burn_per_min": round(sum(x["burn_per_min"] for x in out) + default["burn_per_min"], 1),
+                  "in_flight": sum(x["in_flight"] for x in out) + default["in_flight"],
+                  "stopped": sum(1 for x in out if x["status"] in ("agotada", "freno")),
+                  "warning": sum(1 for x in out if x["status"] == "aviso")}
+        return {"licenses": out, "default": default, "totals": totals, "warn_pct": 80,
+                "channels": [c.model_dump() for c in channels()],
+                "now": datetime.now(timezone.utc).isoformat()}
+
     @api.post("/api/licenses", dependencies=A, status_code=201)
     def create_license(body: LicenseInput) -> dict[str, Any]:
         channel_or_404(body.channel_id)
@@ -184,6 +215,17 @@ def register(api: FastAPI, app: App, deps: list, boards: ChannelBoards, schedule
             raise HTTPException(400, str(e)) from e
         app.refresh_claude_slots()
         return lic.model_dump()
+
+    @api.put("/api/licenses/{lid}/limits", dependencies=A)
+    def set_license_limits(lid: str, body: LimitsIn) -> dict[str, Any]:
+        """Límites de gasto de una licencia; si ya no se superan, la licencia frenada vuelve a estar disponible."""
+        store = require_licenses()
+        lic = store.set_limits(lid, body.budget_5h_tokens, body.budget_week_tokens, body.budget_month_usd)
+        if lic.is_limited and (lic.limited_reason or "").startswith("Freno de gasto") and app.router \
+                and not app.router.live(lic)["brake"]:
+            store.clear_limit(lid)
+            app.worker.recover()  # reanuda lo que esperaba a esta licencia
+        return store.get(lid).model_dump()
 
     @api.delete("/api/licenses/{lid}", dependencies=A, status_code=204)
     def delete_license(lid: str) -> None:

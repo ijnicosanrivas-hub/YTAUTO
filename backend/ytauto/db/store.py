@@ -88,10 +88,13 @@ class SqlStateStore(StateStore):
             c.execute(insert(s.llm_usage).values(project_id=project_id, agent=agent, phase=phase,
                                                  at=utcnow().isoformat(), data=usage))
 
-    def llm_usage(self, project_id: str | None = None) -> list[dict[str, Any]]:
+    def llm_usage(self, project_id: str | None = None, since: str | None = None) -> list[dict[str, Any]]:
+        """Llamadas a Claude registradas; `since` (ISO) limita a las posteriores (el monitor solo mira 7 días/el mes)."""
         q = select(s.llm_usage)
         if project_id:
             q = q.where(s.llm_usage.c.project_id == project_id)
+        if since:
+            q = q.where(s.llm_usage.c.at >= since)
         with self.engine.connect() as c:
             rows = c.execute(q.order_by(s.llm_usage.c.id)).mappings().all()
         return [{"project_id": r["project_id"], "agent": r["agent"], "phase": r["phase"], "at": r["at"],

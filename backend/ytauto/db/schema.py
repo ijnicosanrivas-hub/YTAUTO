@@ -9,7 +9,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.engine import Engine
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 metadata = MetaData()
 
@@ -184,7 +184,16 @@ licenses = Table(
     Column("last_used_at", String),
     Column("notes", Text),
     Column("created_at", String, nullable=False),
+    # v4 · límites de gasto (frenan la licencia al alcanzarlos) y el límite real observado cuando Claude la cortó
+    Column("budget_5h_tokens", Integer),
+    Column("budget_week_tokens", Integer),
+    Column("budget_month_usd", Float),
+    Column("observed_5h_tokens", Integer),
 )
+
+# Columnas añadidas a tablas que ya existían: create_all no las añade en bases antiguas.
+ADDED_COLUMNS = {"licenses": [("budget_5h_tokens", "INTEGER"), ("budget_week_tokens", "INTEGER"),
+                              ("budget_month_usd", "FLOAT"), ("observed_5h_tokens", "INTEGER")]}
 
 app_settings = Table(
     "app_settings", metadata,
@@ -219,11 +228,16 @@ def make_engine(db_path: Path | str) -> Engine:
 def init_db(engine: Engine) -> None:
     metadata.create_all(engine)
     with engine.begin() as conn:
+        for table, cols in ADDED_COLUMNS.items():
+            have = {r[1] for r in conn.execute(text(f"PRAGMA table_info({table})"))}
+            for name, kind in cols:
+                if name not in have:
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {kind}"))
         row = conn.execute(text("SELECT value FROM meta WHERE key='schema_version'")).fetchone()
         if row is None:
             conn.execute(meta.insert().values(key="schema_version", value=str(SCHEMA_VERSION)))
         elif int(row[0]) > SCHEMA_VERSION:
             raise RuntimeError(f"La base de datos es de una versión más nueva ({row[0]}) que el código ({SCHEMA_VERSION})")
         elif int(row[0]) < SCHEMA_VERSION:
-            # v1 → v2 → v3: solo añaden tablas nuevas (create_all ya las creó); se actualiza la versión.
+            # v1 → v4: tablas nuevas (create_all) y columnas nuevas (ADDED_COLUMNS); se actualiza la versión.
             conn.execute(meta.update().where(meta.c.key == "schema_version").values(value=str(SCHEMA_VERSION)))

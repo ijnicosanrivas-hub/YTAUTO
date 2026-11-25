@@ -279,3 +279,55 @@ export interface BriefQuestions {
   source: "claude" | "base";
   director: PersonaRef | null;
 }
+
+// ------------------------------------------------------------------ monitor de tokens en vivo
+export type LiveStatus = "ok" | "aviso" | "freno" | "agotada" | "inactiva";
+
+export interface LiveUsage {
+  used_5h: number;
+  used_week: number;
+  used_month: number;
+  usd_month: number;
+  limit_5h: number | null;
+  limit_5h_source: "tuyo" | "observado" | null;
+  limit_week: number | null;
+  limit_usd: number | null;
+  pct_5h: number | null;
+  pct_week: number | null;
+  pct_usd: number | null;
+  remaining_5h: number | null;
+  burn_per_min: number;
+  eta_min: number | null;
+  window_frees_at: string | null;
+  brake: { reason: string; until: number } | null;
+  status: LiveStatus;
+  in_flight: number;
+  limited_until: number | null;
+  limited_reason: string | null;
+  spark: number[];
+  recent: { at: string; agent: string | null; tokens: number }[];
+  calls_5h: number;
+}
+
+export interface LiveLicense extends LiveUsage {
+  id: string;
+  name: string;
+  plan: string;
+  kind: "claude_session" | "api_key";
+  channel_id: string;
+  channel_name: string;
+  enabled: boolean;
+  budget_5h_tokens: number | null;
+  budget_week_tokens: number | null;
+  budget_month_usd: number | null;
+  observed_5h_tokens: number | null;
+}
+
+export interface LiveView {
+  licenses: LiveLicense[];
+  default: LiveUsage;
+  totals: { used_5h: number; burn_per_min: number; in_flight: number; stopped: number; warning: number };
+  warn_pct: number;
+  channels: { id: string; name: string; theme: string }[];
+  now: string;
+}

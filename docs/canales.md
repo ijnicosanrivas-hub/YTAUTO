@@ -43,3 +43,14 @@ agente, préstamos a otros canales y barras de los últimos 14 días. Las suscri
   (`avatars.ts`, `Avatar.tsx`), animados con el estado real de cada agente.
 - Imagen oficial de un personaje: súbela con `PUT /api/profiles/<perfil>/figures/<agente>` (PNG con fondo transparente
   recomendado) o déjala en `assets/perfiles/<perfil>/<agente>.png`. Sustituye a la figura 3D y a la cara del selector.
+
+## Monitor de tokens (en vivo)
+Página **Monitor de tokens**. Por licencia: tokens en la ventana de 5 h (como las suscripciones de Claude), últimos 7 días y
+gasto del mes (claves de API), ritmo de los últimos 15 min, cuándo se acaba a ese ritmo, cuándo se libera la ventana,
+llamadas en curso y las últimas llamadas. Se actualiza con cada llamada (eventos `license.usage` por WebSocket).
+
+- **Saldo:** Anthropic no publica cuánto le queda a una suscripción; leer el token interno de la sesión para preguntarlo
+  está prohibido (regla 2). El saldo se mide contra los límites de cada licencia (**Ajustar límites**: 5 h, semana, $/mes)
+  o contra el **límite observado**: lo gastado en la ventana cuando Claude cortó la cuenta.
+- **Freno de gasto:** si una licencia alcanza un límite, el enrutador NO llama a Claude: la marca como frenada hasta que
+  la ventana deja sitio y solo se para el proyecto que la usaba. Subir el límite la libera al momento.

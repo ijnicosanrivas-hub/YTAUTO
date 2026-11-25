@@ -13,6 +13,7 @@ import Dashboard from "./pages/Dashboard";
 import Exports from "./pages/Exports";
 import History from "./pages/History";
 import Licenses from "./pages/Licenses";
+import Monitor from "./pages/Monitor";
 import NewProject from "./pages/NewProject";
 import Library from "./pages/Library";
 import Models from "./pages/Models";
@@ -32,6 +33,7 @@ const NAV: { title: string; items: { page: string; label: string; icon: string }
   ] },
   { title: "Equipo", items: [
     { page: "agents", label: "Agentes", icon: "agents" },
+    { page: "monitor", label: "Monitor de tokens", icon: "live" },
     { page: "licenses", label: "Licencias", icon: "key" },
     { page: "models", label: "Modelos Claude", icon: "sparkles" },
   ] },
@@ -123,6 +125,9 @@ export default function App() {
       break;
     case "licenses":
       page = <Licenses />;
+      break;
+    case "monitor":
+      page = <Monitor />;
       break;
     case "library":
       page = <Library />;

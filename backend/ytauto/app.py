@@ -23,7 +23,7 @@ from .queue.worker import ProductionWorker
 MAX_LICENSE_SLOTS = 8
 
 # Eventos de alta frecuencia que no se guardan en el historial persistente.
-_EPHEMERAL_EVENTS = {"agent.progress"}
+_EPHEMERAL_EVENTS = {"agent.progress", "license.usage"}
 
 
 @dataclass
@@ -85,8 +85,12 @@ def build_app(settings: Settings, providers: ProviderGateway | None = None, llm:
     from .providers.registry.vault import load_or_create_master_key
     licenses = LicenseStore(engine, load_or_create_master_key(settings.master_key, settings.data_dir / "secrets" / "master.key"),
                             settings.data_dir)
+    def usage_rows(lid: str | None, since) -> list[dict]:
+        return [u for u in store.llm_usage(since=since.isoformat()) if u.get("license_id") == lid]
+
     router = LicenseRouter(licenses, base_llm, license_factory(settings, models, base_llm),
-                           spec_lookup=lambda pid: store.get_project(pid).spec)
+                           spec_lookup=lambda pid: store.get_project(pid).spec, usage_rows=usage_rows,
+                           on_event=lambda data: events.emit("license.usage", data=data))
     llm = router
     holder: dict[str, Orchestrator] = {}
     system = None
