@@ -37,7 +37,9 @@ Arquitectura: `docs/architecture.md`. Decisiones: `docs/adr/`.
 - `.claude/agents/*.md` instrucciones de rol de cada agente (usadas por `claude -p --agent`).
 - `instaladores/<windows|mac|linux|movil|web>/` lanzadores e instaladores por sistema (encuentran solos la raíz). Windows: `INSTALAR_WINDOWS.bat` en cmd puro (sin PowerShell); `backend/ytauto/core/tools.py` localiza FFmpeg/voz/Claude/Git Bash instalados; `frontend/dist` se versiona (el paquete no exige Node).
 - `config/theme/` tema de personajes (`YTAUTO_THEME`, por defecto `gotham`); `scripts/aplicar_tema.py` sincroniza los prompts de rol. Solo presentación.
-- Paquetes: `scripts/empaquetar.py` (un ZIP por sistema con su instalador arriba) y `.github/workflows/publicar.yml` (pruebas + Releases en cada push a main).
+- Paquetes: `scripts/empaquetar.py` (un ZIP por sistema con su instalador arriba y su lista de archivos) y `.github/workflows/publicar.yml` (pruebas + Releases en cada push a main).
+  `scripts/instalar.py` instala todo en un equipo nuevo o ACTUALIZA en su sitio la instalación existente (solo archivos
+  cambiados; nunca toca `data/`, `library/`, `projects/`, `tools/`, `.venv`, `.env`; dependencias solo si cambian).
 - Canales: `config/channels.yaml` (4 canales, cada uno con su perfil) · licencias `backend/ytauto/llm/licenses.py` ·
   entrevista del director `agents/briefing.py` · API `api/channels_api.py` · detalle en `docs/canales.md`.
 - Cuentas conectadas: ElevenLabs (clave cifrada + saldo real) y Higgsfield (CLI oficial con los créditos del plan;

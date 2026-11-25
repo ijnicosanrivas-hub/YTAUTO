@@ -20,8 +20,10 @@ echo "  =========================================================="
 echo "     INSTALADOR DE YTAUTO  -  Fabrica de videos cortos (Mac)"
 echo "  =========================================================="
 echo
-echo "  Instala TODO lo necesario: Homebrew, Python, FFmpeg, la voz y Claude Code."
-echo "  Tarda entre 10 y 30 minutos segun tu conexion. No cierres esta ventana."
+echo "  En un Mac nuevo instala TODO: Homebrew, Python, FFmpeg, la voz, Claude Code y YTAUTO."
+echo "  Si YTAUTO ya esta instalado, lo ACTUALIZA: solo cambia lo que trae de nuevo esta version"
+echo "  y no toca tus datos, claves, licencias ni proyectos."
+echo "  La primera vez tarda entre 10 y 30 minutos; una actualizacion, un par de minutos."
 echo "  Te pedira la contrasena de tu Mac una vez (para Homebrew). Al escribirla no se ve: es normal."
 
 if [ ! -f "$RAIZ/pyproject.toml" ]; then
@@ -117,18 +119,19 @@ fi
 
 # ------------------------------------------------------------ 6. YTAUTO
 titulo "[6/6] Preparando YTAUTO (puede tardar unos minutos)"
-if ! "$PY" "$RAIZ/scripts/instalar.py"; then
+# Equipo nuevo: instala todo. Ya instalado: actualiza esa instalacion (solo lo que cambie, sin tocar tus datos).
+# scripts/instalar.py crea tambien el acceso YTAUTO.command del Escritorio apuntando a la instalacion.
+"$PY" "$RAIZ/scripts/instalar.py"
+RES=$?
+if [ "$RES" = "75" ]; then
+  fallo "YTAUTO esta abierto. Cierra su ventana de Terminal y vuelve a abrir este archivo para actualizarlo."
+  salir 1
+elif [ "$RES" != "0" ]; then
   fallo "La preparacion de YTAUTO fallo. Lee el mensaje de arriba."
   salir 1
 fi
-
-# Acceso directo en el Escritorio
-ACCESO="$HOME/Desktop/YTAUTO.command"
-cat > "$ACCESO" <<EOF
-#!/bin/bash
-exec "$LANZ/INICIAR_MAC.command"
-EOF
-chmod +x "$ACCESO" && ok "Acceso directo creado en el Escritorio (YTAUTO.command)."
+DEST="$("$PY" "$RAIZ/scripts/instalar.py" --resolver-destino 2>/dev/null)"
+[ -n "$DEST" ] || DEST="$RAIZ"
 
 echo
 echo "  =========================================================="
@@ -136,7 +139,7 @@ echo "     INSTALACION TERMINADA"
 echo "  =========================================================="
 echo
 echo "  Para abrir la fabrica usa YTAUTO.command del Escritorio o INICIAR_MAC.command de esta carpeta."
-if [ "$CL" = "1" ]; then
+if [ "$CL" = "1" ] && [ "$DEST" = "$RAIZ" ]; then
   echo
   echo "  Falta UN paso: iniciar sesion en Claude, una sola vez, con TU cuenta de Claude."
   echo "  Se abrira Claude: sigue los pasos en el navegador y, al terminar, escribe /exit"

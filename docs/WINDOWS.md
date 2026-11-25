@@ -88,3 +88,12 @@ PowerShell, sin saltos rotos, esperas correctas) están comprobados en Linux. **
 Windows real**: las descargas (Python, Git, FFmpeg, voz) y el instalador de Claude Code se hacen desde sus páginas
 oficiales y pueden cambiar de dirección con el tiempo. Si algo falla, abre `DIAGNOSTICO_WINDOWS.bat`
 y manda lo que muestra a quien te pasó el programa.
+
+## Actualizar a una versión nueva
+Descomprime el paquete nuevo donde quieras, cierra YTAUTO y abre el instalador de la carpeta **nueva**. Encuentra
+solo la instalación existente (registro del usuario o, en versiones antiguas, su acceso directo) y la actualiza en su
+sitio: compara archivo a archivo y copia solo lo nuevo o cambiado, retira lo que la versión nueva ya no trae (si nadie
+lo modificó), no reinstala herramientas que ya están y reinstala dependencias de Python solo si cambiaron. Nunca toca
+`data/` (claves, licencias, cuentas, base de datos), `library/`, `projects/`, `backups/`, `tools/`, `.venv/` ni `.env`.
+Si un archivo del programa se había cambiado a mano, se guarda una copia en `backups/actualizacion-<fecha>/`.
+En un equipo nuevo, el mismo instalador instala el paquete completo. Detalle: `scripts/instalar.py`.

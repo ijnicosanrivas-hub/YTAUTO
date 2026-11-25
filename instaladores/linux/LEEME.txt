@@ -5,6 +5,10 @@ INSTALAR (una vez): abre una terminal en esta carpeta y ejecuta   bash instalar.
   Instala Python, FFmpeg, la voz (eSpeak NG) y Claude Code con el gestor de tu sistema
   (apt, dnf o pacman; puede pedir tu contrasena) y crea "YTAUTO" en el menu de aplicaciones.
 
+ACTUALIZAR:  descomprime el paquete nuevo donde quieras, cierra YTAUTO y ejecuta  bash instalar.sh  desde
+  la carpeta NUEVA. Actualiza tu instalacion en su sitio (solo lo que cambia) sin tocar tus datos ni
+  reinstalar lo que ya tienes. Despues puedes borrar la carpeta nueva.
+
 USAR:              bash iniciar.sh            (o YTAUTO en el menu)
 DESDE EL MOVIL:    bash iniciar_movil.sh      (mismo Wi-Fi; abre el enlace que aparece)
 SIN CLAUDE:        bash iniciar_sin_claude.sh

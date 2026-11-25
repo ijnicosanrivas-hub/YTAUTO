@@ -13,6 +13,20 @@ PARA INSTALARLO (se hace una sola vez, 10-30 minutos):
  5. Al final te pide iniciar sesion en Claude con TU cuenta de Claude Pro.
     Se abre el navegador; al terminar, escribe  /exit  en la ventana.
 
+PARA ACTUALIZAR A UNA VERSION NUEVA (un par de minutos):
+
+ 1. Descarga el ZIP nuevo, "Extraer todo" (donde quieras, por ejemplo en Descargas).
+ 2. Cierra YTAUTO si esta abierto (su ventana negra).
+ 3. Doble clic en INSTALAR_WINDOWS.bat de la carpeta NUEVA.
+    El instalador encuentra solo tu instalacion y la ACTUALIZA en su sitio:
+    - solo copia los archivos que han cambiado y retira los que ya no se usan;
+    - no vuelve a descargar Python, Git, FFmpeg, la voz ni Claude si ya los tienes;
+    - reinstala dependencias solo si la version nueva lo necesita;
+    - NUNCA toca tus datos: claves, licencias, cuentas, proyectos, biblioteca y musica.
+    Si habias cambiado algun archivo del programa a mano, guarda una copia en backups\.
+ 4. Al terminar puedes borrar la carpeta nueva que descomprimiste: el icono del Escritorio
+    sigue abriendo tu instalacion de siempre, ya actualizada.
+
 PARA USARLO (cada vez):
 
  - Haz doble clic en el icono YTAUTO del Escritorio

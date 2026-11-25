@@ -25,7 +25,7 @@ else
   PAQ=""; aviso "No reconozco el gestor de paquetes: instala a mano Python 3.11+, ffmpeg y espeak-ng."
 fi
 
-echo; echo "[1/4] Python, FFmpeg y voz"
+echo; echo "[1/3] Python, FFmpeg y voz (solo se instala lo que falte)"
 FALTA=""
 for c in ffmpeg espeak-ng curl; do command -v "$c" >/dev/null 2>&1 || FALTA="$FALTA $c"; done
 python3 -c 'import sys, venv; sys.exit(0 if sys.version_info >= (3, 11) else 1)' 2>/dev/null || FALTA="$FALTA python"
@@ -37,30 +37,22 @@ python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)' 2>/de
 command -v ffmpeg >/dev/null 2>&1 || fallo "Falta FFmpeg."
 command -v espeak-ng >/dev/null 2>&1 && ok "Python, FFmpeg y voz listos." || aviso "Falta la voz (espeak-ng)."
 
-echo; echo "[2/4] Claude Code"
+echo; echo "[2/3] Claude Code"
 export PATH="$HOME/.local/bin:$PATH"
 command -v claude >/dev/null 2>&1 || curl -fsSL https://claude.ai/install.sh | bash
 command -v claude >/dev/null 2>&1 && { ok "Claude Code listo."; CL=1; } || { aviso "No se pudo instalar Claude Code (usa iniciar_sin_claude.sh)."; CL=0; }
 
-echo; echo "[3/4] Preparando YTAUTO"
-python3 "$RAIZ/scripts/instalar.py" || fallo "La preparacion de YTAUTO fallo. Lee el mensaje de arriba."
+echo; echo "[3/3] Preparando YTAUTO"
+# Equipo nuevo: instala todo. Ya instalado: actualiza esa instalacion (solo lo que cambie, sin tocar tus datos).
+# scripts/instalar.py crea tambien el acceso del menu de aplicaciones apuntando a la instalacion.
+python3 "$RAIZ/scripts/instalar.py"
+RES=$?
+[ "$RES" = "75" ] && fallo "YTAUTO esta abierto. Cierralo y vuelve a ejecutar el instalador para actualizarlo."
+[ "$RES" = "0" ] || fallo "La preparacion de YTAUTO fallo. Lee el mensaje de arriba."
+DEST="$(python3 "$RAIZ/scripts/instalar.py" --resolver-destino 2>/dev/null)"; [ -n "$DEST" ] || DEST="$RAIZ"
 
-echo; echo "[4/4] Acceso en el menu de aplicaciones"
-APPS="$HOME/.local/share/applications"; mkdir -p "$APPS"
-cat > "$APPS/ytauto.desktop" <<DESK
-[Desktop Entry]
-Type=Application
-Name=YTAUTO
-Comment=Fabrica de videos cortos
-Exec=bash "$LANZ/iniciar.sh"
-Icon=$RAIZ/frontend/public/icono-512.png
-Terminal=true
-Categories=AudioVideo;
-DESK
-ok "Acceso creado (YTAUTO en el menu)."
-
-echo; echo "  INSTALACION TERMINADA. Para abrirla: YTAUTO en el menu o bash $LANZ/iniciar.sh"
-if [ "$CL" = "1" ] && [ -t 0 ]; then
+echo; echo "  LISTO. Para abrirla: YTAUTO en el menu de aplicaciones."
+if [ "$CL" = "1" ] && [ -t 0 ] && [ "$DEST" = "$RAIZ" ]; then
   read -r -p "  Iniciar sesion en Claude ahora (una vez)? [S/n] " r
   case "$r" in n|N|no|NO) ;; *) claude ;; esac
 fi

@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import hashlib
+import json
 import stat
 import subprocess
 import sys
@@ -56,14 +58,23 @@ def _info(name: str, src: Path) -> zipfile.ZipInfo:
     return info
 
 
+MANIFEST = ".ytauto-paquete.json"  # lista de archivos del paquete: el instalador solo actualiza/retira esos
+
+
 def write_zip(dest: Path, mapping: dict[str, str], root: Path = ROOT, version: str = "") -> int:
     dest.parent.mkdir(parents=True, exist_ok=True)
+    files: dict[str, str] = {}
     with zipfile.ZipFile(dest, "w", zipfile.ZIP_DEFLATED) as z:
         for name in sorted(mapping):
             src = root / mapping[name]
-            z.writestr(_info(name, src), src.read_bytes())
+            data = src.read_bytes()
+            z.writestr(_info(name, src), data)
+            files[name.split("/", 1)[1]] = hashlib.sha256(data).hexdigest()
         if version:
-            z.writestr(f"{PREFIX}/VERSION.txt", f"{version}\n")
+            data = f"{version}\n".encode()
+            z.writestr(f"{PREFIX}/VERSION.txt", data)
+            files["VERSION.txt"] = hashlib.sha256(data).hexdigest()
+        z.writestr(f"{PREFIX}/{MANIFEST}", json.dumps({"version": version, "files": files}, indent=0))
     return len(mapping)
 
 

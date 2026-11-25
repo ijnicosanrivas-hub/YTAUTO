@@ -19,6 +19,16 @@ PARA USARLO (cada vez):
  - Doble clic en YTAUTO.command del Escritorio (o en INICIAR_MAC.command dentro de la carpeta).
  - Se abre el navegador con la fabrica. No cierres la ventana del Terminal mientras la uses.
 
+PARA ACTUALIZAR A UNA VERSION NUEVA (un par de minutos):
+
+ 1. Descarga y descomprime el ZIP nuevo (donde quieras).
+ 2. Cierra YTAUTO si esta abierto (su ventana de Terminal).
+ 3. Doble clic en INSTALAR_MAC.command de la carpeta NUEVA.
+    Encuentra solo tu instalacion y la ACTUALIZA en su sitio: copia solo lo que cambia, no reinstala
+    Homebrew, Python, FFmpeg, la voz ni Claude si ya estan, y NUNCA toca tus datos
+    (claves, licencias, cuentas, proyectos, biblioteca y musica).
+ 4. Al terminar puedes borrar la carpeta nueva: YTAUTO.command del Escritorio abre tu instalacion ya actualizada.
+
 DESDE EL iPAD O EL iPHONE (mismo Wi-Fi que el Mac):
 
  - En el Mac abre  INICIAR_MAC_MOVIL.command  y copia en Safari del iPad el enlace que aparece (lleva el codigo).

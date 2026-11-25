@@ -34,3 +34,12 @@ voces del sistema de macOS (`macos_say`: Mónica, Jorge, Paulina…) que suenan 
 licencia de macOS solo permite esas voces para contenido personal y no comercial, y excluye publicarlas. Úsalo, si
 acaso, para pruebas internas (Proveedores → añadir «Voz del sistema (macOS)»). Para una voz natural y publicable, usa
 Piper con un modelo de licencia compatible.
+
+## Actualizar a una versión nueva
+Descomprime el paquete nuevo donde quieras, cierra YTAUTO y abre el instalador de la carpeta **nueva**. Encuentra
+solo la instalación existente (registro del usuario o, en versiones antiguas, su acceso directo) y la actualiza en su
+sitio: compara archivo a archivo y copia solo lo nuevo o cambiado, retira lo que la versión nueva ya no trae (si nadie
+lo modificó), no reinstala herramientas que ya están y reinstala dependencias de Python solo si cambiaron. Nunca toca
+`data/` (claves, licencias, cuentas, base de datos), `library/`, `projects/`, `backups/`, `tools/`, `.venv/` ni `.env`.
+Si un archivo del programa se había cambiado a mano, se guarda una copia en `backups/actualizacion-<fecha>/`.
+En un equipo nuevo, el mismo instalador instala el paquete completo. Detalle: `scripts/instalar.py`.

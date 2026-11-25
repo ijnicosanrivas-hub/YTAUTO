@@ -14,8 +14,10 @@ echo  ==========================================================
 echo     INSTALADOR DE YTAUTO  -  Fabrica de videos cortos
 echo  ==========================================================
 echo.
-echo  Instala TODO lo necesario: Python, Git, FFmpeg, la voz y Claude Code.
-echo  Tarda entre 10 y 30 minutos segun tu conexion. No cierres esta ventana.
+echo  En un equipo nuevo instala TODO: Python, Git, FFmpeg, la voz, Claude Code y YTAUTO.
+echo  Si YTAUTO ya esta instalado, lo ACTUALIZA: solo cambia lo que trae de nuevo esta version
+echo  y no toca tus datos, claves, licencias ni proyectos.
+echo  La primera vez tarda entre 10 y 30 minutos; una actualizacion, un par de minutos.
 echo  No hace falta ser administrador. Si Windows pregunta algo, pulsa Si.
 echo.
 
@@ -24,7 +26,6 @@ where curl >nul 2>nul
 if errorlevel 1 goto windows_antiguo
 where tar >nul 2>nul
 if errorlevel 1 goto windows_antiguo
-if not exist "%HERR%" mkdir "%HERR%"
 
 rem ===================================================== 1. Python
 echo [1/6] Python
@@ -38,6 +39,11 @@ echo           Instalalo a mano desde https://www.python.org/downloads/ y vuelve
 goto fallo_final
 :python_listo
 echo   [OK] Python listo.
+
+rem ===================================================== donde esta (o ira) la instalacion
+call :resolver_destino
+set "HERR=%DEST%\tools"
+if not exist "%HERR%" mkdir "%HERR%"
 
 rem ===================================================== 2. Git (Claude Code lo necesita en Windows)
 echo [2/6] Git
@@ -94,8 +100,8 @@ echo   [OK] Claude Code listo.
 rem ===================================================== 6. YTAUTO
 echo [6/6] Preparando YTAUTO (puede tardar unos minutos)
 %PY% "%RAIZ%scripts\instalar.py"
+if errorlevel 75 if not errorlevel 76 goto app_abierta
 if errorlevel 1 goto fallo_preparar
-call :crear_accesos
 
 echo.
 echo  ==========================================================
@@ -106,6 +112,7 @@ echo  Para abrir la fabrica usa el icono YTAUTO del Escritorio
 echo  o haz doble clic en INICIAR_WINDOWS.bat
 echo.
 if not defined CL goto sin_login
+if /i not "%DEST%\"=="%RAIZ%" goto sin_login
 echo  Falta UN paso: iniciar sesion en Claude, una sola vez, con TU cuenta de Claude Pro.
 echo  Se abrira Claude: sigue los pasos en el navegador y, al terminar, escribe /exit
 echo.
@@ -132,6 +139,10 @@ goto fallo_final
 echo.
 echo  [ERROR] La preparacion de YTAUTO fallo. Lee el mensaje de arriba.
 echo          Si no lo entiendes, haz una captura y mandala a quien te paso el programa.
+goto fallo_final
+:app_abierta
+echo.
+echo  [ERROR] YTAUTO esta abierto. Cierra su ventana negra y vuelve a abrir este archivo para actualizarlo.
 goto fallo_final
 :fallo_final
 echo.
@@ -270,12 +281,16 @@ if errorlevel 1 exit /b 1
 call "%TEMP%\ytauto-claude-install.cmd"
 exit /b 0
 
-rem ===================================================== acceso directo en el Escritorio
-:crear_accesos
-if exist "%USERPROFILE%\Desktop" call :escribir_acceso "%USERPROFILE%\Desktop"
-if exist "%USERPROFILE%\OneDrive\Desktop" call :escribir_acceso "%USERPROFILE%\OneDrive\Desktop"
-exit /b 0
-
-:escribir_acceso
-> "%~1\YTAUTO.bat" echo @start "" "%LANZ%INICIAR_WINDOWS.bat"
+rem ===================================================== instalacion existente o nueva
+rem scripts\instalar.py decide: la instalacion ya registrada (o la de un acceso YTAUTO.bat antiguo) o esta carpeta.
+rem Las herramientas (FFmpeg, voz) se buscan en la carpeta instalada: si ya estan, no se descargan otra vez.
+rem El acceso YTAUTO.bat del Escritorio lo crea scripts\instalar.py apuntando a la instalacion.
+:resolver_destino
+set "DEST="
+%PY% "%RAIZ%scripts\instalar.py" --resolver-destino > "%TEMP%\ytauto-destino.txt" 2>nul
+set /p DEST=<"%TEMP%\ytauto-destino.txt"
+if not defined DEST set "DEST=%CD%"
+if /i "%DEST%\"=="%RAIZ%" exit /b 0
+echo   YTAUTO ya esta instalado en: %DEST%
+echo   Se actualizara esa instalacion (solo lo que cambie).
 exit /b 0
