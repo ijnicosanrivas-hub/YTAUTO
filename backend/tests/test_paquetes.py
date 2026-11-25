@@ -82,3 +82,6 @@ def test_release_workflow_publishes_every_package():
     wf = (ROOT / ".github" / "workflows" / "publicar.yml").read_text(encoding="utf-8")
     assert "scripts/empaquetar.py" in wf and "build:demo" in wf and "contents: write" in wf
     assert "ultima-version" in wf and "gh release" in wf
+    # las pruebas de la interfaz (jsdom → undici) necesitan Node 22: con Node 20 no arrancan
+    assert 'node-version: "22"' in wf and 'node-version: "20"' not in wf
+    assert 'NODE_VERSION = "22"' in (ROOT / "netlify.toml").read_text(encoding="utf-8")

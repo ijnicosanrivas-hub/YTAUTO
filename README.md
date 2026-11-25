@@ -59,7 +59,7 @@ Es solo presentación: no cambia el contenido de los vídeos. Detalles y cómo v
 ## Para desarrolladores
 
 ### Requisitos
-- **Python 3.11+**, **FFmpeg 6+** (con `libass`), **espeak-ng** (voz local de respaldo), **Node 20+** (interfaz).
+- **Python 3.11+**, **FFmpeg 6+** (con `libass`), **espeak-ng** (voz local de respaldo), **Node 22+** (solo para compilar la interfaz).
 - **Claude Code** instalado y con sesión iniciada (`claude /login`, cuenta Pro).
 - Linux, macOS o **Windows 10/11** (ver la guía de Windows; sin WSL).
 
