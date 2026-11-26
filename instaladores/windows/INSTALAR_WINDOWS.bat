@@ -43,7 +43,9 @@ echo   [OK] Python listo.
 rem ===================================================== donde esta (o ira) la instalacion
 call :resolver_destino
 set "HERR=%DEST%\tools"
-if not exist "%HERR%" mkdir "%HERR%"
+rem Las herramientas nuevas van a una carpeta COMPARTIDA por todas las versiones: nunca se descargan dos veces.
+set "HERRC=%LOCALAPPDATA%\YTAUTO\tools"
+if not exist "%HERRC%" mkdir "%HERRC%"
 
 rem ===================================================== 2. Git (Claude Code lo necesita en Windows)
 echo [2/6] Git
@@ -62,6 +64,7 @@ echo   [OK] Git listo.
 rem ===================================================== 3. FFmpeg
 echo [3/6] FFmpeg (motor de video)
 call :buscar_ffmpeg
+if defined FF echo   Ya estaba instalado: no se descarga.
 if defined FF goto ffmpeg_listo
 call :instalar_ffmpeg
 call :buscar_ffmpeg
@@ -74,6 +77,7 @@ echo   [OK] FFmpeg listo.
 rem ===================================================== 4. Voz
 echo [4/6] Voz (eSpeak NG)
 call :buscar_espeak
+if defined ESP echo   Ya estaba instalada: no se descarga.
 if defined ESP goto espeak_listo
 call :instalar_espeak
 call :buscar_espeak
@@ -208,6 +212,7 @@ rem ===================================================== rutinas: FFmpeg
 :buscar_ffmpeg
 set "FF="
 if exist "%HERR%\ffmpeg\bin\ffmpeg.exe" set "FF=1"
+if exist "%HERRC%\ffmpeg\bin\ffmpeg.exe" set "FF=1"
 if defined FF exit /b 0
 where ffmpeg >nul 2>nul
 if not errorlevel 1 set "FF=1"
@@ -229,13 +234,13 @@ exit /b 0
 :bajar_ffmpeg
 curl -L --fail --silent --show-error --retry 3 -o "%TEMP%\ytauto-ffmpeg.zip" %1
 if errorlevel 1 exit /b 1
-if exist "%HERR%\_ff" rmdir /s /q "%HERR%\_ff"
-mkdir "%HERR%\_ff"
-tar -xf "%TEMP%\ytauto-ffmpeg.zip" -C "%HERR%\_ff"
+if exist "%HERRC%\_ff" rmdir /s /q "%HERRC%\_ff"
+mkdir "%HERRC%\_ff"
+tar -xf "%TEMP%\ytauto-ffmpeg.zip" -C "%HERRC%\_ff"
 if errorlevel 1 exit /b 1
-if exist "%HERR%\ffmpeg" rmdir /s /q "%HERR%\ffmpeg"
-for /d %%D in ("%HERR%\_ff\ffmpeg-*") do move "%%D" "%HERR%\ffmpeg" >nul
-rmdir /s /q "%HERR%\_ff"
+if exist "%HERRC%\ffmpeg" rmdir /s /q "%HERRC%\ffmpeg"
+for /d %%D in ("%HERRC%\_ff\ffmpeg-*") do move "%%D" "%HERRC%\ffmpeg" >nul
+rmdir /s /q "%HERRC%\_ff"
 exit /b 0
 
 rem ===================================================== rutinas: voz (eSpeak NG)
@@ -245,6 +250,7 @@ where espeak-ng >nul 2>nul
 if not errorlevel 1 set "ESP=1"
 if exist "%ProgramFiles%\eSpeak NG\espeak-ng.exe" set "ESP=1"
 for /f "delims=" %%F in ('dir /s /b "%HERR%\espeak-ng\espeak-ng.exe" 2^>nul') do set "ESP=1"
+for /f "delims=" %%F in ('dir /s /b "%HERRC%\espeak-ng\espeak-ng.exe" 2^>nul') do set "ESP=1"
 exit /b 0
 
 :instalar_espeak
@@ -261,8 +267,8 @@ exit /b 0
 :bajar_espeak
 curl -L --fail --silent --retry 2 -o "%TEMP%\ytauto-espeak.msi" "https://github.com/espeak-ng/espeak-ng/releases/latest/download/%1"
 if errorlevel 1 exit /b 1
-if not exist "%HERR%\espeak-ng" mkdir "%HERR%\espeak-ng"
-start /wait "" msiexec /a "%TEMP%\ytauto-espeak.msi" /qn TARGETDIR="%HERR%\espeak-ng"
+if not exist "%HERRC%\espeak-ng" mkdir "%HERRC%\espeak-ng"
+start /wait "" msiexec /a "%TEMP%\ytauto-espeak.msi" /qn TARGETDIR="%HERRC%\espeak-ng"
 call :buscar_espeak
 exit /b 0
 

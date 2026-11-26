@@ -47,6 +47,7 @@ def run_main(monkeypatch, tmp_path, src: Path, args: list[str], venv_ok=True, de
     monkeypatch.setattr(inst, "ROOT", src)
     monkeypatch.setattr(inst, "registry_path", lambda *a, **k: tmp_path / "registro" / "instalacion.json")
     monkeypatch.setattr(inst, "legacy_roots", lambda *a, **k: [])
+    monkeypatch.setattr(inst, "find_installs", lambda *a, **k: [])
     monkeypatch.setattr(inst, "app_running", lambda *a, **k: running)
     monkeypatch.setattr(inst, "venv_works", lambda *a, **k: venv_ok)
     monkeypatch.setattr(inst, "deps_current", lambda *a, **k: deps_ok)
@@ -217,3 +218,60 @@ def test_package_zip_carries_its_file_list(tmp_path):
     with zipfile.ZipFile(out) as z:
         man = json.loads(z.read("YTAUTO/" + inst.PACKAGE_MANIFEST))
     assert man["version"] == "v9" and set(man["files"]) == {"a.txt", "sub/b.txt", "VERSION.txt"}
+
+
+# ------------------------------------------------------------------ casos reales de Windows
+def _app(root: Path, db_bytes: int = 0) -> Path:
+    write(root, {"pyproject.toml": "x", "backend/ytauto/__init__.py": "", "INICIAR_WINDOWS.bat": ""})
+    if db_bytes:
+        (root / "data").mkdir(exist_ok=True)
+        (root / "data" / "ytauto.db").write_bytes(b"x" * db_bytes)
+    return root
+
+
+def test_the_install_with_your_data_wins_even_over_a_new_empty_one(tmp_path):
+    old = _app(tmp_path / "Escritorio" / "YTAUTO", db_bytes=500_000)       # licencias, proyectos…
+    wrong = _app(tmp_path / "Descargas" / "YTAUTO (1)" / "YTAUTO", db_bytes=90_000)  # creada por error, casi vacía
+    src = _app(tmp_path / "Descargas" / "YTAUTO-windows" / "YTAUTO")
+    reg = tmp_path / "reg.json"
+    reg.write_text(json.dumps({"root": str(wrong)}))
+    assert inst.resolve_destination(src, reg, [], found=[old, wrong, src]) == (old, "encontrada")
+    assert inst.resolve_destination(src, reg, [], found=[]) == (wrong, "registrada")
+    assert inst.resolve_destination(src, tmp_path / "no.json", [], found=[]) == (src, "nueva")
+
+
+def test_previous_installs_are_found_without_any_shortcut(tmp_path):
+    home = tmp_path / "home"
+    a = _app(home / "Descargas" / "YTAUTO-windows" / "YTAUTO", db_bytes=10)
+    b = _app(home / "OneDrive" / "Escritorio" / "YTAUTO")
+    _app(home / "AppData" / "Local" / "otra" / "YTAUTO")  # carpetas de sistema: no se recorren
+    found = inst.find_installs(home, env={})
+    assert a in found and b in found and len(found) == 2
+
+
+def test_spanish_onedrive_desktop_and_paths_with_accents(tmp_path):
+    home = tmp_path / "Iñaki"
+    (home / "OneDrive" / "Escritorio").mkdir(parents=True)
+    assert home / "OneDrive" / "Escritorio" in inst.desktop_dirs("win32", env={}, home=home)
+    app = _app(tmp_path / "Iñaki" / "Vídeos" / "YTAUTO")
+    shortcut = home / "OneDrive" / "Escritorio" / "YTAUTO.bat"
+    shortcut.write_bytes(f'@start "" "{app}/INICIAR_WINDOWS.bat"\r\n'.encode("cp850"))  # como lo escribe cmd
+    assert inst.legacy_roots("win32", env={}, home=home) == [app]
+
+
+def test_windows_tools_are_shared_between_versions(tmp_path):
+    from ytauto.core import tools
+    shared = tmp_path / "AppData" / "Local"
+    (shared / "YTAUTO" / "tools" / "ffmpeg" / "bin").mkdir(parents=True)
+    (shared / "YTAUTO" / "tools" / "ffmpeg" / "bin" / "ffmpeg.exe").write_text("")
+    (shared / "YTAUTO" / "tools" / "espeak-ng" / "x").mkdir(parents=True)
+    (shared / "YTAUTO" / "tools" / "espeak-ng" / "x" / "espeak-ng.exe").write_text("")
+    env = {"LOCALAPPDATA": str(shared), "USERPROFILE": str(tmp_path)}
+    dirs = tools.local_tool_dirs(tmp_path / "app_nueva", env=env, platform="win32")
+    assert shared / "YTAUTO" / "tools" / "ffmpeg" / "bin" in dirs
+    assert tools.find_espeak_dir(tmp_path / "app_nueva", env) == shared / "YTAUTO" / "tools" / "espeak-ng" / "x"
+    bat = (ROOT / "instaladores/windows/INSTALAR_WINDOWS.bat").read_text(encoding="ascii")
+    assert 'set "HERRC=%LOCALAPPDATA%\\YTAUTO\\tools"' in bat
+    assert 'if exist "%HERRC%\\ffmpeg\\bin\\ffmpeg.exe" set "FF=1"' in bat  # se busca antes de descargar
+    assert 'tar -xf "%TEMP%\\ytauto-ffmpeg.zip" -C "%HERRC%\\_ff"' in bat  # y se guarda en la compartida
+    assert 'TARGETDIR="%HERRC%\\espeak-ng"' in bat

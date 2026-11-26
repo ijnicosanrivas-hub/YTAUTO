@@ -92,9 +92,28 @@ def registry_path(platform: str = sys.platform, env: dict[str, str] | None = Non
 def desktop_dirs(platform: str = sys.platform, env: dict[str, str] | None = None, home: Path | None = None) -> list[Path]:
     env = dict(os.environ) if env is None else env
     home = home or Path(env.get("USERPROFILE") or env.get("HOME") or Path.home())
-    cands = [home / "Desktop"] + ([home / "OneDrive" / "Desktop"] if platform.startswith("win") else []) + \
-            ([home / "Escritorio"] if platform.startswith("linux") else [])
-    return [d for d in cands if d.is_dir()]
+    # Windows en español con OneDrive guarda el Escritorio como «OneDrive\\Escritorio».
+    cands = [home / "Desktop", home / "Escritorio"]
+    if platform.startswith("win"):
+        cands += [home / "OneDrive" / "Desktop", home / "OneDrive" / "Escritorio"]
+        cands += [Path(v) / sub for k, v in env.items() if k.upper().startswith("ONEDRIVE") and v
+                  for sub in ("Desktop", "Escritorio")]
+    seen: list[Path] = []
+    for d in cands:
+        if d.is_dir() and d not in seen:
+            seen.append(d)
+    return seen
+
+
+def read_text_any(path: Path) -> str:
+    """Accesos de cmd escritos con la página de códigos de la consola (OEM): rutas con tildes o «ñ»."""
+    raw = path.read_bytes()
+    for enc in ("utf-8", "oem", "cp850", "cp1252"):
+        try:
+            return raw.decode(enc)
+        except (UnicodeDecodeError, LookupError):
+            continue
+    return raw.decode("utf-8", errors="replace")
 
 
 def _root_from_launcher(launcher: Path) -> Path | None:
@@ -116,12 +135,56 @@ def legacy_roots(platform: str = sys.platform, env: dict[str, str] | None = None
     for f in files:
         if not f.is_file():
             continue
-        text = f.read_text(encoding="utf-8", errors="replace")
+        text = read_text_any(f)
         for m in re.finditer(r'"([^"]+?(?:INICIAR_WINDOWS\.bat|INICIAR_MAC\.command|iniciar\.sh))"', text):
             root = _root_from_launcher(Path(m.group(1)))
             if root and root not in found:
                 found.append(root)
     return found
+
+
+SEARCH_DIRS = ("Desktop", "Escritorio", "Downloads", "Descargas", "Documents", "Documentos", "OneDrive")
+SKIP_DIRS = {"node_modules", ".venv", "venv", ".git", "AppData", "Library", "__pycache__", "site-packages",
+             "projects", "library", "data", "tools", "backups"}
+
+
+def find_installs(home: Path, env: dict[str, str] | None = None, max_depth: int = 4,
+                  limit_dirs: int = 20000) -> list[Path]:
+    """Instalaciones de YTAUTO en las carpetas habituales (por si no hay acceso directo ni registro)."""
+    env = dict(os.environ) if env is None else env
+    roots = [home / d for d in SEARCH_DIRS] + [home, Path(env.get("SystemDrive", "C:") + "\\") / "YTAUTO"]
+    found: list[Path] = []
+    seen = 0
+    for base in roots:
+        if not base.is_dir():
+            continue
+        depth0 = len(base.parts)
+        for dirpath, dirnames, filenames in os.walk(base):
+            seen += 1
+            if seen > limit_dirs:
+                return found
+            here = Path(dirpath)
+            if "pyproject.toml" in filenames and is_install(here):
+                if here not in found:
+                    found.append(here)
+                dirnames[:] = []  # dentro de una instalación no hay otras
+                continue
+            if len(here.parts) - depth0 >= max_depth or (base == home and here != home):
+                dirnames[:] = []
+                continue
+            dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS and not d.startswith(".")]
+    return found
+
+
+def user_data_size(root: Path) -> int:
+    """Cuánto «vivido» tiene una instalación: tamaño de su base de datos (licencias, cuentas, proyectos)."""
+    data = root / "data"
+    if not data.is_dir():
+        return 0
+    size = sum(f.stat().st_size for f in data.glob("*.db") if f.is_file())
+    if (data / "secrets" / "master.key").is_file():
+        size += 1
+    return size
 
 
 def read_registry(reg: Path) -> dict:
@@ -132,19 +195,28 @@ def read_registry(reg: Path) -> dict:
 
 
 def resolve_destination(source: Path, reg: Path, legacy: list[Path], explicit: Path | None = None,
-                        here: bool = False) -> tuple[Path, str]:
-    """(carpeta de la instalación, motivo). Motivos: explicita · aqui · registrada · anterior · nueva."""
+                        here: bool = False, found: list[Path] | None = None) -> tuple[Path, str]:
+    """(carpeta de la instalación, motivo). Motivos: explicita · aqui · registrada · anterior · encontrada · nueva.
+
+    Si hay varias instalaciones, gana la que tiene TUS datos (la base de datos más grande): así una carpeta nueva
+    descomprimida, o una instalación «nueva» creada por error, nunca deja huérfanas tus licencias y proyectos."""
     if explicit:
         return explicit.resolve(), "explicita"
     if here:
         return source, "aqui"
-    root = read_registry(reg).get("root")
-    if root and is_install(Path(root)):
-        return Path(root), "registrada"
-    for cand in legacy:
-        if is_install(cand):
-            return cand, "anterior"
-    return source, "nueva"
+    registered = read_registry(reg).get("root")
+    reg_root = Path(registered) if registered and is_install(Path(registered)) else None
+    ordered: list[tuple[Path, str]] = []
+    for cand, why in ([(reg_root, "registrada")] if reg_root else []) + [(c, "anterior") for c in legacy] + \
+            [(c, "encontrada") for c in (found or [])] + [(source, "nueva")]:
+        if is_install(cand) and all(cand.resolve() != o.resolve() for o, _ in ordered):
+            ordered.append((cand, why))
+    sizes = {c: user_data_size(c) for c, _ in ordered}
+    best = max(sizes.values(), default=0)
+    if best > 0:
+        # La que tiene más datos; a igualdad, el orden de preferencia (registrada, acceso directo, encontrada).
+        return next((c, w) for c, w in ordered if sizes[c] == best)
+    return ordered[0] if ordered else (source, "nueva")
 
 
 # ------------------------------------------------------------------ comparación y copia de archivos
@@ -384,9 +456,16 @@ def main(argv: list[str] | None = None) -> int:
             pass
 
     reg = registry_path()
-    dest, why = resolve_destination(ROOT, reg, legacy_roots(), args.destino, args.aqui)
+    home = Path(os.environ.get("USERPROFILE") or os.environ.get("HOME") or Path.home())
+    dest, why = resolve_destination(ROOT, reg, legacy_roots(), args.destino, args.aqui,
+                                    found=[] if (args.destino or args.aqui) else find_installs(home))
     if args.resolver_destino:
-        print(dest)
+        if sys.platform.startswith("win"):
+            # cmd lee el resultado con «set /p» en la página de códigos de la consola: rutas con tildes intactas.
+            sys.stdout.flush()
+            sys.stdout.buffer.write((str(dest) + "\r\n").encode("oem", errors="replace"))
+        else:
+            print(dest)
         return 0
     if sys.version_info < MIN_PYTHON:
         print(f"Se necesita Python {MIN_PYTHON[0]}.{MIN_PYTHON[1]} o superior (tienes {sys.version.split()[0]}).")

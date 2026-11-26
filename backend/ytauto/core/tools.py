@@ -20,13 +20,27 @@ def _is_windows(platform: str | None) -> bool:
     return (platform or sys.platform).startswith("win")
 
 
-def find_espeak_dir(root: Path = REPO_ROOT) -> Path | None:
+def shared_tools_dir(env: MutableMapping[str, str] | None = None) -> Path | None:
+    """Herramientas compartidas por todas las versiones instaladas (Windows): %LOCALAPPDATA%\\YTAUTO\\tools.
+    Así una versión nueva, aunque se descomprima en otra carpeta, no vuelve a descargar FFmpeg ni la voz."""
+    env = os.environ if env is None else env
+    base = env.get("LOCALAPPDATA")
+    return Path(base) / "YTAUTO" / "tools" if base else None
+
+
+def _tool_roots(root: Path, env: MutableMapping[str, str] | None = None) -> list[Path]:
+    shared = shared_tools_dir(env)
+    return [root / "tools"] + ([shared] if shared else [])
+
+
+def find_espeak_dir(root: Path = REPO_ROOT, env: MutableMapping[str, str] | None = None) -> Path | None:
     """Carpeta con `espeak-ng.exe` dentro de `tools/espeak-ng` (el instalador MSI la deja anidada)."""
-    base = root / "tools" / "espeak-ng"
-    if not base.is_dir():
-        return None
-    for exe in sorted(base.rglob("espeak-ng.exe")):
-        return exe.parent
+    for tools in _tool_roots(root, env):
+        base = tools / "espeak-ng"
+        if not base.is_dir():
+            continue
+        for exe in sorted(base.rglob("espeak-ng.exe")):
+            return exe.parent
     return None
 
 
@@ -48,9 +62,11 @@ def local_tool_dirs(root: Path = REPO_ROOT, env: MutableMapping[str, str] | None
     env = os.environ if env is None else env
     windows = _is_windows(platform)
     dirs: list[Path] = []
-    ffmpeg = root / "tools" / "ffmpeg" / "bin"
-    if (ffmpeg / ("ffmpeg.exe" if windows else "ffmpeg")).is_file():
-        dirs.append(ffmpeg)
+    for tools in _tool_roots(root, env) if windows else [root / "tools"]:
+        ffmpeg = tools / "ffmpeg" / "bin"
+        if (ffmpeg / ("ffmpeg.exe" if windows else "ffmpeg")).is_file():
+            dirs.append(ffmpeg)
+            break
     if (platform or sys.platform) == "darwin":
         # Lanzado desde el Finder, el PATH no siempre incluye Homebrew ni Claude Code (~/.local/bin).
         home = env.get("HOME")
@@ -58,7 +74,7 @@ def local_tool_dirs(root: Path = REPO_ROOT, env: MutableMapping[str, str] | None
             if d.is_dir():
                 dirs.append(d)
     if windows:
-        espeak = find_espeak_dir(root)
+        espeak = find_espeak_dir(root, env)
         if espeak:
             dirs.append(espeak)
         home = env.get("USERPROFILE")
