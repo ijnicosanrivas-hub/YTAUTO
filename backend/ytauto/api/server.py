@@ -252,6 +252,14 @@ def create_api(app: App, start_worker: bool = False, token: str | None = None,
                     app.licenses.get(lid)
                 except KeyError as e:
                     raise HTTPException(400, f"Licencia inexistente: {lid}") from e
+        from ..core.audio_features import FEATURE_IDS
+        unknown_audio = set(spec.audio_features) - FEATURE_IDS
+        if unknown_audio:
+            raise HTTPException(400, f"Capacidades de audio desconocidas: {sorted(unknown_audio)}")
+        if not spec.voice_cast and app.provider_system:
+            # Las voces del canal (narrador, personajes) viajan con el proyecto: el vídeo suena como su canal.
+            cast = (app.provider_system.budget.get_setting("voice_cast", {}) or {}).get(spec.channel) or {}
+            spec = spec.model_copy(update={"voice_cast": {k: v for k, v in cast.items() if v}})
         pid = app.orchestrator.create_project(spec)
         schedule(pid)
         return _project_view(app, pid)

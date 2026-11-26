@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Callable
 
-from ...core.errors import BudgetExceeded, ProviderError, ProviderNotConfigured, SpendNotAuthorized
+from ...core.errors import BudgetExceeded, ProviderError, ProviderNotConfigured, ProviderSkip, SpendNotAuthorized
 from ...core.events import EventBus
 from ...core.models import MediaAsset
 from ..interfaces import ProviderCategory, ProviderGateway, PublishRequest
@@ -92,6 +92,10 @@ class RegistryGateway(ProviderGateway):
                                                operation=operation, amount=estimate, scene_index=scene_index)
             try:
                 result = getattr(prov, operation)(request)
+            except ProviderSkip:
+                if entry_id is not None:
+                    self.budget.fail(entry_id)
+                continue  # no es para este proveedor: se pasa al siguiente sin anotar un fallo
             except ProviderError as e:
                 if entry_id is not None:
                     self.budget.fail(entry_id)

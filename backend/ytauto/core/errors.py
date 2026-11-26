@@ -43,5 +43,13 @@ class ProviderError(YtautoError):
         super().__init__(f"[{provider}] {message}")
 
 
+class ProviderSkip(ProviderError):
+    """El proveedor no se ocupa de esta petición (p. ej. un efecto genérico para el generador de efectos con IA):
+    se pasa al siguiente sin contarlo como fallo ni gastar nada."""
+
+    def __init__(self, provider: str, message: str):
+        super().__init__(provider, message, transient=False)
+
+
 class ProviderNotConfigured(YtautoError):
     pass

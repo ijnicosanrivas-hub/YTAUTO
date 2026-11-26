@@ -36,7 +36,7 @@ def check_script(script: Script, brief: CreativeBrief, tpl: NarrativeTemplate, l
         if scene_filter is not None and scene.index not in scene_filter:
             continue
         max_words = tpl.max_words(plan.duration_s, language)
-        words = len(scene.narration.split())
+        words = len(scene.narration.split()) + sum(len(d.split(":", 1)[-1].split()) for d in scene.dialogue)
         if words == 0 and plan.duration_s > 2.5:
             issues.append(f"Escena {scene.index}: falta narración")
         if words > max_words * 1.1:
@@ -103,6 +103,14 @@ Cierre:
 - El final cumple la promesa del gancho. Si encaja, cierra en bucle (la última frase conecta con la primera).
 - `call_to_action` = la `cta` del director, natural y ≤ 12 palabras, solo en la escena final.
 
+Audio (solo si se indica en los datos):
+- `voice_roles`: puedes dar voz a personajes en las escenas donde aporte (testimonio, conflicto, giro). Escribe sus
+  frases en `dialogue` como «papel: frase» usando esos papeles (suenan después de la narración de la escena y
+  cuentan en el límite de palabras). Pocas y potentes: no conviertas todo el vídeo en diálogo.
+- `ai_sound_effects`: en `sfx` describe en inglés, en 4-10 palabras, el sonido concreto que acompaña lo que se
+  cuenta (p. ej. "slow footsteps approaching on a wooden floor", "old door creaking open", "distant thunder and
+  rain"). Como máximo uno por escena y solo donde suma; deja la lista vacía en el resto.
+
 Formato:
 - Escribe en el idioma `language`, con ortografía impecable.
 - `visual_notes`, `sfx` y `music_cue` por escena; `subtitle_lines` divide la narración en líneas cortas
@@ -129,6 +137,11 @@ class ScriptwriterAgent(Agent):
             "max_words_per_scene": {s.index: tpl.max_words(s.duration_s, spec.language) for s in brief.scenes},
             "min_speech_coverage": tpl.min_speech_coverage,
         }
+        audio = set(spec.audio_features)
+        if "dialogue" in audio and spec.voice_cast:
+            context["voice_roles"] = sorted(k for k, v in spec.voice_cast.items() if v and k != "narrador")
+        if "sfx" in audio:
+            context["ai_sound_effects"] = True
         scene_filter = ctx.scene_filter
         # Las correcciones (del revisor, de la voz o el comentario del usuario al rechazar el guion) llegan SIEMPRE,
         # también cuando se reescribe el guion entero; antes solo llegaban las que iban por escenas.

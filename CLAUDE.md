@@ -46,7 +46,8 @@ Arquitectura: `docs/architecture.md`. Decisiones: `docs/adr/`.
   entrevista del director `agents/briefing.py` · API `api/channels_api.py` · detalle en `docs/canales.md`.
 - Cuentas conectadas: ElevenLabs (clave cifrada + saldo real) y Higgsfield (CLI oficial con los créditos del plan;
   la API es otro saldo) · `api/accounts_api.py` · `providers/higgsfield.py` · detalle en `docs/cuentas.md`.
-  ElevenLabs solo pone la voz. Música elegible por vídeo: Biblioteca de audio de YouTube Studio (importada a mano, sin API)
+  ElevenLabs: voz (v4 con emoción, diálogos, tiempos por palabra, Voice Changer) y, si se elige, efectos IA; el usuario
+  decide qué usar en un cuestionario (`core/audio_features.py`). Nunca música. Música elegible por vídeo: Biblioteca de audio de YouTube Studio (importada a mano, sin API)
   · `providers/music/youtube_audio_library.py` · `api/music_api.py`.
 - `config/` modelos por agente, narrativa, perfiles de plataforma (con `verified_at`, `sources` y `unverified`: no presentar como oficial lo que no lo es).
 

@@ -60,6 +60,8 @@ class SoundAgent(Agent):
 
         self.progress(ctx, phase, 0.5, "Efectos")
         sfx_plan: list[tuple[str, float]] = []
+        narrative: set[str] = set()  # efectos descritos en el guion (los puede generar la IA si lo elegiste)
+        ai_sfx = "sfx" in ctx.spec.audio_features
         for t, cut in zip(edit.transitions, edit.cut_times_s):
             if t in TRANSITION_SFX:
                 sfx_plan.append((TRANSITION_SFX[t], max(0.0, cut - edit.transition_s)))
@@ -69,6 +71,8 @@ class SoundAgent(Agent):
                 sfx_plan.append(("impact", vs.start_s))
             for effect in sc.sfx[:1]:  # un efecto pedido por escena como máximo, para no saturar
                 sfx_plan.append((effect, vs.start_s + 0.1))
+                if ai_sfx and len(effect.split()) >= 2:
+                    narrative.add(effect)
         if voice.scenes and voice.scenes[0].path:
             sfx_plan.append(("impact", 0.0))  # golpe de arranque del gancho
 
@@ -78,7 +82,9 @@ class SoundAgent(Agent):
             try:
                 if effect not in cache:
                     asset = ctx.providers.invoke(ProviderCategory.SFX, "get_effect",
-                                                 SFXRequest(effect=effect, out_dir=out_dir), project_id=ctx.project_id)
+                                                 SFXRequest(effect=effect, out_dir=out_dir,
+                                                            descriptive=effect in narrative),
+                                                 project_id=ctx.project_id)
                     cache[effect] = asset.path
                 tracks.append(AudioTrack(path=Path(cache[effect]), start_s=round(at, 3), role="sfx", gain_db=SFX_GAIN_DB))
                 sfx_log.append({"effect": effect, "at_s": round(at, 3)})

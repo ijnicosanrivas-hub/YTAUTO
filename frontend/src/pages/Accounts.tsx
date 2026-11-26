@@ -3,6 +3,7 @@ import { api } from "../api";
 import { Icon } from "../components/Icon";
 import { ErrorBox, PageHead, useAction, useApi } from "../components/ui";
 import { creditsLeft, fmtCredits } from "../accounts";
+import { AudioQuestionnaire, VoiceCast } from "../components/AudioSetup";
 import type { AccountsView, HiggsView } from "../types";
 
 /** Barra de créditos restantes (verde → ámbar → rojo según lo que queda). */
@@ -58,7 +59,7 @@ function ElevenCard({ v, onChanged }: { v: AccountsView["elevenlabs"]; onChanged
       <div className="acc-head">
         <span className="acc-logo eleven" aria-hidden>11</span>
         <div>
-          <h3>ElevenLabs <small className="muted">· solo voz</small></h3>
+          <h3>ElevenLabs <small className="muted">· voz y efectos</small></h3>
           <div className="muted small">{v.linked ? `Plan ${sub?.tier ?? "—"} · clave ${v.key_hint ?? ""}` : "Sin vincular"}</div>
         </div>
         <span className="spacer" />
@@ -254,10 +255,14 @@ export default function Accounts() {
       <ErrorBox error={error} />
       {!data && !error && <div className="empty">Cargando cuentas…</div>}
       {data && (
-        <div className="acc-grid">
-          <ElevenCard v={data.elevenlabs} onChanged={reload} />
-          <HiggsCard v={data.higgsfield} onChanged={reload} />
-        </div>
+        <>
+          <div className="acc-grid">
+            <ElevenCard v={data.elevenlabs} onChanged={reload} />
+            <HiggsCard v={data.higgsfield} onChanged={reload} />
+          </div>
+          <AudioQuestionnaire v={data.elevenlabs} onChanged={reload} />
+          <VoiceCast v={data.elevenlabs} onChanged={reload} />
+        </>
       )}
     </div>
   );

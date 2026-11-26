@@ -130,9 +130,11 @@ def test_import_api(tmp_path, monkeypatch, mp3):
     assert c.get("/api/music/youtube").json()["tracks"] == []
 
 
-def test_name_helpers_and_elevenlabs_is_voice_only():
+def test_name_helpers_and_elevenlabs_never_does_music():
     assert safe_name("../../a/b/Canción Épica.MP3") == "Cancion Epica.mp3"
     assert guess_title_artist("Night Run - Artista Demo.mp3") == ("Night Run", "Artista Demo")
     assert guess_title_artist("solo_titulo.mp3") == ("solo titulo", None)
     eleven = {n: c for n, c in catalog.discover().items() if "eleven" in n.lower()}
-    assert eleven and all(c.category is C.TTS for c in eleven.values())  # ElevenLabs solo pone la voz
+    # Voz y, solo si lo eliges en el cuestionario, efectos con IA; la música nunca es de ElevenLabs.
+    assert eleven and {c.category for c in eleven.values()} <= {C.TTS, C.SFX}
+    assert all(c.requires_network and c.is_paid for c in eleven.values())  # nunca se registran ni gastan solos

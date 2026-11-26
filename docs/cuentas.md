@@ -70,3 +70,26 @@ Cómo funciona:
 
 La biblioteca se registra detrás de la música procedural: la música automática nunca la usa si no se pide.
 Código: `providers/music/youtube_audio_library.py`, `api/music_api.py`, `frontend/src/pages/YouTubeMusic.tsx`.
+
+
+## ElevenLabs avanzado: lo eliges tú (Cuentas conectadas → «¿Qué quieres usar de ElevenLabs?»)
+Cuestionario con cada capacidad, su coste oficial en créditos y si tu plan la incluye. Lo que marques se ofrece en
+cada «Nuevo vídeo» (ahí puedes quitarlo solo para ese vídeo). Datos oficiales (docs y precios de ElevenLabs, nov. 2026):
+
+| Capacidad | Cómo se usa en YTAUTO | Coste |
+|---|---|---|
+| Interpretación emocional (Eleven v4) | El agente de voz marca cada frase con etiquetas (`[whispers]`, `[sighs]`, «…», MAYÚSCULAS) sin cambiar palabras y narra con Eleven v4 por Text to Dialogue | 1 crédito/carácter |
+| Subtítulos palabra a palabra | Tiempos por carácter que devuelve ElevenLabs con el audio → cada palabra exacta | sin coste extra |
+| Diálogos con varias voces | El guionista escribe «papel: frase»; se generan con las voces del canal en una sola petición (≤ 2.000 caracteres, ≤ 10 voces) | 1 crédito/carácter |
+| Efectos de sonido IA | Solo los efectos narrativos descritos en el guion (en inglés); los de montaje siguen siendo locales | 200 por efecto (40/s con duración fija) |
+| Voces por canal | Narrador, protagonista, antagonista, secundario y documental por canal; viajan con cada proyecto | sin coste |
+| Diseño de voces | Descripción → 3 muestras (Voice Design) → guardar como papel del canal | lo indica ElevenLabs |
+| Voice Changer | En «Guion», subes tu grabación de una escena y suena con la voz del canal (equivalente por API de Actor Mode) | 1.000 por minuto |
+| Clonación profesional (PVC) | Se crea en la web de ElevenLabs (plan Creator) y luego se elige aquí como voz | incluida en Creator |
+| Studio: multipista y Actor Mode | Sin API: el montaje multipista ya lo hace YTAUTO con FFmpeg | — |
+
+Si Claude no puede preparar la interpretación, se narra sin etiquetas (nunca bloquea). Las voces que no entienden
+etiquetas (eSpeak, Piper) reciben el texto plano. El freno de saldo sigue activo y los efectos IA piden su propia
+autorización de gasto por vídeo (`spend:elevenlabs_sfx`, máximo 6 por vídeo por defecto).
+Código: `core/audio_features.py`, `providers/voice/elevenlabs.py`, `providers/sound/elevenlabs_sfx.py`,
+`agents/voice.py`, `api/accounts_api.py`, `frontend/src/components/AudioSetup.tsx`.

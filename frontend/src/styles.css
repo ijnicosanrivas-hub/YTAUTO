@@ -651,3 +651,28 @@ html[data-profile="kids"] .lm-edit summary { color: var(--accent-2); }
 .sb-card .row { gap: 8px; }
 .concept-facts .fact-line { display: block; }
 .retention-line { margin-left: 24px; margin-right: 24px; }
+
+/* ---------------------------------------------------------------- audio: cuestionario y reparto */
+.audio-q, .acc-grid + .panel { margin-top: 16px; }
+.aq-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 10px; margin: 10px 0; }
+.aq-item { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border-radius: var(--radius-sm); background: var(--fill);
+  border: 1px solid transparent; cursor: pointer; }
+.aq-item.on { border-color: color-mix(in srgb, var(--accent) 60%, transparent); background: color-mix(in srgb, var(--accent) 8%, var(--fill)); }
+.aq-item.info { cursor: default; opacity: 0.85; }
+.aq-item input { margin-top: 4px; }
+.aq-body { display: flex; flex-direction: column; gap: 4px; font-size: 13px; line-height: 1.4; }
+.aq-dot { width: 18px; height: 18px; border-radius: 99px; display: grid; place-items: center; font-size: 11px; font-weight: 800;
+  background: var(--fill-2); color: var(--muted); flex: none; margin-top: 2px; }
+.seg { display: flex; gap: 4px; flex-wrap: wrap; }
+.seg-btn { padding: 6px 10px; border-radius: 99px; border: 1px solid var(--line, #ffffff22); background: transparent; color: var(--text-2); cursor: pointer; font: inherit; font-size: 12.5px; }
+.seg-btn.on { background: var(--accent); color: var(--accent-ink, #111); border-color: var(--accent); }
+.cast-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px 14px; margin: 10px 0; }
+.cast-row { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; font-weight: 600; color: var(--text-2); }
+.design-box { margin-top: 12px; padding: 12px; border-radius: var(--radius-sm); border: 1px dashed var(--line, #ffffff22); display: flex; flex-direction: column; gap: 8px; }
+.design-box h4 { margin: 0; }
+.preview-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 8px; }
+.preview { display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: var(--radius-sm); background: var(--fill); border: 2px solid transparent; }
+.preview.on { border-color: var(--accent); }
+.preview audio { width: 100%; height: 32px; }
+.audio-video { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.ref-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 12.5px; }

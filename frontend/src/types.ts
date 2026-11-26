@@ -73,6 +73,8 @@ export interface ProjectSpec {
   require_script_approval: boolean;
   require_concept_approval?: boolean;
   require_storyboard_approval?: boolean;
+  audio_features?: string[];
+  voice_cast?: Record<string, string>;
   subtitle_mode?: "karaoke" | "word_pop" | "line" | null;
   channel?: string;
   brief?: { question: string; answer: string }[];
@@ -347,6 +349,17 @@ export interface ElevenView {
   params?: { model_id?: string; default_voice_id?: string; price_per_1k_chars_eur?: number; reserve_credits?: number };
   subscription?: ElevenSubscription;
   always_authorized: boolean;
+  features?: AudioFeatureView[];
+  features_answered?: boolean;
+  cast?: Record<string, Record<string, string>>;
+  roles?: Record<string, string>;
+  channels?: { id: string; name: string }[];
+  sfx?: { linked: boolean; max_per_video: number | null; always_authorized: boolean };
+}
+
+export interface AudioFeatureView {
+  id: string; title: string; question: string; what: string; cost: string; min_tier: string;
+  in_app: boolean; per_video: boolean; default: boolean; enabled: boolean; plan_ok: boolean | null;
 }
 
 export interface HiggsUse { linked: boolean; role: string | null; model: string | null; resolution?: string | null; max_per_video: number | null }

@@ -6,11 +6,13 @@ import re
 
 from pydantic import BaseModel
 
+from ..core.audio_features import AUDIO_TAGS, parse_dialogue, role_voice, same_words, strip_tags
 from ..core.captions import regroup_cues
 from ..core.models import MAX_DURATION_S, MIN_DURATION_S, CorrectionRequest, Script
 from ..core.timeline import VoiceManifest, VoiceScene
 from ..core.workspace import stable_hash
-from ..providers.interfaces import ProviderCategory, SubtitleRequest, TTSRequest, Voice
+from ..providers.interfaces import (DialogueLine, ProviderCategory, SubtitleCue, SubtitleRequest, TTSRequest, Voice,
+                                    WordTiming)
 from .base import Agent, AgentContext, AgentResult
 
 SPEED_BY_INTENSITY = {"low": 0.95, "medium": 1.0, "high": 1.05}
@@ -49,6 +51,22 @@ class Pronunciations(BaseModel):
     scenes: dict[int, str]  # índice -> texto preparado para TTS
 
 
+PERFORMANCE_TASK = """Eres director de doblaje de vídeos cortos virales. Marca cómo debe INTERPRETARSE cada narración
+para Eleven v4, sin cambiar ni una palabra del texto:
+- Añade etiquetas de interpretación entre corchetes delante de la frase o fragmento al que afectan, elegidas de
+  `allowed_tags` o descripciones claras de la voz en inglés (p. ej. [low, gravelly voice]). Nada de etiquetas de
+  efectos de sonido (eso lo hace el agente de sonido).
+- Interpreta según la intención narrativa: susurro en la tensión, voz temblorosa en el miedo, sorpresa o
+  incredulidad en el giro, intensidad creciente hacia el clímax y una pausa («…») justo antes de revelar algo.
+- Usa también puntos suspensivos para pausas y MAYÚSCULAS para el énfasis de una palabra clave (con moderación).
+- No uses SSML (<break>): Eleven v4 no lo admite. Varía: no repitas la misma etiqueta en todas las escenas.
+- Devuelve todas las escenas; las palabras deben ser EXACTAMENTE las mismas que en `scenes`."""
+
+
+class Performance(BaseModel):
+    scenes: dict[int, str]  # índice -> narración con etiquetas de interpretación
+
+
 def choose_voice(voices: list[Voice], language: str, voice_type: str | None) -> Voice | None:
     candidates = [v for v in voices if v.language.split("-")[0] == language.split("-")[0]] or voices
     if voice_type:
@@ -78,14 +96,23 @@ class VoiceAgent(Agent):
         texts = {s.index: normalize_for_tts(s.narration, spec.language) for s in script.scenes}
         if ctx.settings.get("voice_llm_pronunciation"):
             texts = self._llm_pronunciation(ctx, texts)
+        features = set(spec.audio_features)
+        cast = {k: v for k, v in spec.voice_cast.items() if v}
+        if cast.get("narrador") and any(v.id == cast["narrador"] for v in voices):
+            voice = next(v for v in voices if v.id == cast["narrador"])  # la voz del canal
+        performance = self._performance(ctx, texts) if "expressive" in features else {}
+        dialogues = {s.index: parse_dialogue(s.dialogue) for s in script.scenes} if "dialogue" in features and cast else {}
+        references = self._references(ctx) if "voice_changer" in features else {}
 
         out_dir = ctx.workspace.dir("voice")
         scenes: list[VoiceScene] = []
         corrections: list[CorrectionRequest] = []
         for n, sc in enumerate(script.scenes):
             self.progress(ctx, phase, n / len(script.scenes), f"Escena {sc.index}")
-            text = texts[sc.index]
-            th = stable_hash([text, voice.id if voice else None, speed])
+            lines = dialogues.get(sc.index) or []
+            text = " ".join([texts[sc.index], *(t for _, t in lines)]).strip()
+            th = stable_hash([text, voice.id if voice else None, speed, performance.get(sc.index), lines,
+                              str(references.get(sc.index) or ""), sorted(features), cast])
             prev = prev_by_idx.get(sc.index)
             if prev and prev.text_hash == th and not (ctx.scene_filter and sc.index in ctx.scene_filter):
                 voice_scene = prev.model_copy(update={
@@ -98,9 +125,11 @@ class VoiceAgent(Agent):
                                          planned_duration_s=sc.duration_s, text_hash=th))
                 continue
             path = out_dir / f"s{sc.index:02d}_{th}.wav"
-            asset = self._synth(ctx, text, voice, speed, path, sc.index)
+            extra = self._extras(texts[sc.index], performance.get(sc.index), lines, cast, voice,
+                                 references.get(sc.index), "word_timing" in features)
+            asset = self._synth(ctx, text, voice, speed, path, sc.index, **extra)
             dur = asset.duration_s or 0.0
-            if dur > sc.duration_s * OVERRUN_TOLERANCE and speed < MAX_SPEED:
+            if dur > sc.duration_s * OVERRUN_TOLERANCE and speed < MAX_SPEED and not extra:
                 asset = self._synth(ctx, text, voice, MAX_SPEED, path, sc.index)
                 dur = asset.duration_s or 0.0
             if dur > sc.duration_s * OVERRUN_TOLERANCE:
@@ -111,6 +140,7 @@ class VoiceAgent(Agent):
             scenes.append(VoiceScene(
                 index=sc.index, path=str(path), voice_duration_s=round(dur, 3), voice_offset_s=VOICE_OFFSET_S,
                 scene_duration_s=fit_scene(sc.duration_s, dur), planned_duration_s=sc.duration_s, text_hash=th,
+                word_timings=list(asset.metadata.get("word_timings") or []), spoken_text=text,
             ))
 
         manifest = VoiceManifest(voice_id=voice.id if voice else None, speed=speed, scenes=scenes)
@@ -132,13 +162,68 @@ class VoiceAgent(Agent):
         )
 
     # ------------------------------------------------------------------ auxiliares
-    def _synth(self, ctx, text, voice, speed, path, scene_index):
+    def _synth(self, ctx, text, voice, speed, path, scene_index, **extra):
         return ctx.providers.invoke(
             ProviderCategory.TTS, "synthesize",
             TTSRequest(text=text, language=ctx.spec.language, voice_id=voice.id if voice else None,
-                       speed=speed, out_path=path),
+                       speed=speed, out_path=path, **extra),
             project_id=ctx.project_id, scene_index=scene_index,
         )
+
+    @staticmethod
+    def _extras(narration: str, performed: str | None, lines: list[tuple[str, str]], cast: dict[str, str],
+                voice: Voice | None, reference, timings: bool) -> dict:
+        """Opciones para motores avanzados (los demás leen el texto plano y las ignoran)."""
+        extra: dict = {}
+        if reference:
+            extra["reference_audio"] = reference
+        elif lines:
+            narrator = cast.get("narrador") or (voice.id if voice else None)
+            dialogue = [DialogueLine(voice_id=narrator, text=performed or narration, role="narrador")] \
+                if narrator and narration else []
+            for role, line in lines:
+                vid = role_voice(role, cast)
+                if vid:
+                    dialogue.append(DialogueLine(voice_id=vid, text=line, role=role))
+            if len({d.voice_id for d in dialogue}) > 1:
+                extra["dialogue"] = dialogue
+        if performed and "dialogue" not in extra and "reference_audio" not in extra:
+            extra["performance_text"] = performed
+        if timings:
+            extra["want_word_timings"] = True
+        return extra
+
+    def _performance(self, ctx: AgentContext, texts: dict[int, str]) -> dict[int, str]:
+        """Interpretación emocional (etiquetas de Eleven v4). Si Claude falla, se narra sin etiquetas."""
+        wanted = {i: t for i, t in texts.items() if t}
+        if not wanted:
+            return {}
+        try:
+            result = self.ask_llm(
+                ctx, phase="voice", task=PERFORMANCE_TASK, output_model=Performance,
+                context={"language": ctx.spec.language, "scenes": wanted, "allowed_tags": AUDIO_TAGS,
+                         "intensity": ctx.spec.intensity},
+                accept=lambda p: [f"Escena {i}: cambia las palabras del texto (solo puedes añadir etiquetas, «…» o "
+                                  f"MAYÚSCULAS)" for i, t in wanted.items() if not same_words(t, p.scenes.get(i, ""))],
+            )
+        except Exception as e:  # noqa: BLE001 - la interpretación es una mejora: nunca bloquea la locución
+            ctx.memory.add_decision(self.name, f"Sin interpretación emocional ({type(e).__name__}): narración neutra")
+            return {}
+        out = {i: result.scenes[i] for i in wanted if result.scenes.get(i) and result.scenes[i] != wanted[i]}
+        ctx.workspace.save("voice", "performance", {str(k): v for k, v in out.items()})
+        return out
+
+    @staticmethod
+    def _references(ctx: AgentContext) -> dict[int, object]:
+        """Grabaciones del usuario por escena (voice/reference_<n>.*) para el Voice Changer."""
+        folder = ctx.workspace.dir("voice")
+        out = {}
+        for f in folder.glob("reference_*"):
+            try:
+                out[int(f.stem.split("_", 1)[1])] = f
+            except ValueError:
+                continue
+        return out
 
     @staticmethod
     def _fit_total(manifest: VoiceManifest, target_s: float, corrections: list[CorrectionRequest],
@@ -183,9 +268,14 @@ class VoiceAgent(Agent):
         for vs in manifest.scenes:
             if not vs.path:
                 continue
+            if vs.word_timings:
+                # Tiempos exactos devueltos con el audio: cada palabra se resalta justo cuando se pronuncia.
+                cues += cues_from_timings(vs.word_timings, vs.start_s + vs.voice_offset_s,
+                                          by_idx[vs.index].subtitle_lines)
+                continue
             scene_cues = ctx.providers.query(
                 ProviderCategory.SUBTITLE, "align",
-                SubtitleRequest(text=by_idx[vs.index].narration, audio_path=vs.path,
+                SubtitleRequest(text=strip_tags(vs.spoken_text) or by_idx[vs.index].narration, audio_path=vs.path,
                                 audio_duration_s=vs.voice_duration_s, language=ctx.spec.language,
                                 offset_s=vs.start_s + vs.voice_offset_s), project_id=ctx.project_id)
             # Los cortes de línea que escribió el guionista (pensados para leer en móvil) tienen prioridad.
@@ -203,3 +293,27 @@ class VoiceAgent(Agent):
             accept=lambda p: [] if set(p.scenes) == set(texts) else ["Debe devolver todas las escenas"],
         )
         return result.scenes
+
+
+def cues_from_timings(timings: list[dict], offset_s: float, lines: list[str], max_chars: int = 32) -> list[SubtitleCue]:
+    """Subtítulos a partir de los tiempos por palabra: respeta los cortes del guionista si coinciden."""
+    words = [WordTiming(word=str(w["word"]), start_s=round(float(w["start_s"]) + offset_s, 3),
+                        end_s=round(max(float(w["end_s"]), float(w["start_s"]) + 0.05) + offset_s, 3)) for w in timings]
+    if not words:
+        return []
+    whole = [SubtitleCue(start_s=words[0].start_s, end_s=words[-1].end_s, text=" ".join(w.word for w in words),
+                         words=words)]
+    regrouped = regroup_cues(whole, lines)
+    if regrouped is not whole:
+        return regrouped
+    out, chunk = [], []
+    for w in words:
+        if chunk and len(" ".join(x.word for x in [*chunk, w])) > max_chars:
+            out.append(SubtitleCue(start_s=chunk[0].start_s, end_s=chunk[-1].end_s,
+                                   text=" ".join(x.word for x in chunk), words=chunk))
+            chunk = []
+        chunk.append(w)
+    if chunk:
+        out.append(SubtitleCue(start_s=chunk[0].start_s, end_s=chunk[-1].end_s, text=" ".join(x.word for x in chunk),
+                               words=chunk))
+    return out

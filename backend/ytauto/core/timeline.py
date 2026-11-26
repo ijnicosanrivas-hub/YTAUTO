@@ -15,6 +15,8 @@ class VoiceScene(BaseModel):
     planned_duration_s: float = 0.0  # duración prevista por el director (antes de ajustar a la voz)
     voice_offset_s: float = 0.15  # la voz empieza un poco después del corte
     text_hash: str = ""
+    word_timings: list[dict] = Field(default_factory=list)  # tiempos exactos por palabra (relativos al clip)
+    spoken_text: str = ""  # texto que suena (narración + diálogos), para los subtítulos
 
 
 class VoiceManifest(BaseModel):

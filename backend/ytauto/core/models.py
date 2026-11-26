@@ -93,6 +93,9 @@ class ProjectSpec(BaseModel):
     # Puntos de control previos (ahorran créditos: se decide antes de producir). La interfaz los activa por defecto.
     require_concept_approval: bool = False   # concepto, gancho y estructura antes de escribir el guion
     require_storyboard_approval: bool = False  # imágenes/clips por escena antes de generarlos (gasto de créditos)
+    # Capacidades de audio elegidas para este vídeo (core/audio_features.py) y reparto de voces del canal.
+    audio_features: list[str] = Field(default_factory=list)
+    voice_cast: dict[str, str] = Field(default_factory=dict)  # papel → voice_id
     channel: str = "general"  # canal al que pertenece (config/channels.yaml)
     brief: list[BriefAnswer] = Field(default_factory=list)  # preguntas del director y respuestas
     license_map: dict[str, str] = Field(default_factory=dict)  # agente → licencia de Claude elegida

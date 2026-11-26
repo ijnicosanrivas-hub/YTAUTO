@@ -53,7 +53,7 @@ export default function ProjectDetail({ id }: { id: string }) {
         ))}
       </div>
       {tab === "phases" && <Phases view={view} onChange={reload} />}
-      {tab === "script" && <ScriptView arts={arts} />}
+      {tab === "script" && <ScriptView arts={arts} view={view} />}
       {tab === "plan" && <PlanView arts={arts} />}
       {tab === "video" && <VideoView id={id} arts={arts} onChange={reload} />}
       {tab === "review" && <ReviewView arts={arts} />}
@@ -205,8 +205,40 @@ function Phases({ view, onChange }: { view: ProjectView; onChange: () => void })
   );
 }
 
-function ScriptView({ arts }: { arts: Artifacts | null }) {
+function toB64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(",", 2)[1] ?? "");
+    r.onerror = () => reject(new Error("No se pudo leer el archivo"));
+    r.readAsDataURL(file);
+  });
+}
+
+/** Voice Changer: el usuario sube su propia interpretación de una escena y suena con la voz del canal. */
+function ReferenceUpload({ pid, scene, has, onChange }: { pid: string; scene: number; has: boolean; onChange: () => void }) {
+  const { busy, error, run } = useAction();
+  return (
+    <div className="ref-row">
+      {has ? <span className="badge s-completed">🎙 Tu interpretación subida</span> : <span className="muted">🎙 ¿La grabas tú? Sonará con la voz del canal (1.000 créditos/min)</span>}
+      <label className="btn" style={{ cursor: "pointer" }}>
+        {has ? "Cambiar" : "Subir grabación"}
+        <input type="file" accept="audio/*" hidden disabled={busy} onChange={async (e) => {
+          const f = e.target.files?.[0];
+          e.target.value = "";
+          if (f && (await run(async () => api.post(`/api/projects/${pid}/voice-reference/${scene}`, { filename: f.name, data_b64: await toB64(f) })))) onChange();
+        }} />
+      </label>
+      {has && <button className="btn danger" disabled={busy} onClick={async () => { if (await run(() => api.del(`/api/projects/${pid}/voice-reference/${scene}`))) onChange(); }}>Quitar</button>}
+      <ErrorBox error={error} />
+    </div>
+  );
+}
+
+function ScriptView({ arts, view }: { arts: Artifacts | null; view: ProjectView }) {
   const s = arts?.script;
+  const pid = view.project.id;
+  const vc = ((view.project.spec as { audio_features?: string[] }).audio_features ?? []).includes("voice_changer");
+  const { data: refs, reload } = useApi<{ scenes: number[] }>(vc ? `/api/projects/${pid}/voice-reference` : null);
   if (!s) return <div className="panel empty">El guion aún no está escrito.</div>;
   return (
     <div className="panel">
@@ -220,7 +252,9 @@ function ScriptView({ arts }: { arts: Artifacts | null }) {
             <span className="muted mono">{sc.duration_s.toFixed(1)} s · {sc.narration.split(" ").length} palabras</span>
           </div>
           <p style={{ margin: "6px 0" }}>{sc.narration}</p>
+          {!!sc.dialogue?.length && <div className="small">{sc.dialogue.map((d: string) => <div key={d}>🗣 {d}</div>)}</div>}
           <div className="muted">🎬 {sc.visual_notes}{sc.sfx?.length ? ` · 🔊 ${sc.sfx.join(", ")}` : ""}</div>
+          {vc && <ReferenceUpload pid={pid} scene={sc.index} has={!!refs?.scenes.includes(sc.index)} onChange={() => void reload()} />}
         </div>
       ))}
       <p><b>Cierre:</b> {s.closing}</p>

@@ -4,7 +4,7 @@ import { durationFromAnswer, groupByChannel, licenseWarning, nameFromIdea, token
 import { Face } from "../components/Face";
 import { ErrorBox, PageHead, useAction, useApi } from "../components/ui";
 import { PLATFORM_LABEL } from "../format";
-import { paidAccounts } from "../accounts";
+import { estimateAudioCredits, fmtCredits, paidAccounts, videoAudioOptions } from "../accounts";
 import { useLive } from "../store";
 import { MUSIC_CHOICES, musicSpec, musicWarnings } from "../music";
 import type { AccountsView, BriefQuestions, Channel, LicensesView, ProjectSpec, ProjectView, YtMusicView } from "../types";
@@ -41,6 +41,9 @@ export default function NewProject() {
   const [spend, setSpend] = useState<Record<string, boolean>>({}); // cuenta de pago → autorizada en este vídeo
   const [budgetEur, setBudgetEur] = useState("5");
   const paid = paidAccounts(accounts);
+  const audioOptions = videoAudioOptions(accounts);
+  const [audioOff, setAudioOff] = useState<Set<string>>(new Set()); // lo que quitas solo para este vídeo
+  const audioFeatures = audioOptions.map((f) => f.id).filter((id) => !audioOff.has(id));
   const always = accounts?.always ?? [];
   const spending = paid.some((a) => spend[a.id]) || always.length > 0;
   const ask = useAction();
@@ -67,6 +70,7 @@ export default function NewProject() {
       name: nameFromIdea(idea), topic: nameFromIdea(idea), idea, duration_s: duration, language, intensity: "medium",
       ...musicSpec(musicChoice, musicStyle),
       platforms, budget_max_eur: spending ? Math.max(0, Number(budgetEur) || 0) : 0, mode: "auto", require_script_approval: approveScript,
+      audio_features: audioFeatures,
       require_concept_approval: approveConcept, require_storyboard_approval: approveStoryboard, subtitle_mode: null,
       channel, brief: qa, license_map,
     };
@@ -266,6 +270,20 @@ export default function NewProject() {
                   <span><b>Storyboard</b><small className="muted">Revisas qué imagen o clip lleva cada escena antes de generarlos (créditos).</small></span>
                 </label>
               </div>
+              {audioOptions.length > 0 && (
+                <div className="spend-box">
+                  <h4>Audio de este vídeo (ElevenLabs)</h4>
+                  <div className="audio-video">
+                    {audioOptions.map((f) => (
+                      <label key={f.id} className="spend-item">
+                        <input type="checkbox" checked={!audioOff.has(f.id)} onChange={() => setAudioOff((s) => { const n = new Set(s); if (n.has(f.id)) n.delete(f.id); else n.add(f.id); return n; })} />
+                        <span><b>{f.title}</b> <span className="muted small">· {f.cost}</span></span>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="muted small">Estimación: ≈ {fmtCredits(estimateAudioCredits(duration, audioFeatures, accounts?.elevenlabs.sfx?.max_per_video ?? null))} créditos de ElevenLabs como máximo. Cambia tus opciones en <a href="#/accounts">Cuentas conectadas</a>.</div>
+                </div>
+              )}
               {(paid.length > 0 || always.length > 0) && (
                 <div className="spend-box">
                   <h4>Cuentas de pago para este vídeo</h4>

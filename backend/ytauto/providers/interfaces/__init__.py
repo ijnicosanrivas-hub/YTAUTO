@@ -137,12 +137,23 @@ class Voice(BaseModel):
     style: str | None = None
 
 
-class TTSRequest(BaseModel):
+class DialogueLine(BaseModel):
+    voice_id: str
     text: str
+    role: str = ""
+
+
+class TTSRequest(BaseModel):
+    text: str  # texto plano (lo que se ve en subtítulos); cualquier motor de voz sabe leerlo
     language: str = "es"
     voice_id: str | None = None
     speed: float = 1.0  # 1.0 = natural
     out_path: Path
+    # Opcionales, solo para motores que los admiten (capabilities): el resto los ignora y lee `text`.
+    performance_text: str | None = None  # el mismo texto con etiquetas de interpretación ([whispers]…)
+    dialogue: list[DialogueLine] = Field(default_factory=list)  # varias voces en una sola generación
+    reference_audio: Path | None = None  # tu grabación: se convierte a la voz elegida (voice changer)
+    want_word_timings: bool = False
 
 
 class TextToSpeechProvider(BaseProvider):
@@ -177,9 +188,10 @@ class MusicGenerationProvider(BaseProvider):
 
 
 class SFXRequest(BaseModel):
-    effect: str  # "whoosh", "impact", "riser", "pop", "ambience:city", ...
+    effect: str  # "whoosh", "impact", "riser", "pop", "ambience:city", ... o una descripción ("pasos acercándose")
     duration_s: float | None = None
     out_dir: Path
+    descriptive: bool = False  # True = efecto narrativo descrito en el guion (lo pueden generar con IA)
 
 
 class SoundEffectsProvider(BaseProvider):
