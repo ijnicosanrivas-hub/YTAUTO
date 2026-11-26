@@ -31,7 +31,7 @@ def test_sql_store_survives_reopen(tmp_path):
     assert s2.get_approvals("p1")[0].approved
     assert s2.llm_usage("p1")[0]["duration_s"] == 1.2
     assert s2.events("p1")[0]["type"] == "phase.status"
-    assert len(s2.list_phases("p1")) == 18
+    assert len(s2.list_phases("p1")) == 20
 
 
 def test_duplicate_project_rejected(tmp_path):

@@ -42,7 +42,7 @@ def test_chief_intake_and_setup(make_ctx):
     assert "Prueba" in r.summary
     r = ChiefAgent().run("project_setup", ctx)
     plan = ctx.workspace.load("planning", "production_plan")
-    assert len(plan["phases"]) == 18
+    assert len(plan["phases"]) == 20
 
 
 def test_chief_plan_invalidation_groups_by_phase():

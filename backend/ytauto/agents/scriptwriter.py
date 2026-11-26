@@ -8,7 +8,10 @@ from ..core.narrative import NarrativeTemplate
 from .base import Agent, AgentContext, AgentResult
 
 
-HARD_FLOOR_RATIO = 0.75  # por debajo del 75 % de la cobertura mínima (≈60 % de la duración) se rechaza
+HARD_FLOOR_RATIO = 0.75
+# Arranques lentos que matan la retención en los primeros segundos.
+SLOW_OPENING = re.compile(r"^\W*(?:(?:hola|buenas|hey|hello|hi|welcome)\b|bienvenid|qu[eé] tal\b|en este v[ií]deo|"
+                          r"hoy (?:te|os|les) (?:voy|vamos)|in this video)", re.IGNORECASE)  # por debajo del 75 % de la cobertura mínima (≈60 % de la duración) se rechaza
 
 
 def _sentences(text: str) -> list[str]:
@@ -25,6 +28,9 @@ def check_script(script: Script, brief: CreativeBrief, tpl: NarrativeTemplate, l
         issues.append("Falta el gancho inicial")
     if not script.closing.strip():
         issues.append("Falta el cierre")
+    first = script.scenes[0].narration if script.scenes else ""
+    if (scene_filter is None or 0 in scene_filter) and SLOW_OPENING.search(first):
+        issues.append("Escena 0: empieza directamente con el gancho, sin saludos ni «en este vídeo»")
     seen: set[str] = set()
     for scene, plan in zip(script.scenes, brief.scenes):
         if scene_filter is not None and scene.index not in scene_filter:
@@ -76,21 +82,31 @@ def default_subtitle_lines(text: str, max_chars: int = 32) -> list[str]:
     return lines
 
 
-TASK = """Eres el guionista de vídeos cortos verticales. Escribe el guion completo siguiendo el plan
-creativo (`creative_brief`), escena por escena (mismos índices y secciones).
+TASK = """Eres el guionista de vídeos cortos verticales con mejor retención del sector. Escribe el guion completo
+siguiendo el plan creativo (`creative_brief`), escena por escena (mismos índices y secciones).
 
-Requisitos:
-- La escena 0 contiene el gancho: frase impactante, pregunta intrigante o promesa narrativa. Nada de
-  introducciones lentas ("hola a todos", "en este vídeo...").
-- Mantén la atención: información nueva en cada escena, sin redundancias ni frases repetidas.
-- Respeta `max_words_per_scene` (velocidad realista de narración con pausas). Es preferible un texto
-  más corto y claro que uno que no cabe, pero la narración total debe cubrir al menos el
-  `min_speech_coverage` de la duración: nada de tiempos muertos.
-- Cierre satisfactorio; llamada a la acción solo si encaja.
+Gancho y arranque:
+- La escena 0 desarrolla el gancho ELEGIDO: `creative_brief.hook_options[chosen_hook]` (adáptalo al límite de
+  palabras). La primera palabra ya engancha: nada de «hola», «bienvenidos» ni «en este vídeo».
+- Si hay `creative_brief.user_notes`, son indicaciones del usuario al aprobar el concepto: cúmplelas.
+
+Retención:
+- Aplica el `retention_plan` del director: bucle abierto al principio que se resuelve hacia el final, re-ganchos
+  cada 8-12 s («pero hay algo más raro»), revelación con recompensa real. Anota cada técnica en `retention_beats`
+  (segundo aproximado, técnica y la frase que la ejecuta).
+- Información nueva en cada escena, frases cortas, verbos activos, datos concretos (números, nombres) y segunda
+  persona cuando encaje. Sin redundancias ni frases repetidas.
+- Respeta `max_words_per_scene` (velocidad realista de narración con pausas): mejor corto y claro que no cabe,
+  pero la narración total debe cubrir al menos `min_speech_coverage` de la duración: nada de tiempos muertos.
+
+Cierre:
+- El final cumple la promesa del gancho. Si encaja, cierra en bucle (la última frase conecta con la primera).
+- `call_to_action` = la `cta` del director, natural y ≤ 12 palabras, solo en la escena final.
+
+Formato:
 - Escribe en el idioma `language`, con ortografía impecable.
-- `visual_notes`, `sfx` y `music_cue` por escena; `subtitle_lines` divide la narración en líneas
-  cortas (≤ 32 caracteres) legibles en móvil.
-- duration_s de cada escena = la del plan creativo.
+- `visual_notes`, `sfx` y `music_cue` por escena; `subtitle_lines` divide la narración en líneas cortas
+  (≤ 32 caracteres) legibles en móvil. duration_s de cada escena = la del plan creativo.
 """
 
 

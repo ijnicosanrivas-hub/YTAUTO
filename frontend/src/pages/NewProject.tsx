@@ -29,6 +29,8 @@ export default function NewProject() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [picked, setPicked] = useState<Record<string, string>>({}); // agente → licencia ("" = automática)
   const [approveScript, setApproveScript] = useState(true);
+  const [approveConcept, setApproveConcept] = useState(true); // elegir gancho y enfoque antes del guion
+  const [approveStoryboard, setApproveStoryboard] = useState(true); // revisar imágenes/clips antes de gastar créditos
   const [musicChoice, setMusicChoice] = useState<string>("auto");
   const [musicStyle, setMusicStyle] = useState("");
   const { data: ytMusic } = useApi<YtMusicView>(musicChoice === "youtube" ? "/api/music/youtube" : null);
@@ -64,7 +66,8 @@ export default function NewProject() {
     const body: ProjectSpec = {
       name: nameFromIdea(idea), topic: nameFromIdea(idea), idea, duration_s: duration, language, intensity: "medium",
       ...musicSpec(musicChoice, musicStyle),
-      platforms, budget_max_eur: spending ? Math.max(0, Number(budgetEur) || 0) : 0, mode: "auto", require_script_approval: approveScript, subtitle_mode: null,
+      platforms, budget_max_eur: spending ? Math.max(0, Number(budgetEur) || 0) : 0, mode: "auto", require_script_approval: approveScript,
+      require_concept_approval: approveConcept, require_storyboard_approval: approveStoryboard, subtitle_mode: null,
       channel, brief: qa, license_map,
     };
     const res = await launch.run(async () => {
@@ -248,9 +251,21 @@ export default function NewProject() {
               <ul className="qa">
                 {AGENTS.map((a) => <li key={a}><span className="muted">{ROLE[a]}:</span> {byId[effective(a)]?.name ?? "sesión principal"}{picked[a] ? "" : " (auto)"}</li>)}
               </ul>
-              <label className="row" style={{ color: "var(--text)", marginTop: 12 }}>
-                <input type="checkbox" checked={approveScript} onChange={(e) => setApproveScript(e.target.checked)} /> Quiero aprobar el guion antes de producir
-              </label>
+              <h4 style={{ marginTop: 12 }}>Antes de gastar, quiero decidir yo</h4>
+              <div className="gate-list">
+                <label className="gate-item">
+                  <input type="checkbox" checked={approveConcept} onChange={(e) => setApproveConcept(e.target.checked)} />
+                  <span><b>Concepto y gancho</b><small className="muted">Eliges entre 3 ganchos, la estructura y el plan de retención antes de escribir el guion.</small></span>
+                </label>
+                <label className="gate-item">
+                  <input type="checkbox" checked={approveScript} onChange={(e) => setApproveScript(e.target.checked)} />
+                  <span><b>Guion</b><small className="muted">Lees el texto completo antes de grabar la voz.</small></span>
+                </label>
+                <label className="gate-item">
+                  <input type="checkbox" checked={approveStoryboard} onChange={(e) => setApproveStoryboard(e.target.checked)} />
+                  <span><b>Storyboard</b><small className="muted">Revisas qué imagen o clip lleva cada escena antes de generarlos (créditos).</small></span>
+                </label>
+              </div>
               {(paid.length > 0 || always.length > 0) && (
                 <div className="spend-box">
                   <h4>Cuentas de pago para este vídeo</h4>

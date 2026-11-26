@@ -90,6 +90,29 @@ class LocalDraftLLM(LLMProvider):
             "palette": ["#0B0F1A", "#FFD400", "#FFFFFF"], "pacing": "rápido",
             "target_duration_s": target, "music_direction": c["user_request"].get("music") or "electrónica tensa",
             "scenes": scenes, "resource_needs": ["imágenes verticales", "música", "efectos"],
+            "viral_angle": f"Curiosidad: un dato poco conocido sobre {topic} que cambia cómo se ve el tema",
+            "target_viewer": "Curiosos de 18-34 años que consumen datos rápidos en el móvil",
+            "hook_options": [
+                {"style": "pregunta", "text": f"¿Sabías esto de {topic}?", "on_screen_text": "¿LO SABÍAS?",
+                 "visual": "Primer plano con zoom rápido", "why": "Abre una pregunta que pide respuesta"},
+                {"style": "dato_impactante", "text": "Nadie te contó esto.", "on_screen_text": "NADIE LO CUENTA",
+                 "visual": "Corte seco a la imagen más llamativa", "why": "Promete información exclusiva"},
+                {"style": "contradiccion", "text": "Todo lo que crees es falso.", "on_screen_text": "ES FALSO",
+                 "visual": "Imagen conocida que se rompe", "why": "Desafía una creencia y genera tensión"},
+            ],
+            "chosen_hook": 0,
+            "story_structure": "Pregunta → contexto → giro → revelación → cierre en bucle",
+            "opening_scene": f"Zoom rápido sobre {topic}, texto «¿LO SABÍAS?» y la pregunta en off",
+            "retention_plan": [
+                {"at_s": 1.0, "technique": "bucle abierto", "detail": "La pregunta se responde al final"},
+                {"at_s": round(target * 0.35, 1), "technique": "re-gancho", "detail": "«Pero eso no es lo más raro»"},
+                {"at_s": round(target * 0.8, 1), "technique": "revelación", "detail": "Se resuelve la pregunta inicial"},
+            ],
+            "cta": "Comenta qué otro tema quieres ver",
+            "title_options": [f"Lo que nadie cuenta de {topic}"[:60], f"{topic}: el dato oculto"[:60],
+                              f"¿Sabías esto de {topic}?"[:60]],
+            "cover_concept": "Fotograma del gancho con «¿LO SABÍAS?» en grande y alto contraste",
+            "risks": ["Contexto largo en la escena 2: se acorta con cortes cada 3 s"],
         }
 
     # ------------------------------------------------------------------ guionista
@@ -191,7 +214,8 @@ class LocalDraftLLM(LLMProvider):
             "internal_title": f"{topic[:40]} — borrador", "topic": topic,
             "narrative_goal": f"Despertar curiosidad sobre {topic}",
             "hook": scenes[0]["narration"], "closing": scenes[-1]["narration"],
-            "call_to_action": None, "music": brief.get("music_direction", ""), "scenes": scenes,
+            "call_to_action": brief.get("cta") or None, "music": brief.get("music_direction", ""), "scenes": scenes,
+            "retention_beats": brief.get("retention_plan", []),
         }
 
     # ------------------------------------------------------------------ recursos
@@ -211,7 +235,7 @@ class LocalDraftLLM(LLMProvider):
         return {"scenes": c["scenes"]}
 
     def _reviewer(self, c: dict) -> dict:
-        return {"scores": {"hook": 8, "pacing": 8, "coherence": 8, "spelling": 9, "legibility": 9},
+        return {"scores": {"hook": 8, "pacing": 8, "coherence": 8, "payoff": 8, "spelling": 9, "legibility": 9},
                 "issues": [], "summary": "Borrador local: revisión editorial automática sin Claude."}
 
     def _publisher(self, c: dict) -> dict:

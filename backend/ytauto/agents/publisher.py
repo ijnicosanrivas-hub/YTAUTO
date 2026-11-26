@@ -45,11 +45,16 @@ def check_metadata(meta: PublishMetadata, profiles: dict[str, PlatformProfile], 
     return issues
 
 
-TASK = """Eres el responsable de publicación de vídeos cortos. Para cada plataforma de
-`platforms`, redacta título, descripción y hashtags en el idioma `language`, adaptados al estilo de
-cada red y respetando estrictamente sus límites (`limits`, `rules`). Sin clickbait engañoso: el título debe
-corresponder al contenido. Hashtags con '#', sin espacios, relevantes al tema. Las reglas de medición
-varían: YouTube mide la descripción en bytes UTF-8; Instagram y TikTok meten los hashtags dentro del pie."""
+TASK = """Eres el responsable de publicación de vídeos cortos, especialista en CTR. Para cada plataforma de
+`platforms`, redacta título, descripción y hashtags en el idioma `language`, adaptados al estilo de cada red y
+respetando estrictamente sus límites (`limits`, `rules`).
+- Título: parte de `title_options` del director; curiosidad + especificidad (un número, un nombre, un contraste),
+  palabras clave al principio, sin mayúsculas en todo el título y SIN clickbait engañoso: debe corresponder al vídeo.
+- Descripción: la primera línea re-engancha (se ve antes del «más»); después contexto breve, la llamada a la acción
+  (`cta`) y, si se indica, el crédito obligatorio de la música.
+- Hashtags con '#', sin espacios: 1-2 amplios del nicho + 2-3 específicos del tema; nada de relleno.
+Las reglas de medición varían: YouTube mide la descripción en bytes UTF-8; Instagram y TikTok meten los hashtags
+dentro del pie."""
 
 MANUAL_README = """PUBLICACIÓN MANUAL — {display_name}
 =====================================
@@ -168,6 +173,7 @@ class PublisherAgent(Agent):
             ctx, phase="publish_prep", task=TASK, output_model=PublishMetadata,
             context={
                 "language": ctx.spec.language, "topic": ctx.spec.topic, "hook": script.hook,
+                **self._strategy(ctx, script),
                 "summary": [s.narration for s in script.scenes][:20],
                 "platforms": list(profiles),
                 "limits": {k: v.metadata.model_dump() for k, v in profiles.items()},
@@ -211,6 +217,16 @@ class PublisherAgent(Agent):
         return AgentResult(status="in_review",
                            summary=f"Metadatos, miniaturas y paquetes manuales para {', '.join(package)}",
                            artifacts={"publish_package": str(path)})
+
+    @staticmethod
+    def _strategy(ctx: AgentContext, script: Script) -> dict:
+        """Lo que decidió el director para el CTR (títulos, portada, ángulo y llamada a la acción)."""
+        from ..core.models import CreativeBrief
+        if not ctx.workspace.has("planning", "creative_brief"):
+            return {"cta": script.call_to_action}
+        brief = ctx.workspace.load("planning", "creative_brief", CreativeBrief)
+        return {"title_options": brief.title_options, "cover_concept": brief.cover_concept,
+                "viral_angle": brief.viral_angle, "cta": script.call_to_action or brief.cta}
 
     @staticmethod
     def _music_credit(ctx: AgentContext) -> tuple[str | None, bool]:

@@ -11,8 +11,8 @@ def statuses(orch, pid):
     return {r.phase: r.status for r in orch.store.list_phases(pid)}
 
 
-def test_pipeline_has_18_ordered_phases():
-    assert [p.number for p in PIPELINE] == list(range(1, 19))
+def test_pipeline_has_20_ordered_phases():
+    assert [p.number for p in PIPELINE] == list(range(1, 21))
     assert "report" in downstream("script")
     assert "creative_direction" not in downstream("script")
 

@@ -61,7 +61,9 @@ class ChiefAgent(Agent):
             "phases": [{"n": p.number, "id": p.id, "title": p.title, "agent": p.agent, "kind": p.kind,
                         "depends_on": list(p.depends_on)} for p in PIPELINE],
             "platforms": [p.value for p in ctx.spec.platforms],
+            "concept_approval": "manual" if ctx.spec.require_concept_approval else "automática",
             "script_approval": "manual" if ctx.spec.require_script_approval else "automática",
+            "storyboard_approval": "manual" if ctx.spec.require_storyboard_approval else "automática",
         }
         path = ctx.workspace.save("planning", "production_plan", plan)
         return AgentResult(summary=f"Plan de producción con {len(PIPELINE)} fases", artifacts={"plan": str(path)})
@@ -98,6 +100,12 @@ class ChiefAgent(Agent):
             kept = [c for c in actionable if c.target_agent != "scriptwriter"]
             if len(kept) != len(actionable):
                 skipped = " (las del guion no se aplican: lo aprobaste tú)"
+            actionable = kept
+        if ctx.spec.require_storyboard_approval:
+            # El storyboard lo aprobaste tú: no se regeneran imágenes ni clips en silencio (gastaría créditos).
+            kept = [c for c in actionable if c.target_agent != "resources"]
+            if len(kept) != len(actionable):
+                skipped += " (las de imágenes no se aplican: aprobaste el storyboard)"
             actionable = kept
         enabled = ctx.settings.get("fix_major_when_passed", True)
         if not actionable or not enabled or ctx.settings.get("correction_rounds", 0) != 0:

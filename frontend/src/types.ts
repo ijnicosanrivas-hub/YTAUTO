@@ -71,6 +71,8 @@ export interface ProjectSpec {
   mode: "auto" | "custom";
   fps?: number;
   require_script_approval: boolean;
+  require_concept_approval?: boolean;
+  require_storyboard_approval?: boolean;
   subtitle_mode?: "karaoke" | "word_pop" | "line" | null;
   channel?: string;
   brief?: { question: string; answer: string }[];
@@ -373,3 +375,15 @@ export interface YtTrack {
 }
 
 export interface YtMusicView { tracks: YtTrack[]; genres: string[]; moods: string[]; folder: string; audio_library_url: string; help_url: string }
+
+// ---------------------------------------------------------------- estrategia del director (motor viral)
+export interface HookOption { style: string; text: string; on_screen_text?: string | null; visual?: string; why?: string }
+export interface RetentionBeat { at_s: number; technique: string; detail?: string }
+export interface CreativeBriefView {
+  concept: string; tone: string; visual_style: string; pacing: string; target_duration_s: number; music_direction: string;
+  palette?: string[]; scenes: { index: number; section: string; duration_s: number; purpose: string; visual_direction: string }[];
+  viral_angle?: string; target_viewer?: string; hook_options?: HookOption[]; chosen_hook?: number; story_structure?: string;
+  opening_scene?: string; retention_plan?: RetentionBeat[]; cta?: string; title_options?: string[]; cover_concept?: string;
+  risks?: string[]; user_notes?: string;
+}
+export interface ScenePromptView { scene_index: number; kind: "image" | "video"; prompt: string; search_query: string; style_tags?: string[] }

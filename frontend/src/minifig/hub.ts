@@ -14,7 +14,7 @@ export interface Station {
 
 /** Instalaciones del hub (inspiradas en las del videojuego: Batcomputer, mesa de trabajo, bóveda de trajes…). */
 export const HUB: Record<string, Station> = {
-  chief: { name: "Batcomputer", blurb: "Centro de mando: coordina las 18 fases, controla el presupuesto y redacta el informe.", x: 0, z: 0 },
+  chief: { name: "Batcomputer", blurb: "Centro de mando: coordina las 20 fases, controla el presupuesto y redacta el informe.", x: 0, z: 0 },
   director: { name: "Tablero de desafíos", blurb: "Planifica el concepto, el estilo y la estructura de retención del vídeo.", x: -6.2, z: -8.2 },
   scriptwriter: { name: "Muro de casos", blurb: "Conecta ideas con hilo rojo: escribe el gancho y la narración.", x: 6.2, z: -8.2 },
   publisher: { name: "Garaje del Batmóvil", blurb: "Prepara las exportaciones y entrega el paquete, solo con tu autorización.", x: -11.5, z: -3.5 },
@@ -83,7 +83,7 @@ export function recentActions(events: YtEvent[], agent: string, phaseAgent: Reco
 /** Nombre y descripción de cada puesto según el perfil del canal (la posición es la misma en todos). */
 const PROFILE_STATIONS: Record<string, Record<string, [string, string]>> = {
   gta6: {
-    chief: ["Ático de Ocean Drive", "Centro de mando: coordina las 18 fases y el presupuesto, y redacta el informe."],
+    chief: ["Ático de Ocean Drive", "Centro de mando: coordina las 20 fases y el presupuesto, y redacta el informe."],
     director: ["Mesa del plan", "Planifica el golpe: concepto, estilo y estructura de retención."],
     scriptwriter: ["Furgoneta de la radio pirata", "Escribe el gancho y la narración con teorías imposibles de ignorar."],
     publisher: ["Estudio de streaming", "Prepara títulos, hashtags y exportaciones; solo publica con tu permiso."],
@@ -94,7 +94,7 @@ const PROFILE_STATIONS: Record<string, Record<string, [string, string]>> = {
     reviewer: ["Muelle de los Cayos", "Revisión independiente: puntúa y pide correcciones."],
   },
   kids: {
-    chief: ["Casa de juegos", "Organiza el juego: coordina las 18 fases y el informe final."],
+    chief: ["Casa de juegos", "Organiza el juego: coordina las 20 fases y el informe final."],
     director: ["Rincón de los descubrimientos", "Imagina el concepto y la historia paso a paso."],
     scriptwriter: ["Rincón del cuento", "Escribe frases cortas, claras y divertidas."],
     publisher: ["Buzón de las sorpresas", "Prepara títulos seguros para familias; publica solo con tu permiso."],
@@ -105,7 +105,7 @@ const PROFILE_STATIONS: Record<string, Record<string, [string, string]>> = {
     reviewer: ["Consulta de juguetes", "Chequeo de calidad y seguridad para peques."],
   },
   deportes: {
-    chief: ["Palco presidencial", "Dirige el club: coordina las 18 fases, el presupuesto y el informe."],
+    chief: ["Palco presidencial", "Dirige el club: coordina las 20 fases, el presupuesto y el informe."],
     director: ["Banquillo", "Diseña la jugada: concepto, estilo y ritmo."],
     scriptwriter: ["Cabina de prensa", "Narra la jugada con datos y emoción."],
     publisher: ["Sala de redes", "Prepara publicaciones; solo publica con tu permiso."],

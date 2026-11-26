@@ -21,7 +21,7 @@ from ..core.narrative import NarrativeTemplate
 from ..core.workspace import ProjectMemory, Workspace
 from ..llm.base import AuthenticationError, LLMError, LLMProvider, UsageLimitError
 from ..providers.interfaces import ProviderGateway
-from .pipeline import PHASES, PIPELINE, PhaseDef, downstream
+from .pipeline import OPTIONAL_GATES, PHASES, PIPELINE, REDO_ON_REJECT, PhaseDef, downstream
 from .state import Approval, PhaseRecord, ProjectRecord, StateStore
 
 log = logging.getLogger("ytauto.orchestrator")
@@ -121,8 +121,12 @@ class Orchestrator:
         self._set_project_status(pid, ProjectStatus.ACTIVE)
 
     # ================================================================== aprobaciones
-    def approve(self, pid: str, gate: str, approved: bool = True, note: str = "") -> Approval:
-        if gate not in ("script_approval", "final_approval", "publish_decision") \
+    def approve(self, pid: str, gate: str, approved: bool = True, note: str = "",
+                data: dict[str, Any] | None = None) -> Approval:
+        """Registra una decisión del usuario. `data` lleva sus elecciones en las puertas previas:
+        concept_approval → {"chosen_hook": int}; storyboard_approval → {"prompts": {escena: texto}, "kinds": {...}}."""
+        self.store.ensure_phases(pid)
+        if gate not in (*OPTIONAL_GATES, "final_approval", "publish_decision") \
                 and not gate.startswith(("publish:", "spend:")):
             raise ValueError(f"Puerta de aprobación desconocida: {gate}")
         if gate.startswith("publish:"):
@@ -141,16 +145,18 @@ class Orchestrator:
         if gate.startswith("publish:"):
             from datetime import timedelta
             expires = (utcnow() + timedelta(hours=self.settings.publish_auth_ttl_hours)).isoformat()
+        if approved and gate in ("concept_approval", "storyboard_approval"):
+            self._apply_choices(pid, gate, note, data or {})
         a = self.store.add_approval(Approval(project_id=pid, gate=gate, approved=approved, note=note, expires_at=expires))
         self.events.emit("approval", project_id=pid, data=a.model_dump())
         if gate in PHASES:
             ph = self.store.get_phase(pid, gate)
             if approved:
                 self._set_phase(ph, PhaseStatus.APPROVED, summary=note or "Aprobado por el usuario")
-            elif gate == "script_approval":
-                # Rechazo del guion: el guionista lo reescribe con el comentario del usuario.
-                self._invalidate(pid, [{"phase": "script", "scenes": None,
-                                        "reasons": [note or "Guion rechazado por el usuario"]}], include_approvals=True)
+            elif gate in REDO_ON_REJECT:
+                # Rechazo de concepto, guion o storyboard: el agente lo rehace con el comentario del usuario.
+                self._invalidate(pid, [{"phase": REDO_ON_REJECT[gate], "scenes": None,
+                                        "reasons": [note or "Rechazado por el usuario"]}], include_approvals=True)
             else:
                 # Rechazo final: queda a la espera de instrucciones (redo_scenes / retry_phase).
                 self._set_phase(ph, PhaseStatus.IN_REVIEW, summary=f"Rechazado: {note}" if note else "Rechazado")
@@ -169,6 +175,33 @@ class Orchestrator:
             if ph.status is PhaseStatus.BLOCKED:
                 self._set_phase(ph, PhaseStatus.PENDING)
         return a
+
+    def _apply_choices(self, pid: str, gate: str, note: str, data: dict[str, Any]) -> None:
+        """Guarda en el espacio de trabajo lo que el usuario eligió al aprobar (gancho, notas, storyboard)."""
+        from ..core.models import CreativeBrief, ScenePrompt
+        ws = Workspace(self.settings.projects_dir, pid)
+        if gate == "concept_approval" and ws.has("planning", "creative_brief"):
+            brief = ws.load("planning", "creative_brief", CreativeBrief)
+            choice = data.get("chosen_hook")
+            if choice is not None:
+                if not isinstance(choice, int) or not 0 <= choice < max(1, len(brief.hook_options)):
+                    raise ValueError("Gancho elegido no válido")
+                brief.chosen_hook = choice
+            if note.strip():
+                brief.user_notes = note.strip()[:2000]
+            ws.save("planning", "creative_brief", brief)
+        elif gate == "storyboard_approval" and ws.has("resources", "prompts"):
+            prompts = ws.load("resources", "prompts")
+            edits = {int(k): str(v).strip() for k, v in (data.get("prompts") or {}).items() if str(v).strip()}
+            kinds = {int(k): v for k, v in (data.get("kinds") or {}).items() if v in ("image", "video")}
+            for item in prompts.get("prompts", []):
+                i = item.get("scene_index")
+                if i in edits:
+                    item["prompt"] = edits[i][:2000]
+                if i in kinds:
+                    item["kind"] = kinds[i]
+                ScenePrompt.model_validate(item)
+            ws.save("resources", "prompts", prompts)
 
     def _valid_publish_auths(self, pid: str) -> dict[str, str]:
         """Autorizaciones de publicación vigentes: {plataforma: id}. Gate `publish:<plataforma>[:public]`."""
@@ -211,6 +244,7 @@ class Orchestrator:
         return None
 
     def step(self, pid: str) -> StepResult:
+        self.store.ensure_phases(pid)
         project = self.store.get_project(pid)
         if project.status is ProjectStatus.CANCELLED:
             return StepResult("cancelled")
@@ -234,7 +268,8 @@ class Orchestrator:
 
         # ---- puertas de aprobación
         if phase.kind == "approval" and phase.agent is None:
-            if phase.id == "script_approval" and not project.spec.require_script_approval:
+            flag = OPTIONAL_GATES.get(phase.id)
+            if flag and not getattr(project.spec, flag, False):
                 self._set_phase(record, PhaseStatus.APPROVED, summary="Aprobación automática (modo automático)")
                 return StepResult("ran", phase.id)
             if self._gate_approved(pid, phase.id):
@@ -371,8 +406,8 @@ class Orchestrator:
             rec = self.store.get_phase(pid, phase_id)
             pdef = PHASES[phase_id]
             if pdef.kind == "approval" and pdef.agent is None and rec.status is PhaseStatus.APPROVED \
-                    and not include_approvals and phase_id == "script_approval":
-                continue  # un guion aprobado no se vuelve a pedir por correcciones internas
+                    and not include_approvals and phase_id in OPTIONAL_GATES:
+                continue  # lo ya aprobado (concepto, guion, storyboard) no se vuelve a pedir por correcciones internas
             if phase_id in targets:
                 scenes = targets[phase_id]["scenes"]
                 rec.scene_filter = scenes

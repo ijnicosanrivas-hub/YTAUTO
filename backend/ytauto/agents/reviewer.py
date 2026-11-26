@@ -26,6 +26,7 @@ class EditorialScores(BaseModel):
     coherence: int = Field(ge=0, le=10, description="Coherencia narrativa y cierre")
     spelling: int = Field(ge=0, le=10, description="Ortografía y gramática")
     legibility: int = Field(ge=0, le=10, description="Subtítulos cortos y legibles")
+    payoff: int = Field(default=7, ge=0, le=10, description="El vídeo cumple lo que promete el gancho (recompensa)")
 
 
 TargetAgent = Literal["director", "scriptwriter", "resources", "voice", "editor", "sound"]
@@ -137,11 +138,16 @@ def sync_checks(voice: VoiceManifest, video_duration_s: float) -> list[Check]:
     return c
 
 
-TASK = """Eres el revisor independiente de vídeos cortos verticales. Evalúa con rigor el guion y los
-subtítulos finales (0-10 por criterio). Señala problemas concretos indicando el agente responsable y
-la escena. No inventes problemas: si algo está bien, puntúalo alto. No predices viralidad.
-Criterios: hook (los primeros 3 s retienen), pacing (sin relleno ni repeticiones), coherence (la
-historia avanza y el cierre resuelve), spelling (ortografía/gramática), legibility (líneas cortas)."""
+TASK = """Eres el revisor independiente de vídeos cortos verticales, con criterio de productor de contenido viral.
+Evalúa con rigor el guion y los subtítulos finales (0-10 por criterio). Señala problemas concretos indicando el
+agente responsable y la escena, y cómo arreglarlo. No inventes problemas: si algo está bien, puntúalo alto.
+No predices viralidad: evalúas oficio.
+Criterios:
+- hook: en 1-2 s hay una razón para quedarse (pregunta, contradicción, imagen inesperada); sin saludos ni rodeos.
+- pacing: cada escena aporta algo nuevo; hay re-ganchos o cambios de patrón y no hay relleno ni repeticiones.
+- coherence: la historia avanza con lógica y el cierre resuelve (si cierra en bucle, conecta con el inicio).
+- payoff: el vídeo cumple lo que promete el gancho; sin clickbait engañoso; la llamada a la acción es natural.
+- spelling: ortografía y gramática. legibility: líneas de subtítulo cortas y legibles en móvil."""
 
 
 class ReviewerAgent(Agent):
@@ -166,13 +172,15 @@ class ReviewerAgent(Agent):
             ctx, phase=phase, task=TASK, output_model=EditorialReview,
             context={
                 "language": ctx.spec.language,
-                "script": script.model_dump(mode="json", include={"hook", "closing", "scenes"}),
+                "script": script.model_dump(mode="json", include={"hook", "closing", "call_to_action", "scenes",
+                                                                  "retention_beats"}),
                 "subtitles": [c.text for c in voice.cues][:200],
                 "technical_summary": [f"{c.name}: {'OK' if c.passed else 'FALLO'} ({c.detail})" for c in checks],
             },
         )
         s = editorial.scores
-        editorial_points = (s.hook * 1.2 + s.pacing + s.coherence + s.spelling * 0.4 + s.legibility * 0.4)  # máx 40
+        editorial_points = (s.hook * 1.2 + s.pacing + s.coherence * 0.6 + s.payoff * 0.4
+                            + s.spelling * 0.4 + s.legibility * 0.4)  # máx 40
         technical_points = sum(c.points for c in checks)  # técnica 30 + sincronía 15 + retención 15
         score = round(technical_points + editorial_points)
 

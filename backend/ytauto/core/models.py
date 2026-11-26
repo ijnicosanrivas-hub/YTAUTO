@@ -90,6 +90,9 @@ class ProjectSpec(BaseModel):
     mode: Literal["auto", "custom"] = "auto"
     fps: int = 30
     require_script_approval: bool = True
+    # Puntos de control previos (ahorran créditos: se decide antes de producir). La interfaz los activa por defecto.
+    require_concept_approval: bool = False   # concepto, gancho y estructura antes de escribir el guion
+    require_storyboard_approval: bool = False  # imágenes/clips por escena antes de generarlos (gasto de créditos)
     channel: str = "general"  # canal al que pertenece (config/channels.yaml)
     brief: list[BriefAnswer] = Field(default_factory=list)  # preguntas del director y respuestas
     license_map: dict[str, str] = Field(default_factory=dict)  # agente → licencia de Claude elegida
@@ -131,6 +134,26 @@ class ScenePlan(BaseModel):
     sfx: list[str] = Field(default_factory=list)
 
 
+HOOK_STYLES = ("pregunta", "dato_impactante", "contradiccion", "in_medias_res", "promesa", "visual_sorpresa",
+               "historia_personal", "reto")
+
+
+class HookOption(BaseModel):
+    """Una alternativa de gancho para los primeros segundos (el usuario elige una antes del guion)."""
+    style: str = Field(description=f"Tipo de gancho: {', '.join(HOOK_STYLES)}")
+    text: str = Field(description="Primeras palabras que se oyen (narración del gancho)")
+    on_screen_text: str | None = Field(default=None, description="Texto grande en pantalla (≤ 6 palabras)")
+    visual: str = Field(default="", description="Qué se ve en el primer segundo")
+    why: str = Field(default="", description="Por qué detiene el scroll y a quién")
+
+
+class RetentionBeat(BaseModel):
+    """Técnica de retención colocada en un momento concreto del vídeo."""
+    at_s: float = Field(ge=0)
+    technique: str = Field(description="p. ej. bucle abierto, re-gancho, cambio de patrón, revelación, cierre en bucle")
+    detail: str = ""
+
+
 class CreativeBrief(BaseModel):
     concept: str
     tone: str
@@ -141,6 +164,24 @@ class CreativeBrief(BaseModel):
     music_direction: str
     scenes: list[ScenePlan]
     resource_needs: list[str] = Field(default_factory=list)
+    # ---- estrategia de retención y CTR (motor de vídeos virales)
+    viral_angle: str = Field(default="", description="Por qué esta idea atrae y retiene: emoción, curiosidad, relevancia")
+    target_viewer: str = Field(default="", description="Quién lo ve y qué quiere sentir o saber")
+    hook_options: list[HookOption] = Field(default_factory=list)
+    chosen_hook: int = Field(default=0, ge=0, description="Índice del gancho elegido (lo confirma el usuario)")
+    story_structure: str = Field(default="", description="Estructura narrativa y por qué encaja")
+    opening_scene: str = Field(default="", description="Primeros 3 s: imagen, texto en pantalla y primera frase")
+    retention_plan: list[RetentionBeat] = Field(default_factory=list)
+    cta: str = Field(default="", description="Llamada a la acción natural para el final")
+    title_options: list[str] = Field(default_factory=list)
+    cover_concept: str = Field(default="", description="Portada/miniatura: fotograma, texto (≤ 4 palabras), contraste")
+    risks: list[str] = Field(default_factory=list, description="Dónde podría deslizar el espectador y cómo se evita")
+    user_notes: str = Field(default="", description="Indicaciones del usuario al aprobar el concepto")
+
+    def hook(self) -> HookOption | None:
+        if not self.hook_options:
+            return None
+        return self.hook_options[min(self.chosen_hook, len(self.hook_options) - 1)]
 
 
 # ---------- Guion ----------
@@ -167,6 +208,7 @@ class Script(BaseModel):
     call_to_action: str | None = None
     music: str
     scenes: list[ScriptScene]
+    retention_beats: list[RetentionBeat] = Field(default_factory=list)
 
     @property
     def total_duration_s(self) -> float:

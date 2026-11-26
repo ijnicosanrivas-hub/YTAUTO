@@ -5,7 +5,7 @@
 ```
 React/TS + React Three Fiber ──REST / WebSocket──► FastAPI
                                                      │
-        Orquestador (Agente Jefe) ── grafo de 18 fases + puertas de aprobación + presupuesto
+        Orquestador (Agente Jefe) ── grafo de 20 fases + puertas de aprobación + presupuesto
                  │                          │
           Cola SQLite                 Bus de eventos ──► WebSocket (actividad real)
           ├─ worker "claude"  (concurrencia 1 por defecto)
@@ -67,28 +67,35 @@ class Agent(ABC):
 - Las instrucciones creativas viven en `.claude/agents/<agente>.md` y se reutilizan en el
   modo interactivo de Claude Code.
 
-## Flujo de producción (18 fases)
+## Flujo de producción (20 fases)
 
 | # | Fase | Agente | Tipo |
 |---|---|---|---|
 | 1 | intake | chief | auto |
 | 2 | project_setup | chief | auto |
-| 3 | creative_direction | director | claude |
-| 4 | script | scriptwriter | claude |
-| 5 | script_approval | — | aprobación (desactivable en modo automático) |
-| 6 | scene_prep | resources | claude |
-| 7 | resource_generation | resources | media |
-| 8 | voice | voice | media (+claude ligero) |
-| 9 | edit | editor | media |
-| 10 | sound | sound | media |
-| 11 | render | editor | media |
-| 12 | review | reviewer | media + claude |
-| 13 | corrections | chief | auto |
-| 14 | final_approval | — | aprobación |
-| 15 | exports | publisher | media |
-| 16 | publish_prep | publisher | claude (haiku) |
-| 17 | publish | publisher | aprobación + integración |
-| 18 | report | chief | auto |
+| 3 | creative_direction | director | claude (estrategia viral: 3 ganchos, ángulo, retención, CTA, títulos, portada) |
+| 4 | concept_approval | — | aprobación: el usuario elige gancho y enfoque (desactivable) |
+| 5 | script | scriptwriter | claude |
+| 6 | script_approval | — | aprobación (desactivable en modo automático) |
+| 7 | scene_prep | resources | claude |
+| 8 | storyboard_approval | — | aprobación del storyboard antes de gastar créditos (desactivable) |
+| 9 | resource_generation | resources | media |
+| 10 | voice | voice | media (+claude ligero) |
+| 11 | edit | editor | media |
+| 12 | sound | sound | media |
+| 13 | render | editor | media |
+| 14 | review | reviewer | media + claude |
+| 15 | corrections | chief | auto |
+| 16 | final_approval | — | aprobación |
+| 17 | exports | publisher | media |
+| 18 | publish_prep | publisher | claude (haiku) |
+| 19 | publish | publisher | aprobación + integración |
+| 20 | report | chief | auto |
+
+Puertas previas (`OPTIONAL_GATES`): concepto, guion y storyboard. La interfaz las activa por defecto; al rechazar una,
+solo se rehace su fase (director, guionista o recursos) con el comentario del usuario. Lo aprobado no se vuelve a
+pedir por correcciones internas, y con el storyboard aprobado no se regeneran imágenes en silencio. Los proyectos
+creados con versiones anteriores reciben las fases nuevas como ya aprobadas (siguen su flujo original).
 
 Estados: `pending`, `assigned`, `running`, `blocked`, `completed`, `error`, `in_review`,
 `approved`. Los proyectos pueden pausarse, reanudarse y cancelarse.

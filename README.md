@@ -42,7 +42,7 @@ paquete de publicación → publicación solo con tu autorización → informe`
 
 | # | Agente | Usa Claude | Función |
 |---|---|---|---|
-| 1 | Jefe | no | Coordina las 18 fases, correcciones, presupuesto e informe |
+| 1 | Jefe | no | Coordina las 20 fases, correcciones, presupuesto e informe |
 | 2 | Director | sí | Concepto, estilo, estructura de retención, escenas y ritmo |
 | 3 | Guionista | sí | Gancho, narración ajustada a la duración, líneas de subtítulo |
 | 4 | Recursos | sí (prompts) | Prompts, búsqueda/generación, coherencia, licencias |
@@ -127,7 +127,7 @@ están **desactivados** y exigen credenciales, presupuesto y autorización: ver 
 | `docs/COMPARTIR.md` | **Pasar el programa a otras personas** (enlace, mensaje y avisos) |
 | `docs/NUBE.md` | **Usarlo sin instalar nada en tu PC** (GitHub Codespaces; enlace de un toque) |
 | `docs/MOVIL.md` | **Usarlo desde el iPhone** (mismo Wi-Fi, con `INICIAR_WINDOWS_MOVIL.bat`) |
-| `docs/architecture.md` | Arquitectura, capas y flujo de 18 fases |
+| `docs/architecture.md` | Arquitectura, capas y flujo de 20 fases |
 | `docs/providers.md` | Proveedores intercambiables: escribir un adaptador, sustituir uno, fallback y presupuesto |
 | `docs/local_engine.md` | Motor local, biblioteca con licencias, calidad de vídeo corto |
 | `docs/platforms.md` | Requisitos verificados de Reels/Shorts/TikTok y qué **no** está verificado |

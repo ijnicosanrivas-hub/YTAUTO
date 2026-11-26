@@ -27,7 +27,7 @@ intercambiable que solo cambia la presentación. Uso personal, no distribuible.
 
 ## Qué NO cambia
 - El **contenido de los vídeos** (guion, narración, subtítulos, prompts de imagen, textos de publicación),
-  el esquema JSON de cada agente, el flujo de 18 fases, las autorizaciones de gasto y publicación.
+  el esquema JSON de cada agente, el flujo de 20 fases, las autorizaciones de gasto y publicación.
   Un guion de pulpos no habla de Gotham.
 
 ## Cambiar de tema

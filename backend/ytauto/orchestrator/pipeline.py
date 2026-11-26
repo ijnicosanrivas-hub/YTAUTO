@@ -1,4 +1,4 @@
-"""Definición del flujo de producción: 18 fases con dependencias (DAG)."""
+"""Definición del flujo de producción: 20 fases con dependencias (DAG)."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -22,22 +22,39 @@ PIPELINE: tuple[PhaseDef, ...] = (
     PhaseDef("intake", 1, "Introducción de la temática", "chief", "auto", (), "none"),
     PhaseDef("project_setup", 2, "Creación del proyecto", "chief", "auto", ("intake",), "none"),
     PhaseDef("creative_direction", 3, "Dirección creativa", "director", "claude", ("project_setup",), "claude"),
-    PhaseDef("script", 4, "Guion", "scriptwriter", "claude", ("creative_direction",), "claude"),
-    PhaseDef("script_approval", 5, "Aprobación del guion", None, "approval", ("script",), "none"),
-    PhaseDef("scene_prep", 6, "Preparación de escenas", "resources", "claude", ("script_approval",), "claude"),
-    PhaseDef("resource_generation", 7, "Generación de recursos", "resources", "media", ("scene_prep",), "media"),
-    PhaseDef("voice", 8, "Locución", "voice", "media", ("script_approval",), "media"),
-    PhaseDef("edit", 9, "Montaje", "editor", "media", ("resource_generation", "voice"), "media"),
-    PhaseDef("sound", 10, "Música y efectos", "sound", "media", ("edit",), "media"),
-    PhaseDef("render", 11, "Renderizado", "editor", "media", ("sound",), "media"),
-    PhaseDef("review", 12, "Revisión", "reviewer", "claude", ("render",), "claude"),
-    PhaseDef("corrections", 13, "Correcciones", "chief", "auto", ("review",), "none"),
-    PhaseDef("final_approval", 14, "Aprobación final", None, "approval", ("corrections",), "none"),
-    PhaseDef("exports", 15, "Exportaciones por plataforma", "publisher", "media", ("final_approval",), "media"),
-    PhaseDef("publish_prep", 16, "Preparación de publicación", "publisher", "claude", ("exports",), "claude"),
-    PhaseDef("publish", 17, "Publicación autorizada", "publisher", "approval", ("publish_prep",), "media"),
-    PhaseDef("report", 18, "Informe final", "chief", "auto", ("publish",), "none"),
+    # El usuario elige gancho y enfoque ANTES del guion: corregir aquí cuesta una llamada, no un vídeo entero.
+    PhaseDef("concept_approval", 4, "Aprobación del concepto y el gancho", None, "approval", ("creative_direction",), "none"),
+    PhaseDef("script", 5, "Guion", "scriptwriter", "claude", ("concept_approval",), "claude"),
+    PhaseDef("script_approval", 6, "Aprobación del guion", None, "approval", ("script",), "none"),
+    PhaseDef("scene_prep", 7, "Preparación de escenas", "resources", "claude", ("script_approval",), "claude"),
+    # Storyboard revisado antes de gastar créditos en imágenes o clips generados.
+    PhaseDef("storyboard_approval", 8, "Aprobación del storyboard", None, "approval", ("scene_prep",), "none"),
+    PhaseDef("resource_generation", 9, "Generación de recursos", "resources", "media", ("storyboard_approval",), "media"),
+    PhaseDef("voice", 10, "Locución", "voice", "media", ("script_approval",), "media"),
+    PhaseDef("edit", 11, "Montaje", "editor", "media", ("resource_generation", "voice"), "media"),
+    PhaseDef("sound", 12, "Música y efectos", "sound", "media", ("edit",), "media"),
+    PhaseDef("render", 13, "Renderizado", "editor", "media", ("sound",), "media"),
+    PhaseDef("review", 14, "Revisión", "reviewer", "claude", ("render",), "claude"),
+    PhaseDef("corrections", 15, "Correcciones", "chief", "auto", ("review",), "none"),
+    PhaseDef("final_approval", 16, "Aprobación final", None, "approval", ("corrections",), "none"),
+    PhaseDef("exports", 17, "Exportaciones por plataforma", "publisher", "media", ("final_approval",), "media"),
+    PhaseDef("publish_prep", 18, "Preparación de publicación", "publisher", "claude", ("exports",), "claude"),
+    PhaseDef("publish", 19, "Publicación autorizada", "publisher", "approval", ("publish_prep",), "media"),
+    PhaseDef("report", 20, "Informe final", "chief", "auto", ("publish",), "none"),
 )
+
+# Puertas que se aprueban solas si el proyecto no las pide (modo automático), con el campo que las activa.
+OPTIONAL_GATES: dict[str, str] = {
+    "concept_approval": "require_concept_approval",
+    "script_approval": "require_script_approval",
+    "storyboard_approval": "require_storyboard_approval",
+}
+# Si el usuario rechaza una puerta, qué fase se rehace con su comentario.
+REDO_ON_REJECT: dict[str, str] = {
+    "concept_approval": "creative_direction",
+    "script_approval": "script",
+    "storyboard_approval": "scene_prep",
+}
 
 PHASES: dict[str, PhaseDef] = {p.id: p for p in PIPELINE}
 

@@ -29,10 +29,12 @@ Arquitectura: `docs/architecture.md`. Decisiones: `docs/adr/`.
 - `backend/ytauto/core` dominio (modelos, narrativa, espacio de trabajo, eventos, plataformas).
 - `backend/ytauto/llm` motor LLM (CLI de Claude Code, simulados).
 - `backend/ytauto/agents` los 9 agentes. Cada agente con Claude define esquema + criterios de aceptación.
+  Director = estratega viral (3 ganchos, ángulo, retención, CTA, títulos, portada); el usuario decide concepto,
+  guion y storyboard antes de gastar (`OPTIONAL_GATES` en `orchestrator/pipeline.py`).
 - `backend/ytauto/db` SQLite (esquema, `SqlStateStore`, backups); `backend/ytauto/queue` cola y worker.
 - `backend/ytauto/api` FastAPI + WebSocket (`server.py`) y estado en vivo de agentes (`board.py`).
 - `frontend/` React + TypeScript + React Three Fiber (sala 3D en `src/pages/ProductionRoom.tsx`).
-- `backend/ytauto/orchestrator` flujo de 18 fases (DAG), estados, aprobaciones, correcciones.
+- `backend/ytauto/orchestrator` flujo de 20 fases (DAG), estados, aprobaciones, correcciones.
 - `backend/ytauto/providers/interfaces` contratos; adaptadores en subcarpetas por categoría.
 - `.claude/agents/*.md` instrucciones de rol de cada agente (usadas por `claude -p --agent`).
 - `instaladores/<windows|mac|linux|movil|web>/` lanzadores e instaladores por sistema (encuentran solos la raíz). Windows: `INSTALAR_WINDOWS.bat` en cmd puro (sin PowerShell); `backend/ytauto/core/tools.py` localiza FFmpeg/voz/Claude/Git Bash instalados; `frontend/dist` se versiona (el paquete no exige Node).

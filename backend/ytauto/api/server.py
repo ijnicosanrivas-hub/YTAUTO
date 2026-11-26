@@ -51,7 +51,9 @@ code{background:#1b2440;padding:2px 6px;border-radius:6px}main{max-width:560px;m
 class ApproveIn(BaseModel):
     gate: str
     approved: bool = True
-    note: str = ""
+    note: str = Field(default="", max_length=4000)
+    # Elecciones del usuario al aprobar: gancho elegido (concepto) o prompts/tipo por escena (storyboard).
+    data: dict[str, Any] = Field(default_factory=dict)
 
 
 class RedoIn(BaseModel):
@@ -334,7 +336,7 @@ def create_api(app: App, start_worker: bool = False, token: str | None = None,
     def approve(pid: str, body: ApproveIn):
         _project_view(app, pid)
         try:
-            a = app.orchestrator.approve(pid, body.gate, approved=body.approved, note=body.note)
+            a = app.orchestrator.approve(pid, body.gate, approved=body.approved, note=body.note, data=body.data)
         except ValueError as e:
             raise HTTPException(409, str(e)) from e
         schedule(pid)

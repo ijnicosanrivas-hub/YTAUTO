@@ -63,6 +63,17 @@ class SqlStateStore(StateStore):
             c.execute(update(s.phases).where(s.phases.c.project_id == record.project_id,
                                              s.phases.c.phase == record.phase).values(**self._phase_row(record)))
 
+    def ensure_phases(self, project_id: str) -> list[str]:
+        from ..orchestrator.state import backfilled_phase
+        with self.engine.begin() as c:
+            have = {r[0] for r in c.execute(select(s.phases.c.phase).where(s.phases.c.project_id == project_id))}
+            if not have:
+                return []  # proyecto inexistente: no se inventa nada
+            missing = [p.id for p in PIPELINE if p.id not in have]
+            if missing:
+                c.execute(insert(s.phases), [self._phase_row(backfilled_phase(project_id, ph)) for ph in missing])
+        return missing
+
     def list_phases(self, project_id: str) -> list[PhaseRecord]:
         with self.engine.connect() as c:
             rows = c.execute(select(s.phases).where(s.phases.c.project_id == project_id)).mappings().all()

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ConceptDecision, StoryboardDecision } from "../components/Decisions";
 import { api, fileUrl } from "../api";
 import { Badge, ErrorBox, PageHead, Progress, useAction, useApi } from "../components/ui";
 import { PLATFORM_LABEL, describeEvent, eur, statusLabel } from "../format";
@@ -73,6 +74,9 @@ function ApprovalPanel({ view, arts, onDone }: { view: ProjectView; arts: Artifa
     setNote("");
     onDone();
   };
+  const decide = (gate: string) => async (approved: boolean, text: string, data?: Record<string, unknown>) => {
+    if (await run(() => api.post(`/api/projects/${id}/approve`, { gate, approved, note: text, data: data ?? {} }))) onDone();
+  };
   if (!view.waiting_approval.length && !blockedSpend) return null;
   const pkg = arts?.publish_package as
     | Record<string, { title: string; description: string; hashtags: string[]; publish_notes?: string[]; unaudited_private_only?: boolean; manual_dir?: string; privacy_options?: string[] }>
@@ -82,6 +86,12 @@ function ApprovalPanel({ view, arts, onDone }: { view: ProjectView; arts: Artifa
     <div className="panel" style={{ borderColor: "var(--warn)", marginBottom: 14 }}>
       <h2 style={{ color: "var(--warn)" }}>Panel de aprobación</h2>
       <ErrorBox error={error} />
+      {view.waiting_approval.includes("concept_approval") && (
+        <ConceptDecision brief={arts?.brief ?? null} busy={busy} onDecide={decide("concept_approval")} />
+      )}
+      {view.waiting_approval.includes("storyboard_approval") && (
+        <StoryboardDecision prompts={arts?.prompts ?? null} busy={busy} onDecide={decide("storyboard_approval")} />
+      )}
       {view.waiting_approval.includes("script_approval") && (
         <>
           <p>El guion está listo. Revísalo en la pestaña «Guion». Si lo rechazas, el guionista lo reescribe con tu comentario.</p>

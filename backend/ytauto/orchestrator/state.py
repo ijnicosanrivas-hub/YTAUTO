@@ -76,6 +76,20 @@ class StateStore(ABC):
     @abstractmethod
     def llm_usage(self, project_id: str | None = None) -> list[dict[str, Any]]: ...
 
+    def ensure_phases(self, project_id: str) -> list[str]:
+        """Crea las fases que falten (proyectos de versiones anteriores). Devuelve las añadidas."""
+        return []
+
+
+def backfilled_phase(project_id: str, phase: str) -> PhaseRecord:
+    """Fase añadida en una versión posterior a la creación del proyecto: las puertas nuevas se dan por aprobadas
+    (el proyecto sigue el flujo con el que se creó); cualquier otra fase nueva queda pendiente."""
+    from .pipeline import PHASES
+    if PHASES[phase].kind == "approval" and PHASES[phase].agent is None:
+        return PhaseRecord(project_id=project_id, phase=phase, status=PhaseStatus.APPROVED,
+                           summary="Paso nuevo: no existía cuando se creó este proyecto")
+    return PhaseRecord(project_id=project_id, phase=phase)
+
 
 class InMemoryStateStore(StateStore):
     def __init__(self) -> None:
@@ -116,7 +130,17 @@ class InMemoryStateStore(StateStore):
 
     def list_phases(self, project_id: str) -> list[PhaseRecord]:
         with self._lock:
-            return [self.phases[(project_id, p.id)].model_copy(deep=True) for p in PIPELINE]
+            return [self.phases[(project_id, p.id)].model_copy(deep=True) for p in PIPELINE
+                    if (project_id, p.id) in self.phases]
+
+    def ensure_phases(self, project_id: str) -> list[str]:
+        with self._lock:
+            if project_id not in self.projects:
+                return []
+            missing = [p.id for p in PIPELINE if (project_id, p.id) not in self.phases]
+            for ph in missing:
+                self.phases[(project_id, ph)] = backfilled_phase(project_id, ph)
+            return missing
 
     def add_approval(self, approval: Approval) -> Approval:
         with self._lock:

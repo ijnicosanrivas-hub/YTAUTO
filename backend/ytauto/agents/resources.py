@@ -49,6 +49,10 @@ del guion, crea:
 - `kind`: "video" si la escena gana mucho con movimiento real; si no, "image".
 - `style_tags`: etiquetas de estilo comunes a todo el vídeo.
 Evita imágenes repetitivas: cada escena debe aportar algo visualmente distinto.
+La escena 0 es el gancho: debe ser la imagen más llamativa del vídeo y cumplir `opening_scene` (lo que se ve en
+el primer segundo decide si el espectador se queda). Mantén coherencia con `cover_concept` (la portada sale de ahí).
+Usa "video" solo donde el movimiento aporta de verdad: los clips generados gastan créditos del usuario.
+Si hay `corrections` (comentarios del usuario al revisar el storyboard), aplícalos.
 """
 
 
@@ -70,6 +74,8 @@ class ResourcesAgent(Agent):
             "visual_style": brief.visual_style,
             "palette": brief.palette,
             "tone": brief.tone,
+            "opening_scene": brief.opening_scene,
+            "cover_concept": brief.cover_concept,
             "scenes": [
                 {"index": s.index, "section": s.section.value, "narration": s.narration,
                  "visual_notes": s.visual_notes,
@@ -77,6 +83,11 @@ class ResourcesAgent(Agent):
                 for s in script.scenes
             ],
         }
+        mine = [c.model_dump(mode="json") for c in ctx.corrections if c.target_agent == self.name]
+        if mine:
+            context["corrections"] = mine
+            if ctx.workspace.has("resources", "prompts"):
+                context["previous_prompts"] = ctx.workspace.load("resources", "prompts")
         result = self.ask_llm(
             ctx, phase="scene_prep", task=TASK, context=context, output_model=ScenePrompts,
             accept=lambda p: check_prompts(p, indices),
